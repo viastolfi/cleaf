@@ -2,10 +2,10 @@ BUILD = build
 SRC = src
 
 CS = \
-	$(SRC)/main.c \
+	$(SRC)/cleaf.c \
 
 OBJ = \
-	$(BUILD)/main.o \
+	$(BUILD)/cleaf.o \
 
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c99 -g

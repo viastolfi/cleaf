@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #define LEXER_LIB_IMPLEMENTATION
-#include "lexer.h"
+#include "frontend/lexer.h"
 #define DA_LIB_IMPLEMENTATION
 #include "thirdparty/da.h"
 
