@@ -2,6 +2,15 @@
 #include <stdlib.h>
 #define LEXER_LIB_IMPLEMENTATION
 #include "lexer.h"
+#define DA_LIB_IMPLEMENTATION
+#include "thirdparty/da.h"
+
+typedef struct 
+{
+  lexer_t* items;
+  size_t count;
+  size_t capacity;
+} tokens_array;
 
 int main(int argc, char** argv) 
 {
@@ -26,6 +35,7 @@ int main(int argc, char** argv)
   }
   fclose(f);
 
+  tokens_array tokens = {0};
   lexer_init_lexer(&lex, text, text+len, (char*) malloc(4096), 4096);
 
   while (lexer_get_token(&lex)) {
@@ -33,10 +43,10 @@ int main(int argc, char** argv)
       printf("\n<<<PARSE ERROR>>>\n");
       break;
     }
-    lexer_print_token(&lex);
-    printf("  ");
+    da_append(&tokens, lex);
   }
 
+  da_free(&tokens);
   free(text);
   return 0;
 }
