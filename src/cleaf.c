@@ -4,14 +4,9 @@
 #include "frontend/lexer.h"
 #define DA_LIB_IMPLEMENTATION
 #include "thirdparty/da.h"
-#include "frontend/ast.h"
 
-typedef struct 
-{
-  token_t* items;
-  size_t count;
-  size_t capacity;
-} tokens_array;
+#include "frontend/ast_definition.h"
+#include "frontend/ast.h"
 
 int main(int argc, char** argv) 
 {
@@ -36,7 +31,7 @@ int main(int argc, char** argv)
   }
   fclose(f);
 
-  tokens_array tokens = {0};
+  parser_t parser = {0};
   lexer_init_lexer(&lex, text, text+len, (char*) malloc(4096), 4096);
 
   while (lexer_get_token(&lex)) {
@@ -45,18 +40,23 @@ int main(int argc, char** argv)
       break;
     }
     token_t t = lexer_copy_token(&lex);
-    da_append(&tokens, t);
+    da_append(&parser, t);
   }
 
-  expression_array expr = {0};
-  // TODO: use da_foreach instead
-  da_foreach(token_t, it, &tokens) {
-    if (ast_build_ast(&expr, *it) != 0) {
+  //declaration_array program = {0};
+  while ((size_t) parser.pos < parser.count) {
+    declaration_t* decl = parse_declaration(&parser); 
+    if (decl == NULL) {
       printf("ERROR / END of ast parsing\n");
       break;
     }
-    printf("Token : %ld parsed \n", (*it).type);
+    print_declaration(decl);
+    free(decl);
+    // ATM this raise segfault 
+    // We comment it for now
+    //da_append(&program, *decl);
   }
+
 
   // da_free(&tokens);
   free(text);
