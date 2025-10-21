@@ -30,6 +30,33 @@ declaration_t* ast_parse_function(parser_t* p)
     fprintf(stderr, "ERROR - specify function name\n");
   }
    
+  if (!match(p, '(')) {
+    fprintf(stderr, "ERROR - missing token '('\n");
+    return NULL;
+  }
+
+  advance(p);
+  while (!match(p, ')')) {
+    // TODO: parse function params
+  }
+  advance(p);
+
+  if (match(p, ':')) {
+    advance(p);
+    if (match(p, LEXER_token_id)) {
+      token_t* t = advance(p); 
+      decl->func.return_type = malloc(t->string_len);
+      strcpy(decl->func.return_type, t->string_value);
+    } else {
+      fprintf(stderr, "ERROR - specify return type");
+    }
+  }
+
+  if (!match(p, '{')) {
+    fprintf(stderr, "ERROR - missing token '{'\n");
+  }
+  advance(p);
+
   return decl;
 }
 
