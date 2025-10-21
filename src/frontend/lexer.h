@@ -80,6 +80,16 @@ typedef struct
   int string_len;
 } lexer_t;
 
+typedef struct 
+{
+  long type;
+
+  long int_value;
+
+  char* string_value;
+  int string_len;
+} token_t;
+
 // We start at 256 since this is the end of the ASCII table
 // Doing this, we can store single char only using their ASCII value
 // Hence reducing the amount of needed token in this enum
@@ -115,7 +125,7 @@ enum
 #define Y(x) 1
 #define N(x) 0
 
-#if LEXER_LIB_DECIMAL_INTS(x)
+#if LEXER_LIB_DECIMAL_INTS
 #define LEXER_decimal_ints
 #endif // LEXER_LIB_DECIMAL_INTS
 
