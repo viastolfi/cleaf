@@ -142,6 +142,8 @@ extern void lexer_init_lexer(lexer_t* l, const char* input_stream, const char* e
 
 #ifdef LEXER_LIB_IMPLEMENTATION
 
+#include <string.h>
+
 #ifndef LEXER_STDLIB
 #define LEXER_STDLIB
 #include <stdlib.h>
@@ -154,6 +156,24 @@ extern void lexer_init_lexer(lexer_t* l, const char* input_stream, const char* e
 #define Y(a) a
 #undef N
 #define N(a)
+
+static token_t lexer_copy_token(lexer_t* lex) 
+{
+  token_t token;
+  token.type = lex->token;
+  switch (lex->token) {
+    case LEXER_token_id: 
+      token.string_value = malloc(lex->string_len);
+      strcpy(token.string_value, lex->string_value);
+      token.string_len = lex->string_len;
+      break;
+    default:
+      // TODO: implement this
+      return token;
+  }
+
+  return token;
+}
 
 static int lexer_is_white(char c) 
 {

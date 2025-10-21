@@ -13,23 +13,6 @@ typedef struct
   size_t capacity;
 } tokens_array;
 
-void store_token(tokens_array* tokens, lexer_t* lex) 
-{
-  token_t token;
-  token.type = lex->token;
-  switch (lex->token) {
-    case LEXER_token_id: 
-      token.string_value = malloc(lex->string_len);
-      strcpy(token.string_value, lex->string_value);
-      token.string_len = lex->string_len;
-      break;
-    default:
-      return;
-  }
-
-  da_append(tokens, token);
-}
-
 int main(int argc, char** argv) 
 {
   if (argc < 2) {
@@ -61,7 +44,8 @@ int main(int argc, char** argv)
       printf("\n<<<PARSE ERROR>>>\n");
       break;
     }
-    store_token(&tokens, &lex);
+    token_t t = lexer_copy_token(&lex);
+    da_append(&tokens, t);
   }
 
   expression_array expr = {0};
