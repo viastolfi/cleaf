@@ -1,4 +1,4 @@
-fn main(): int {
+fn main(): string {
   var i = 3;
   i += 3;
 

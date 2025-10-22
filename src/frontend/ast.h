@@ -17,9 +17,19 @@ typedef struct
   int pos;
 } parser_t;
 
+// Get the actual token at pos
 token_t* peek(parser_t* p);
+
+// Get the actual token at pos and advance pos
 token_t* advance(parser_t* p);
-bool match(parser_t* p, long kind);
+
+// Check if the actual token is of kind 
+bool check(parser_t* p, long kind);
+
+// Check if the actual token is of kind
+// If yes, advance pos
+bool expect(parser_t* p, long kind, char* err);
+
 declaration_t* ast_parse_function(parser_t* parser);
 declaration_t* parse_declaration(parser_t* parser);
 

@@ -10,7 +10,7 @@ OBJ = \
 	$(BUILD)/frontend/ast.o \
 
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c99 -g
+CFLAGS = -Wall -Wextra -g
 
 .PHONY: all clean
 
