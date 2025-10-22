@@ -189,6 +189,7 @@ statement_t* ast_parse_return_stmt(parser_t* p)
   } else {
     // return lit int
     token_t* val_token = advance(p);
+    s->ret.type = "int";
     s->ret.int_value = val_token->int_value;
   }
 
@@ -213,7 +214,18 @@ statement_t* parse_statement(parser_t* p)
 void print_declaration(declaration_t* d) 
 {
   if (d->type == (declaration_kind) DECLARATION_FUNC) {
-    printf("\033[0;34m`-\033[0m\033[0;1;32mFUNCTION_DECLARATION\033[0m\033[0;33m %p\033[0m %s\033[0;32m %s (%s)\033[0m\n", d, d->func.name, d->func.return_type ? d->func.return_type : "void", d->func.params ? d->func.params->type : "");
+    printf("\033[0;34m`-\033[0m\033[0;1;32mFunctionDecl \033[0m\033[0;33m %p\033[0m %s\033[0;32m %s (%s)\033[0m\n", d, d->func.name, d->func.return_type ? d->func.return_type : "void", d->func.params ? d->func.params->type : "");
+    if (d->func.body) {
+      statement_t* stmt = d->func.body;
+      do {
+        if (stmt->type == (statement_kind) STATEMENT_RETURN) {
+          printf("\033[0;34m  `-\033[0m\033[0;35mReturnStmt \033[0m \033[0;33m%p\033[0m\n", stmt);
+          if (strcmp(stmt->ret.type, "int") == 0) {
+            printf("\033[0;34m    `-\033[0m\033[0;35mIntergerLiteral\033[0m \033[0;32m'%s' \033[0m\033[0;36m%d\033[0m\n", stmt->ret.type, stmt->ret.int_value);
+          }
+        }
+        stmt = stmt->next;
+      } while (stmt);
+    }
   }
-  printf("RETURN VALUE : %d\n", d->func.body->ret.int_value);
 }
