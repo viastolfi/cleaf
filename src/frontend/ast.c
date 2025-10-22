@@ -3,6 +3,30 @@
 #define DA_LIB_IMPLEMENTATION
 #include "../thirdparty/da.h"
 
+void free_declaration(declaration_t* d) 
+{
+  if (d->next)
+    free_declaration(d->next);
+
+  if (d->type == DECLARATION_FUNC) {
+    if (d->func.name)
+      free(d->func.name);
+
+    // TODO: create function that free function params completely
+    // if (d->func.params)
+
+    if (d->func.return_type)
+      free(d->func.return_type);
+
+    // TODO: create function that free statement
+    // if (d->func.body)
+  }
+
+  // TODO: free variable declaration case
+  
+  free(d);
+}
+
 token_t* peek(parser_t* p)
 {
   return (size_t) p->pos < p->count ? &p->items[p->pos] : NULL;
@@ -42,16 +66,20 @@ declaration_t* ast_parse_function(parser_t* p)
     token_t * name_tok = advance(p);
     if (name_tok->string_value) {
       decl->func.name = strdup(name_tok->string_value);
-      if (!decl->func.name) { fprintf(stderr,"oom\n"); free(decl); return NULL; }
+      if (!decl->func.name) { 
+        fprintf(stderr,"oom\n"); 
+        free_declaration(decl); 
+        return NULL; 
+      }
     }
   } else {
     fprintf(stderr, "ERROR - specify function name\n");
-    free(decl);
+    free_declaration(decl);
     return NULL;
   }
-   
+
   if (!expect(p, '(', "missing token : '(' after function name")) {
-    free(decl->func.name); free(decl);
+    free_declaration(decl);
     return NULL;
   }
 
@@ -60,7 +88,7 @@ declaration_t* ast_parse_function(parser_t* p)
     // TODO: parse function params
     if ((size_t) p->pos >= p->count) {
       fprintf(stderr, "Unexpected EOF in function params parsing\n");
-      free(decl->func.name); free(decl);
+      free_declaration(decl);
     }
 
     advance(p);
@@ -78,31 +106,29 @@ declaration_t* ast_parse_function(parser_t* p)
         decl->func.return_type = strdup(ret_tok->string_value);
         if (!decl->func.return_type) {
           fprintf(stderr, "ERROR - oom\n");
-          free(decl->func.name); free(decl);
+          free_declaration(decl);
           return NULL;
         }
       } else {
         fprintf(stderr, "ERROR - no return type specified after ':'");
-        free(decl->func.name); free(decl);
+        free_declaration(decl);
         return NULL;
       }
     } else {
       fprintf(stderr, "ERROR - specify return type");
-      free(decl->func.name); free(decl);
+      free_declaration(decl);
     }
   } else {
     decl->func.return_type = NULL;
   }
 
   if (!expect(p, '{', "ERROR - missing token '{'")) {
-        free(decl->func.return_type);
-        free(decl->func.name);
-        free(decl);
-        return NULL;
-    }
+    free_declaration(decl);
+    return NULL;
+  }
 
-    decl->func.body = NULL; // TODO: implement parse_block
-                            
+  decl->func.body = NULL; // TODO: implement parse_block
+
   return decl;
 }
 

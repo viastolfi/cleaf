@@ -33,6 +33,7 @@ bool expect(parser_t* p, long kind, char* err);
 declaration_t* ast_parse_function(parser_t* parser);
 declaration_t* parse_declaration(parser_t* parser);
 
+void free_declaration(declaration_t* d);
 void print_declaration(declaration_t* d);
 
 #endif // AST_H
