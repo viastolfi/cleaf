@@ -3,6 +3,22 @@
 #define DA_LIB_IMPLEMENTATION
 #include "../thirdparty/da.h"
 
+void free_statement(statement_t* s) 
+{
+  if (s->next) 
+    free_statement(s->next);
+
+  if (s->type == STATEMENT_RETURN) {
+    if (s->ret.type)
+      free(s->ret.type);
+
+    if (s->ret.string_value)
+      free(s->ret.string_value);
+  }
+
+  free(s);
+}
+
 void free_declaration(declaration_t* d) 
 {
   if (d->next)
@@ -127,7 +143,10 @@ declaration_t* ast_parse_function(parser_t* p)
     return NULL;
   }
 
-  decl->func.body = NULL; // TODO: implement parse_block
+  // TODO: handle this 'recursively' 
+  // Still need to be thinked about
+  decl->func.body = parse_statement(p); 
+  // TODO: add error handling if body = NULL
 
   return decl;
 }
@@ -143,6 +162,55 @@ declaration_t* parse_declaration(parser_t* p)
   return NULL;
 }
 
+statement_t* ast_parse_return_stmt(parser_t* p) 
+{
+  statement_t* s = (statement_t*) malloc(sizeof(statement_t));
+  if (s == NULL) {
+    fprintf(stderr, "ERROR - oom\n");
+    return NULL;
+  }
+
+  s->type = STATEMENT_RETURN;
+  if (check(p, LEXER_token_id)) {
+    token_t* name_tok = advance(p);
+    if (!name_tok->string_value) {
+      fprintf(stderr, "ERROR - id has no name\n");
+      free_statement(s);
+      return NULL;
+    }
+    s->ret.id_name = strdup(name_tok->string_value);
+    if (!s->ret.id_name) {
+      free_statement(s);
+      fprintf(stderr, "oom\n");
+      return NULL;
+    }
+    advance(p);
+  } else if (check(p, '"')) {
+    // TODO: handle lit string return 
+  } else {
+    // return lit int
+    token_t* val_token = advance(p);
+    s->ret.int_value = val_token->int_value;
+  }
+
+  if (!expect(p, ';', "ERROR - missing token ';' at end of line")) {
+    free_statement(s);
+    return NULL;
+  }
+
+  return s;
+}
+
+statement_t* parse_statement(parser_t* p) 
+{
+  if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "return") == 0) {
+    advance(p);
+    return ast_parse_return_stmt(p);
+  } 
+
+  return NULL;
+}
+  
 void print_declaration(declaration_t* d) 
 {
   if (d->type == (declaration_kind) DECLARATION_FUNC) {

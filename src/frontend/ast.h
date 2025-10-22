@@ -30,10 +30,13 @@ bool check(parser_t* p, long kind);
 // If yes, advance pos
 bool expect(parser_t* p, long kind, char* err);
 
-declaration_t* ast_parse_function(parser_t* parser);
-declaration_t* parse_declaration(parser_t* parser);
+declaration_t* ast_parse_function(parser_t* p);
+declaration_t* parse_declaration(parser_t* p);
+statement_t*   ast_parse_return_stmt(parser_t* p);
+statement_t*   parse_statement(parser_t* p);
 
 void free_declaration(declaration_t* d);
+void free_statement(statement_t* s);
 void print_declaration(declaration_t* d);
 
 #endif // AST_H

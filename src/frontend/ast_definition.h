@@ -54,4 +54,15 @@ struct declaration_t
   };
 };
 
+struct statement_t 
+{
+  statement_kind type;
+  statement_t* next;
+
+  union {
+    struct { char* type; char* id_name; int int_value; char* string_value; int string_len; } ret;
+    struct { expression_t* e; } expr;
+  };
+};
+
 #endif // AST_DEFINITION_H

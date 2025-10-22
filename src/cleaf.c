@@ -39,6 +39,8 @@ int main(int argc, char** argv)
       printf("\n<<<PARSE ERROR>>>\n");
       break;
     }
+    lexer_print_token(&lex);
+    printf("    ");
     token_t t = lexer_copy_token(&lex);
     da_append(&parser, t);
   }
