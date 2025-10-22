@@ -25,14 +25,17 @@ token_t* advance(parser_t* p);
 
 // Check if the actual token is of kind 
 bool check(parser_t* p, long kind);
+bool check_is_type(parser_t* p);
 
 // Check if the actual token is of kind
 // If yes, advance pos
 bool expect(parser_t* p, long kind, char* err);
 
 declaration_t* ast_parse_function(parser_t* p);
+declaration_t* ast_parse_var_decl(parser_t* p);
 declaration_t* parse_declaration(parser_t* p);
 statement_t*   ast_parse_return_stmt(parser_t* p);
+statement_t*   ast_parse_decl_stmt(parser_t* p);
 statement_t*   parse_statement(parser_t* p);
 
 void free_declaration(declaration_t* d);

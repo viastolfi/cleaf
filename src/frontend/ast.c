@@ -59,6 +59,21 @@ bool check(parser_t* p, long kind)
   return false;
 }
 
+bool check_is_type(parser_t* p) 
+{
+  if (!peek(p)->string_value) {
+    fprintf(stderr, "ERROR - unknown token, looking for type declaration");
+    return false;
+  }
+
+  // atm, we only handle int type
+  // TODO: add other types
+  if (strcmp(peek(p)->string_value, "int") == 0)
+    return true;
+
+  return false;
+}
+
 bool expect(parser_t* p, long kind, char* err) 
 {
   if (check(p, kind)) {
@@ -148,7 +163,89 @@ declaration_t* ast_parse_function(parser_t* p)
   decl->func.body = parse_statement(p); 
   // TODO: add error handling if body = NULL
 
+  while (!check(p, '}')) {
+    if ((size_t) p->pos >= p->count) {
+      fprintf(stderr, "ERROR - early EOF / missing '}' token\n");
+    }
+
+    statement_t* stmt = parse_statement(p);
+    if (!stmt) {
+      fprintf(stderr, "ERROR - parse statement didn't work");
+      free_declaration(decl);
+      return NULL;
+    }
+
+    statement_t** p = &decl->func.body;
+    if (!*p) {
+      *p = stmt;
+    } else {
+      while ((*p)->next) {
+        p = &(*p)->next;
+      }
+      (*p)->next = stmt;
+    }
+  }
+
   return decl;
+}
+
+declaration_t* ast_parse_var_decl(parser_t* p)
+{
+  declaration_t* d = (declaration_t*) malloc(sizeof(declaration_t));
+  if (!d) {
+    fprintf(stderr, "ERROR - oom while var decl\n");
+    return NULL;
+  }
+
+  d->type = DECLARATION_VAR;
+  d->next = NULL;
+
+  // For now, we assume that we can only fall back here if the newt token is a typedef
+  // Which mean that next token is an token_id with a string_value
+  // This Might cause error later on
+  token_t* type_tok = advance(p);
+  d->var.type = strdup(type_tok->string_value);
+  if (!d->var.type) {
+    fprintf(stderr, "ERROR - can't get type\n");
+    free_declaration(d);
+    return NULL;
+  }
+
+  if (!check(p, LEXER_token_id)) {
+    fprintf(stderr, "ERROR - please provide var name\n");
+    free_declaration(d);
+    return NULL;
+  }
+
+  token_t* name_tok = advance(p);
+  if (!name_tok->string_value) {
+    fprintf(stderr, "ERROR - var name not found\n");
+    free_declaration(d);
+    return NULL;
+  }
+
+  d->var.name = strdup(name_tok->string_value);
+  if (!d->var.name) {
+    fprintf(stderr, "ERROR - oom\n");
+    free_declaration(d);
+    return NULL;
+  }
+
+  if (!expect(p, '=', "ERROR - missing '=' token")) {
+    free_declaration(d);
+    return NULL;
+  }
+
+  // TODO: Implement that
+  // expression_t* e = ast_parse_value(p);
+  advance(p);
+
+  if (!expect(p, ';', "ERROR - missing ';' token")) {
+    free_declaration(d);
+    return NULL;
+  }
+
+  return d;
 }
 
 declaration_t* parse_declaration(parser_t* p)
@@ -201,12 +298,35 @@ statement_t* ast_parse_return_stmt(parser_t* p)
   return s;
 }
 
+statement_t* ast_parse_decl_stmt(parser_t* p) 
+{
+  statement_t* s = (statement_t*) malloc(sizeof(statement_t));
+  if (s == NULL) {
+    fprintf(stderr, "ERROR - oom\n");
+    return NULL;
+  }
+  
+  s->type = STATEMENT_DECL;
+  s->next = NULL;
+  
+  declaration_t* d = ast_parse_var_decl(p);
+  if (!d) {
+    fprintf(stderr, "ERROR - parsing var declaration\n");
+    free_statement(s);
+    return NULL;
+  }
+
+  return s;
+}
+
 statement_t* parse_statement(parser_t* p) 
 {
   if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "return") == 0) {
     advance(p);
     return ast_parse_return_stmt(p);
-  } 
+  } else if (check(p, LEXER_token_id) && check_is_type(p)) {
+    return ast_parse_decl_stmt(p);
+  }
 
   return NULL;
 }

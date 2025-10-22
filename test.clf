@@ -1,3 +1,4 @@
 fn main(): int {
-  return 12;
+  int i = 12;
+  return 1;
 }

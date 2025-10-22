@@ -54,7 +54,7 @@ int main(int argc, char** argv)
       break;
     }
     print_declaration(decl);
-    free(decl);
+    free_declaration(decl);
     // ATM this raise segfault 
     // We comment it for now
     //da_append(&program, *decl);

@@ -10,7 +10,8 @@ typedef enum
 typedef enum
 {
   STATEMENT_EXPR,
-  STATEMENT_RETURN
+  STATEMENT_RETURN,
+  STATEMENT_DECL
 } statement_kind;
 
 typedef enum 
@@ -62,7 +63,18 @@ struct statement_t
   union {
     struct { char* type; char* id_name; int int_value; char* string_value; int string_len; } ret;
     struct { expression_t* e; } expr;
+    struct { declaration_t* var; } decl;
   };
+};
+
+struct expression_t 
+{
+  expression_kind type;
+
+  int int_value;
+
+  char* string_value;
+  int string_len;
 };
 
 #endif // AST_DEFINITION_H
