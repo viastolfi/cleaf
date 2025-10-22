@@ -44,6 +44,7 @@ int main(int argc, char** argv)
     token_t t = lexer_copy_token(&lex);
     da_append(&parser, t);
   }
+  printf("\n");
 
   //declaration_array program = {0};
   while ((size_t) parser.pos < parser.count) {

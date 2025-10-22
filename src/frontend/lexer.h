@@ -125,10 +125,6 @@ enum
 #define Y(x) 1
 #define N(x) 0
 
-#if LEXER_LIB_DECIMAL_INTS
-#define LEXER_decimal_ints
-#endif // LEXER_LIB_DECIMAL_INTS
-
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -166,6 +162,9 @@ static token_t lexer_copy_token(lexer_t* lex)
       token.string_value = malloc(lex->string_len);
       strcpy(token.string_value, lex->string_value);
       token.string_len = lex->string_len;
+      break;
+    case LEXER_token_intlit:
+      token.int_value = lex->int_value;
       break;
     default:
       // TODO: implement this
@@ -391,26 +390,21 @@ int lexer_get_token(lexer_t* l)
         LEXER_LIB_DQ_STRINGS(return lexer_parse_string(l, p, LEXER_token_dqstring);)
         goto single_char;
     case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
-    #ifdef LEXER_decimal_ints
     {
-      const char* q = p;
-      #ifdef LEXER_STDLIB
-      /* strtol -> string to long converter
-       * params: 
-       * * ptr of the string we want to convert
-       * * ptr that will indicate the end of the long (ie: '12345Toto q -> 'T')
-       * * type of the number (ie: 10 decimal number)
-       * return the converted long value
-       */
-      l->int_value = strtol((const char *) p, (char **) &q, 10);  
-      #else
-      // TODO: implement case of no stdlib
-      return 0;
-      #endif // LEXER_STDLIB
-      return lexer_create_token(l, LEXER_token_intlit, q-1);
+      LEXER_LIB_DECIMAL_INTS(
+        const char* q = p;
+        /* strtol -> string to long converter
+         * params: 
+         * * ptr of the string we want to convert
+         * * ptr that will indicate the end of the long (ie: '12345Toto q -> 'T')
+         * * type of the number (ie: 10 decimal number)
+         * return the converted long value
+         */
+        l->int_value = strtol((const char *) p, (char **) &q, 10);  
+        return lexer_create_token(l, LEXER_token_intlit, q-1);)
     }
     // TODO: add some suffixe parsing (ie: 42U)
-    #endif // LEXER_decimal_ints
+    goto single_char;
   }
 
   return 0;

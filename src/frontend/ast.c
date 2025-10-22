@@ -184,7 +184,6 @@ statement_t* ast_parse_return_stmt(parser_t* p)
       fprintf(stderr, "oom\n");
       return NULL;
     }
-    advance(p);
   } else if (check(p, '"')) {
     // TODO: handle lit string return 
   } else {
@@ -216,4 +215,5 @@ void print_declaration(declaration_t* d)
   if (d->type == (declaration_kind) DECLARATION_FUNC) {
     printf("\033[0;34m`-\033[0m\033[0;1;32mFUNCTION_DECLARATION\033[0m\033[0;33m %p\033[0m %s\033[0;32m %s (%s)\033[0m\n", d, d->func.name, d->func.return_type ? d->func.return_type : "void", d->func.params ? d->func.params->type : "");
   }
+  printf("RETURN VALUE : %d\n", d->func.body->ret.int_value);
 }
