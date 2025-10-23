@@ -13,10 +13,21 @@
 #define CLR_STMT    "\033[0;35m"
 #define CLR_LIT     "\033[0;36m"
 
-static void print_statement(statement_t* s, int pos) 
+static void print_statement(statement_t* s, int pos, int depth) 
 {
-  printf("%*s", pos, "");
-  printf(CLR_TREE "`-" CLR_RESET);
+  printf("%*s", pos*4, "");
+  if (s->next) {
+    printf(CLR_TREE "|" CLR_RESET);
+  } else {
+    printf(CLR_TREE "`" CLR_RESET);
+  }
+  if (depth == 0) {
+    printf(CLR_TREE "-" CLR_RESET);
+  } else {
+    printf("%*s", depth*2, "");
+    printf(CLR_TREE "`-" CLR_RESET);
+  }
+
   if (s->type == (statement_kind) STATEMENT_RETURN){
     printf(CLR_STMT "ReturnStmt" CLR_RESET);
     printf(CLR_ADDRESS " %p" CLR_RESET, s);
@@ -24,9 +35,17 @@ static void print_statement(statement_t* s, int pos)
     printf(CLR_LIT " %d" CLR_RESET, s->ret.int_value);
     printf("\n");
   }
+
+  if (s->type == (statement_kind) STATEMENT_DECL) {
+    printf(CLR_STMT "DeclStmt" CLR_RESET);
+    printf(CLR_ADDRESS " TO IMPLEMENT" CLR_RESET "\n");
+  }
+
+  if (s->next)
+    print_statement(s->next, pos, depth++);
 }
 
-static void print_declaration(declaration_t* d) 
+static void print_declaration(declaration_t* d, int pos) 
 {
   printf(CLR_TREE "`-" CLR_RESET);
   if (d->type == (declaration_kind) DECLARATION_FUNC) {
@@ -37,7 +56,10 @@ static void print_declaration(declaration_t* d)
     printf("\n");
 
     if (d->func.body) {
-      print_statement(d->func.body, 1);
+      printf("%*s", pos * 2, "");
+      printf(CLR_TREE "`-" CLR_RESET);
+      printf(CLR_STMT "CompoundStmt" CLR_RESET "\n");
+      print_statement(d->func.body, pos, 0);
     }
   }
 
