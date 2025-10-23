@@ -7,6 +7,7 @@
 
 #include "frontend/ast_definition.h"
 #include "frontend/ast.h"
+#include "frontend/ast_printer.h"
 
 int main(int argc, char** argv) 
 {
