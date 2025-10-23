@@ -16,6 +16,11 @@ void free_statement(statement_t* s)
       free(s->ret.string_value);
   }
 
+  if (s->type == STATEMENT_DECL) {
+    if (s->decl.var)
+      free_declaration(s->decl.var);
+  }
+
   free(s);
 }
 
@@ -34,11 +39,19 @@ void free_declaration(declaration_t* d)
     if (d->func.return_type)
       free(d->func.return_type);
 
-    // TODO: create function that free statement
-    // if (d->func.body)
+    if (d->func.body)
+      free_statement(d->func.body);
   }
 
-  // TODO: free variable declaration case
+  if (d->type == DECLARATION_VAR) {
+    if (d->var.name)
+      free(d->var.name);
+
+    if(d->var.type)
+      free(d->var.type);
+
+    // TODO: add a free_expression function
+  }
   
   free(d);
 }
@@ -286,7 +299,8 @@ statement_t* ast_parse_return_stmt(parser_t* p)
   } else {
     // return lit int
     token_t* val_token = advance(p);
-    s->ret.type = "int";
+    s->ret.type = malloc(strlen("int"));
+    s->ret.type = strdup("int");
     s->ret.int_value = val_token->int_value;
   }
 
