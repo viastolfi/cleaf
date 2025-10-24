@@ -171,8 +171,6 @@ declaration_t* ast_parse_function(parser_t* p)
     return NULL;
   }
 
-  // TODO: handle this 'recursively' 
-  // Still need to be thinked about
   decl->func.body = parse_statement(p); 
   // TODO: add error handling if body = NULL
 
@@ -323,8 +321,8 @@ statement_t* ast_parse_decl_stmt(parser_t* p)
   s->type = STATEMENT_DECL;
   s->next = NULL;
   
-  declaration_t* d = ast_parse_var_decl(p);
-  if (!d) {
+  s->decl.var = ast_parse_var_decl(p);
+  if (!s->decl.var) {
     fprintf(stderr, "ERROR - parsing var declaration\n");
     free_statement(s);
     return NULL;
