@@ -47,6 +47,8 @@ int main(int argc, char** argv)
   }
   printf("\n");
 
+  free(lex.string_storage);
+
   //declaration_array program = {0};
   while ((size_t) parser.pos < parser.count) {
     declaration_t* decl = parse_declaration(&parser); 
@@ -62,7 +64,7 @@ int main(int argc, char** argv)
   }
 
 
-  // da_free(&tokens);
+  da_free(&parser);
   free(text);
   return 0;
 }
