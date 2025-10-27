@@ -42,5 +42,6 @@ expression_t*  ast_parse_expr_int_lit(parser_t* p);
 
 void free_declaration(declaration_t* d);
 void free_statement(statement_t* s);
+void free_expression(expression_t* e);
 
 #endif // AST_H

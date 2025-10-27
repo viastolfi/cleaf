@@ -3,6 +3,14 @@
 #define DA_LIB_IMPLEMENTATION
 #include "../thirdparty/da.h"
 
+void free_expression(expression_t* e) 
+{
+  if (e->string_value)
+    free(e->string_value);
+
+  free(e);
+}
+
 void free_statement(statement_t* s) 
 {
   if (s->next) 
@@ -50,7 +58,8 @@ void free_declaration(declaration_t* d)
     if(d->var.type)
       free(d->var.type);
 
-    // TODO: add a free_expression function
+    if(d->var.init)
+      free_expression(d->var.init);
   }
   
   free(d);
@@ -330,12 +339,29 @@ statement_t* ast_parse_return_stmt(parser_t* p)
       fprintf(stderr, "oom\n");
       return NULL;
     }
-  } else if (check(p, '"')) {
-    // TODO: handle lit string return 
+  } else if (check(p, LEXER_token_dqstring)) {
+    token_t* str_tok = advance(p);
+    if (!str_tok->string_value) {
+      fprintf(stderr, "ERROR - dqstring token has no stored string\n");
+      free_statement(s);
+      return NULL;
+    }
+    if (!s->ret.type) {
+      fprintf(stderr, "ERRROR - oom on parse return stmt\n");
+      free_statement(s);
+      return NULL;
+    }
+    s->ret.type = strdup("string");
+    if (!s->ret.string_value) {
+      fprintf(stderr, "ERRROR - oom on parse return stmt\n");
+      free_statement(s);
+      return NULL;
+    }
+    s->ret.string_value = strdup(str_tok->string_value);
+    s->ret.string_len = str_tok->string_len;
   } else {
     // return lit int
     token_t* val_token = advance(p);
-    s->ret.type = malloc(strlen("int"));
     s->ret.type = strdup("int");
     s->ret.int_value = val_token->int_value;
   }
