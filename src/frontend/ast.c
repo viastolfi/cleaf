@@ -266,6 +266,9 @@ declaration_t* parse_declaration(parser_t* p)
     return ast_parse_function(p);
   }
 
+  if (check(p, LEXER_token_id) && check_is_type(p)) {
+    return ast_parse_var_decl(p);
+  }
   // Do we risk to fall here ?
   return NULL;
 }
