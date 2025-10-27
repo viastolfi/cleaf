@@ -98,6 +98,37 @@ bool expect(parser_t* p, long kind, char* err)
   return false;
 }
 
+expression_t*  ast_parse_expr_int_lit(parser_t* p) {
+  expression_t* e = (expression_t*) malloc(sizeof(expression_t));
+  
+  if (!e) {
+    fprintf(stderr, "ERROR - oom while parse_expr_int_lit\n");
+    return NULL;
+  }
+
+  e->type = EXPRESSION_LIT;
+  token_t* t = advance(p);
+
+  e->int_value = t->int_value;
+  return e;
+}
+
+expression_t* parse_expression(parser_t* p) 
+{
+  if (check(p, LEXER_token_id)) {
+    // TODO: Implement this
+    //return ast_parse_expr_var(p);
+  } else if (check(p, '"')) {
+    // TODO: Implement this
+    // return ast_parse_expr_lit_string(p);
+  } else {
+    return ast_parse_expr_int_lit(p);
+  }
+
+  // Unreachable (normally)
+  return NULL;
+}
+
 declaration_t* ast_parse_function(parser_t* p)
 {
   declaration_t* decl = (declaration_t*) malloc(sizeof(declaration_t));
@@ -247,9 +278,13 @@ declaration_t* ast_parse_var_decl(parser_t* p)
     return NULL;
   }
 
-  // TODO: Implement that
-  // expression_t* e = ast_parse_value(p);
-  advance(p);
+  expression_t* e = parse_expression(p);
+  if (!e) {
+    fprintf(stderr, "ERROR - d->var.e is NULL\n");
+    free_declaration(d);
+    return NULL;
+  }
+  d->var.init = e;
 
   if (!expect(p, ';', "ERROR - missing ';' token")) {
     free_declaration(d);

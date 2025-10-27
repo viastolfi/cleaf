@@ -110,6 +110,7 @@ void test_typed_var_decl(const char* name, char* source_code)
                   "Expression type should be LITERAL");
   ASSERT_MSG(decl->var.init->int_value == 3,
                   "Expression value should be the same as in the source code");
+  printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
 }
 
 int main(void)
