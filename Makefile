@@ -19,6 +19,7 @@ all: $(BUILD)/cleaf
 
 $(BUILD)/cleaf: $(OBJ)
 	$(CC) -o $@ $^
+	@$(BUILD)/cleaf test.clf 2> cleaf.log
 
 $(BUILD)/%.o: $(SRC)/%.c
 	@mkdir -p $(BUILD)
@@ -30,7 +31,7 @@ TEST_BIN = $(BUILD)/ast_test
 
 test: $(TEST_BIN)
 	@echo "Running AST tests..."
-	@$(TEST_BIN)
+	@$(TEST_BIN) 2> test.log
 
 $(TEST_BIN): $(TEST_SRC) $(SRC)/frontend/ast.c
 	@mkdir -p $(BUILD)
