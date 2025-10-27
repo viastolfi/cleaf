@@ -35,7 +35,9 @@ parser_t get_token(char* source_code)
   parser_t parser = {0};
   lexer_t lex;
 
-  lexer_init_lexer(&lex, source_code, source_code + strlen(source_code), (char*) malloc(255), 255);
+
+  char* storage = malloc(255);
+  lexer_init_lexer(&lex, source_code, source_code + strlen(source_code), (char*) storage, 255);
 
   while (lexer_get_token(&lex)) {
     if (lex.token == LEXER_token_parse_error) {
@@ -43,14 +45,17 @@ parser_t get_token(char* source_code)
       break;
     }
 
-#if DEBUG_TOKENS
-    printf(COLOR_CYAN "[token] %-15s (len=%zu)\n" COLOR_RESET, lex.token_name, lex.token_len);
+#if DEBUG_TOKENS 
+    printf(COLOR_CYAN "[token] " COLOR_RESET);
+    lexer_print_token(&lex);
+    printf("\n");
 #endif
 
     token_t t = lexer_copy_token(&lex);
     da_append(&parser, t);
   }
 
+  free(storage);
   return parser;
 }
 
@@ -70,6 +75,9 @@ void test_fn_def(const char* name, char* source_code)
               "Function name should be the same as in the source code");
 
   printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
+
+  free_declaration(decl);
+  da_free(&parser);
 }
 
 void test_fn_ret_type(const char* name, char* source_code)
@@ -86,6 +94,9 @@ void test_fn_ret_type(const char* name, char* source_code)
               "Function return type should be the same as in the source code");
 
   printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
+
+  free_declaration(decl);
+  da_free(&parser);
 }
 
 void test_typed_var_decl(const char* name, char* source_code)
@@ -111,6 +122,57 @@ void test_typed_var_decl(const char* name, char* source_code)
   ASSERT_MSG(decl->var.init->int_value == 3,
                   "Expression value should be the same as in the source code");
   printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+void test_int_lit_return(const char* name, char* source_code) 
+{
+  printf(COLOR_YELLOW "→ Running test:" COLOR_RESET " %s\n", name);
+  parser_t parser = get_token(source_code);
+
+  statement_t* s = parse_statement(&parser);
+
+  ASSERT_MSG(s != NULL, "Statement should not be NULL");
+  ASSERT_MSG(s->type == (statement_kind) STATEMENT_RETURN,
+              "Statement kind should be STATEMENT_RETURN");
+  ASSERT_MSG(s->ret.type != NULL,
+              "Return type should not be NULL");
+  ASSERT_MSG(strcmp(s->ret.type, "int") == 0,
+              "Return type should be \"int\"");
+  ASSERT_MSG(s->ret.int_value == 1,
+              "Return value should be the same as in the source code");
+
+  printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
+
+  free_statement(s);
+  da_free(&parser);
+}
+
+void test_string_lit_return(const char* name, char* source_code)
+{
+  printf(COLOR_YELLOW "→ Running test:" COLOR_RESET " %s\n", name);
+  parser_t parser = get_token(source_code);
+
+  statement_t* s = parse_statement(&parser);
+
+  ASSERT_MSG(s != NULL, "Statement should not be NULL");
+  ASSERT_MSG(s->type == (statement_kind) STATEMENT_RETURN,
+              "Statement kind should be STATEMENT_RETURN");
+  ASSERT_MSG(s->ret.type != NULL,
+              "Return type should not be NULL");
+  ASSERT_MSG(strcmp(s->ret.type, "string") == 0,
+              "Return type should be string");
+  ASSERT_MSG(s->ret.string_value != NULL,
+              "Return string value should not be NULL");
+  ASSERT_MSG(strcmp(s->ret.string_value, "test") == 0,
+              "Return string value should be the same as in the source cod");
+
+  printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
+  
+  free_statement(s);
+  da_free(&parser);
 }
 
 int main(void)
@@ -120,6 +182,8 @@ int main(void)
   test_fn_def("Simple function definition", "fn main() {}");
   test_fn_ret_type("Function return type", "fn main(): int {}");
   test_typed_var_decl("Typed var declaration", "int i = 3;");
+  test_int_lit_return("Integer literal return statement", "return 1;");
+  test_string_lit_return("String literal return statement", "return \"test\";");
 
   printf(COLOR_GREEN "🎉 All tests passed successfully!\n" COLOR_RESET);
   return 0;
