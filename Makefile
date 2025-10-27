@@ -1,18 +1,19 @@
 BUILD = build
 SRC = src
+TEST = test
 
 CS = \
-	$(SRC)/cleaf.c \
-	$(SRC)/frontend/ast.c \
+        $(SRC)/cleaf.c \
+        $(SRC)/frontend/ast.c \
 
 OBJ = \
-	$(BUILD)/cleaf.o \
-	$(BUILD)/frontend/ast.o \
+        $(BUILD)/cleaf.o \
+        $(BUILD)/frontend/ast.o \
 
 CC = gcc
 CFLAGS = -Wall -Wextra -g
 
-.PHONY: all clean
+.PHONY: all clean test
 
 all: $(BUILD)/cleaf
 
@@ -23,6 +24,17 @@ $(BUILD)/%.o: $(SRC)/%.c
 	@mkdir -p $(BUILD)
 	@mkdir -p $(BUILD)/frontend
 	$(CC) $(CFLAGS) -c $< -o $@
+
+TEST_SRC = $(TEST)/ast_test.c
+TEST_BIN = $(BUILD)/ast_test
+
+test: $(TEST_BIN)
+	@echo "Running AST tests..."
+	@$(TEST_BIN)
+
+$(TEST_BIN): $(TEST_SRC) $(SRC)/frontend/ast.c
+	@mkdir -p $(BUILD)
+	@$(CC) $(CFLAGS) $^ -o $@
 
 clean:
 	rm -rf $(BUILD)
