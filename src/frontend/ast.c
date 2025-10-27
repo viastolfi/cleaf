@@ -115,6 +115,7 @@ expression_t*  ast_parse_expr_int_lit(parser_t* p) {
     return NULL;
   }
 
+  memset(e, 0, sizeof(expression_t));
   e->type = EXPRESSION_LIT;
   token_t* t = advance(p);
 
@@ -142,6 +143,7 @@ declaration_t* ast_parse_function(parser_t* p)
 {
   declaration_t* decl = (declaration_t*) malloc(sizeof(declaration_t));
   if (!decl) { fprintf(stderr, "Out of memory\n"); return NULL; }
+  memset(decl, 0, sizeof(declaration_t));
 
   decl->type = DECLARATION_FUNC;
   decl->next = NULL;
@@ -247,6 +249,7 @@ declaration_t* ast_parse_var_decl(parser_t* p)
     fprintf(stderr, "ERROR - oom while var decl\n");
     return NULL;
   }
+  memset(d, 0, sizeof(declaration_t));
 
   d->type = DECLARATION_VAR;
   d->next = NULL;
@@ -324,6 +327,7 @@ statement_t* ast_parse_return_stmt(parser_t* p)
     fprintf(stderr, "ERROR - oom\n");
     return NULL;
   }
+  memset(s, 0, sizeof(statement_t));
 
   s->type = STATEMENT_RETURN;
   if (check(p, LEXER_token_id)) {
@@ -346,13 +350,8 @@ statement_t* ast_parse_return_stmt(parser_t* p)
       free_statement(s);
       return NULL;
     }
-    if (!s->ret.type) {
-      fprintf(stderr, "ERRROR - oom on parse return stmt\n");
-      free_statement(s);
-      return NULL;
-    }
     s->ret.type = strdup("string");
-    if (!s->ret.string_value) {
+    if (!s->ret.type) {
       fprintf(stderr, "ERRROR - oom on parse return stmt\n");
       free_statement(s);
       return NULL;
@@ -381,6 +380,7 @@ statement_t* ast_parse_decl_stmt(parser_t* p)
     fprintf(stderr, "ERROR - oom\n");
     return NULL;
   }
+  memset(s, 0, sizeof(statement_t));
   
   s->type = STATEMENT_DECL;
   s->next = NULL;

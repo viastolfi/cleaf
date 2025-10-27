@@ -158,10 +158,9 @@ static token_t lexer_copy_token(lexer_t* lex)
   token_t token;
   token.type = lex->token;
   switch (lex->token) {
-    case LEXER_token_id: 
-      token.string_value = malloc(lex->string_len);
-      strcpy(token.string_value, lex->string_value);
-      token.string_len = lex->string_len;
+    case LEXER_token_id: case LEXER_token_dqstring: 
+      token.string_value = strdup(lex->string_value);
+      token.string_len = strlen(lex->string_value);
       break;
     case LEXER_token_intlit:
       token.int_value = lex->int_value;
@@ -301,7 +300,6 @@ int lexer_get_token(lexer_t* l)
           || *p == '_') {
         int n = 0;
         l->string_value = l->string_storage;
-        l->string_len = n;
         do {
           if (n + 1 >= l->string_storage_len)
             return lexer_create_token(l, LEXER_token_parse_error, p+n);
@@ -312,6 +310,7 @@ int lexer_get_token(lexer_t* l)
                  || (p[n] >= '0' && p[n] <= '9') // allow digits in middle of identifier
                  || p[n] == '_');
         l->string_value[n] = 0;
+        l->string_len = n - 1;
         // We use p+n-1 because we '\0' terminated the string and we don't count that in the parsing point
         return lexer_create_token(l, LEXER_token_id, p+n-1);
       }
