@@ -99,7 +99,7 @@ void test_fn_ret_type(const char* name, char* source_code)
   da_free(&parser);
 }
 
-void test_typed_var_decl(const char* name, char* source_code)
+void test_typed_int_var_decl(const char* name, char* source_code)
 {
   printf(COLOR_YELLOW "→ Running test:" COLOR_RESET " %s\n", name);
   parser_t parser = get_token(source_code);
@@ -120,6 +120,36 @@ void test_typed_var_decl(const char* name, char* source_code)
   ASSERT_MSG(decl->var.init->type == (expression_kind) EXPRESSION_LIT,
                   "Expression type should be LITERAL");
   ASSERT_MSG(decl->var.init->int_value == 3,
+                  "Expression value should be the same as in the source code");
+  printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+void test_typed_string_var_decl(const char* name, char* source_code)
+{
+  printf(COLOR_YELLOW "→ Running test:" COLOR_RESET " %s\n", name);
+  parser_t parser = get_token(source_code);
+  
+  declaration_t* decl = parse_declaration(&parser);
+
+  ASSERT_MSG(decl != NULL, "Declaration should not be NULL");
+  ASSERT_MSG(decl->var.name != NULL,
+                 "Variable name should not be NULL");
+  ASSERT_MSG(strcmp(decl->var.name, "i") == 0,
+                  "Variable name should be the same as in the source code");
+  ASSERT_MSG(decl->var.type != NULL,
+                  "Variable type should not be NULL");
+  ASSERT_MSG(strcmp(decl->var.type, "string") == 0,
+                  "Variable type should be the same as in the source code");
+  ASSERT_MSG(decl->var.init != NULL,
+                  "Variable init value should not be NULL");
+  ASSERT_MSG(decl->var.init->type == (expression_kind) EXPRESSION_LIT,
+                  "Expression type should be LITERAL");
+  ASSERT_MSG(decl->var.init->string_value != NULL,
+                  "Expression string value should not be NULL");
+  ASSERT_MSG(strcmp(decl->var.init->string_value, "test") == 0,
                   "Expression value should be the same as in the source code");
   printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
 
@@ -181,7 +211,8 @@ int main(void)
 
   test_fn_def("Simple function definition", "fn main() {}");
   test_fn_ret_type("Function return type", "fn main(): int {}");
-  test_typed_var_decl("Typed var declaration", "int i = 3;");
+  test_typed_int_var_decl("Typed int var declaration", "int i = 3;");
+  test_typed_string_var_decl("Typed string var declaration", "string i = \"test\";");
   test_int_lit_return("Integer literal return statement", "return 1;");
   test_string_lit_return("String literal return statement", "return \"test\";");
 

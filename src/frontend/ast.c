@@ -92,6 +92,8 @@ bool check_is_type(parser_t* p)
   // TODO: add other types
   if (strcmp(peek(p)->string_value, "int") == 0)
     return true;
+  if (strcmp(peek(p)->string_value, "string") == 0);
+    return true;
 
   return false;
 }
@@ -123,14 +125,31 @@ expression_t*  ast_parse_expr_int_lit(parser_t* p) {
   return e;
 }
 
+expression_t* ast_parse_expr_string_lit(parser_t* p) 
+{
+  expression_t* e = (expression_t*) malloc(sizeof(expression_t));
+  if (!e) {
+    fprintf(stderr, "ERROR - oom while parse_expr_string_lit\n");
+    return NULL;
+  }
+  memset(e, 0, sizeof(expression_t));
+
+  e->type = EXPRESSION_LIT;
+  token_t* t = advance(p);
+
+  e->string_value = strdup(t->string_value);
+  e->string_len = strlen(e->string_value);
+
+  return e;
+}
+
 expression_t* parse_expression(parser_t* p) 
 {
   if (check(p, LEXER_token_id)) {
     // TODO: Implement this
     //return ast_parse_expr_var(p);
-  } else if (check(p, '"')) {
-    // TODO: Implement this
-    // return ast_parse_expr_lit_string(p);
+  } else if (check(p, LEXER_token_dqstring)) {
+    return ast_parse_expr_string_lit(p);
   } else {
     return ast_parse_expr_int_lit(p);
   }
