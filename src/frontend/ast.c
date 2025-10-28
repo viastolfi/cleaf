@@ -239,13 +239,55 @@ declaration_t* ast_parse_function(parser_t* p)
   }
 
   while (!check(p, ')')) {
-    // TODO: parse function params
-    if ((size_t) p->pos >= p->count) {
-      fprintf(stderr, "Unexpected EOF in function params parsing\n");
+    typed_identifier_t param;
+
+    if (!check(p, LEXER_token_id) || !check_is_type(p)) {
+      fprintf(stderr, "ERROR - should get param type\n");
       free_declaration(decl);
+      return NULL;
     }
 
-    advance(p);
+    token_t* type_tok = advance(p);
+
+    if (!type_tok->string_value) {
+      fprintf(stderr, "ERROR - param type not found\n");
+      free_declaration(decl);
+      return NULL;
+    }
+
+    param.type.name = strdup(type_tok->string_value);
+    if (!param.type.name) {
+      fprintf(stderr, "ERROR - oom on function param parsing\n");
+      free_declaration(decl);
+      return NULL;
+    }
+
+    param.type.kind = get_type_kind_from_string(param.type.name);
+
+    if (!check(p, LEXER_token_id)) {
+      fprintf(stderr, "ERROR - should get var name after param type\n");
+      free_declaration(decl);
+      return NULL;
+    }
+    token_t* name_tok = advance(p);
+
+    if (!name_tok->string_value) {
+      fprintf(stderr, "ERROR - id token does not have string value\n");
+      free_declaration(decl);
+      return NULL;
+    }
+
+    param.name = strdup(name_tok->string_value);
+    if (!param.name) {
+      fprintf(stderr, "ERROR - oom on function param name parsing\n");
+      free_declaration(decl);
+      return NULL;
+    }
+
+    da_append(&(decl->func.params), param);
+    if (check(p, ',')) {
+      advance(p);
+    }
   }
 
   // consume ')'

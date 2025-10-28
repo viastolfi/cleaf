@@ -1,4 +1,4 @@
-fn main(int a): int {
+fn main(int a, string b): int {
   int i = 4;
   string w = "test";
   return 1;

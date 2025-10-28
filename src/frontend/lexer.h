@@ -295,8 +295,8 @@ int lexer_get_token(lexer_t* l)
 
   switch (*p) {
     default:
-      if (   (*p > 'a' && *p < 'z')
-          || (*p > 'A' && *p < 'Z')
+      if (   (*p >= 'a' && *p <= 'z')
+          || (*p >= 'A' && *p <= 'Z')
           || *p == '_') {
         int n = 0;
         l->string_value = l->string_storage;

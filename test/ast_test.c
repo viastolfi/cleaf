@@ -101,6 +101,47 @@ void test_fn_ret_type(const char* name, char* source_code)
   da_free(&parser);
 }
 
+void test_fn_params(const char* name, char* source_code) 
+{
+  printf(COLOR_YELLOW "→ Running test:" COLOR_RESET " %s\n", name);
+  parser_t parser = get_token(source_code);
+  
+  declaration_t* decl = parse_declaration(&parser);
+
+  ASSERT_MSG(decl != NULL, "Declaration should not be NULL");
+
+  ASSERT_MSG(decl->func.params.count == 2,
+              "Function should have 2 parameters");
+  typed_identifier_t p1 = decl->func.params.items[0];
+  ASSERT_MSG(p1.name != NULL,
+              "Function first param name should not be NULL");
+  ASSERT_MSG(strcmp(p1.name, "a") == 0,
+              "Function first param name should be the same as in the source code");
+  ASSERT_MSG(p1.type.kind == TYPE_INT,
+              "Function first param type should be TYPE_INT");
+  ASSERT_MSG(p1.type.name != NULL,
+              "Function first param type name should not be NULL");
+  ASSERT_MSG(strcmp(p1.type.name, "int") == 0,
+              "Function first param type should be \"int\"");
+
+  typed_identifier_t p2 = decl->func.params.items[1];
+  ASSERT_MSG(p2.name != NULL,
+              "Function second param name should not be NULL");
+  ASSERT_MSG(strcmp(p2.name, "b") == 0,
+              "Function second param name should be the same as in the source code");
+  ASSERT_MSG(p2.type.kind == TYPE_STRING,
+              "Function second param type should be TYPE_STRING");
+  ASSERT_MSG(p2.type.name != NULL,
+              "Function second param type name should not be NULL");
+  ASSERT_MSG(strcmp(p2.type.name, "string") == 0,
+              "Function second param type should be \"int\"");
+
+  printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
 void test_typed_int_var_decl(const char* name, char* source_code)
 {
   printf(COLOR_YELLOW "→ Running test:" COLOR_RESET " %s\n", name);
@@ -217,6 +258,7 @@ int main(void)
 
   test_fn_def("Simple function definition", "fn main() {}");
   test_fn_ret_type("Function return type", "fn main(): int {}");
+  test_fn_params("Function parameters", "fn main(int a, string b) {}");
   test_typed_int_var_decl("Typed int var declaration", "int i = 3;");
   test_typed_string_var_decl("Typed string var declaration", "string i = \"test\";");
   test_int_lit_return("Integer literal return statement", "return 1;");
