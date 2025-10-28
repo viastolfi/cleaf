@@ -51,6 +51,13 @@ void free_declaration(declaration_t* d)
     if (d->func.name)
       free(d->func.name);
 
+    da_foreach(typed_identifier_t, it, &(d->func.params)) {
+      if (it->name)
+        free(it->name);
+      if (it->type.name)
+        free(it->type.name);
+    }
+
     da_free(&(d->func.params));
 
     if (d->func.return_type.name)
