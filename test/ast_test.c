@@ -88,10 +88,12 @@ void test_fn_ret_type(const char* name, char* source_code)
   declaration_t* decl = parse_declaration(&parser);
 
   ASSERT_MSG(decl != NULL, "Declaration should not be NULL");
-  ASSERT_MSG(decl->func.return_type != NULL,
+  ASSERT_MSG(decl->func.return_type.name != NULL,
               "Function return type should not be NULL");
-  ASSERT_MSG(strcmp(decl->func.return_type, "int") == 0,
+  ASSERT_MSG(strcmp(decl->func.return_type.name, "int") == 0,
               "Function return type should be the same as in the source code");
+  ASSERT_MSG(decl->func.return_type.kind == TYPE_INT,
+              "Function return type should be TYPE_INT");
 
   printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
 
@@ -107,19 +109,21 @@ void test_typed_int_var_decl(const char* name, char* source_code)
   declaration_t* decl = parse_declaration(&parser);
 
   ASSERT_MSG(decl != NULL, "Declaration should not be NULL");
-  ASSERT_MSG(decl->var.name != NULL,
+  ASSERT_MSG(decl->var_decl.ident.name != NULL,
                  "Variable name should not be NULL");
-  ASSERT_MSG(strcmp(decl->var.name, "i") == 0,
+  ASSERT_MSG(strcmp(decl->var_decl.ident.name, "i") == 0,
                   "Variable name should be the same as in the source code");
-  ASSERT_MSG(decl->var.type != NULL,
+  ASSERT_MSG(decl->var_decl.ident.type.name != NULL,
                   "Variable type should not be NULL");
-  ASSERT_MSG(strcmp(decl->var.type, "int") == 0,
+  ASSERT_MSG(strcmp(decl->var_decl.ident.type.name, "int") == 0,
                   "Variable type should be the same as in the source code");
-  ASSERT_MSG(decl->var.init != NULL,
+  ASSERT_MSG(decl->var_decl.ident.type.kind == TYPE_INT,
+                  "Variable type should be TYPE_INT");
+  ASSERT_MSG(decl->var_decl.init != NULL,
                   "Variable init value should not be NULL");
-  ASSERT_MSG(decl->var.init->type == (expression_kind) EXPRESSION_LIT,
-                  "Expression type should be LITERAL");
-  ASSERT_MSG(decl->var.init->int_value == 3,
+  ASSERT_MSG(decl->var_decl.init->type == (expression_kind) EXPRESSION_INT_LIT,
+                  "Expression type should be INT_LITERAL");
+  ASSERT_MSG(decl->var_decl.init->int_lit.value == 3,
                   "Expression value should be the same as in the source code");
   printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
 
@@ -135,21 +139,23 @@ void test_typed_string_var_decl(const char* name, char* source_code)
   declaration_t* decl = parse_declaration(&parser);
 
   ASSERT_MSG(decl != NULL, "Declaration should not be NULL");
-  ASSERT_MSG(decl->var.name != NULL,
+  ASSERT_MSG(decl->var_decl.ident.name != NULL,
                  "Variable name should not be NULL");
-  ASSERT_MSG(strcmp(decl->var.name, "i") == 0,
+  ASSERT_MSG(strcmp(decl->var_decl.ident.name, "i") == 0,
                   "Variable name should be the same as in the source code");
-  ASSERT_MSG(decl->var.type != NULL,
+  ASSERT_MSG(decl->var_decl.ident.type.name != NULL,
                   "Variable type should not be NULL");
-  ASSERT_MSG(strcmp(decl->var.type, "string") == 0,
+  ASSERT_MSG(strcmp(decl->var_decl.ident.type.name, "string") == 0,
                   "Variable type should be the same as in the source code");
-  ASSERT_MSG(decl->var.init != NULL,
+  ASSERT_MSG(decl->var_decl.ident.type.kind == TYPE_STRING,
+                  "Variable should be typed TYPE_STRING");
+  ASSERT_MSG(decl->var_decl.init != NULL,
                   "Variable init value should not be NULL");
-  ASSERT_MSG(decl->var.init->type == (expression_kind) EXPRESSION_LIT,
-                  "Expression type should be LITERAL");
-  ASSERT_MSG(decl->var.init->string_value != NULL,
+  ASSERT_MSG(decl->var_decl.init->type == (expression_kind) EXPRESSION_STRING_LIT,
+                  "Expression type should be STRING_LITERAL");
+  ASSERT_MSG(decl->var_decl.init->string_lit.value != NULL,
                   "Expression string value should not be NULL");
-  ASSERT_MSG(strcmp(decl->var.init->string_value, "test") == 0,
+  ASSERT_MSG(strcmp(decl->var_decl.init->string_lit.value, "test") == 0,
                   "Expression value should be the same as in the source code");
   printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
 
@@ -167,11 +173,11 @@ void test_int_lit_return(const char* name, char* source_code)
   ASSERT_MSG(s != NULL, "Statement should not be NULL");
   ASSERT_MSG(s->type == (statement_kind) STATEMENT_RETURN,
               "Statement kind should be STATEMENT_RETURN");
-  ASSERT_MSG(s->ret.type != NULL,
+  ASSERT_MSG(s->ret.value != NULL,
               "Return type should not be NULL");
-  ASSERT_MSG(strcmp(s->ret.type, "int") == 0,
-              "Return type should be \"int\"");
-  ASSERT_MSG(s->ret.int_value == 1,
+  ASSERT_MSG(s->ret.value->type == EXPRESSION_INT_LIT,
+              "Return type should be typed INT_LIT");
+  ASSERT_MSG(s->ret.value->int_lit.value == 1,
               "Return value should be the same as in the source code");
 
   printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
@@ -190,13 +196,13 @@ void test_string_lit_return(const char* name, char* source_code)
   ASSERT_MSG(s != NULL, "Statement should not be NULL");
   ASSERT_MSG(s->type == (statement_kind) STATEMENT_RETURN,
               "Statement kind should be STATEMENT_RETURN");
-  ASSERT_MSG(s->ret.type != NULL,
+  ASSERT_MSG(s->ret.value != NULL,
               "Return type should not be NULL");
-  ASSERT_MSG(strcmp(s->ret.type, "string") == 0,
-              "Return type should be string");
-  ASSERT_MSG(s->ret.string_value != NULL,
+  ASSERT_MSG(s->ret.value->type == EXPRESSION_STRING_LIT,
+              "Return type should be typed STRING_LIT");
+  ASSERT_MSG(s->ret.value->string_lit.value != NULL,
               "Return string value should not be NULL");
-  ASSERT_MSG(strcmp(s->ret.string_value, "test") == 0,
+  ASSERT_MSG(strcmp(s->ret.value->string_lit.value, "test") == 0,
               "Return string value should be the same as in the source cod");
 
   printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);

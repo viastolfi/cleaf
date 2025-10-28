@@ -13,6 +13,7 @@
 #define CLR_STMT    "\033[0;35m"
 #define CLR_LIT     "\033[0;36m"
 
+/*
 static void print_statement(statement_t* s, int pos, int depth) 
 {
   printf("%*s", pos*4, "");
@@ -66,5 +67,6 @@ static void print_declaration(declaration_t* d, int pos)
   // TODO: implement other type of decl
   // TODO: print d->next 
 }
+*/
 
 #endif // AST_PRINTER_H

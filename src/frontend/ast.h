@@ -31,6 +31,8 @@ bool check_is_type(parser_t* p);
 // If yes, advance pos
 bool expect(parser_t* p, long kind, char* err);
 
+type_kind get_type_kind_from_string(char* type_string);
+
 declaration_t* ast_parse_function(parser_t* p);
 declaration_t* ast_parse_var_decl(parser_t* p);
 declaration_t* parse_declaration(parser_t* p);
@@ -40,6 +42,7 @@ statement_t*   parse_statement(parser_t* p);
 expression_t*  parse_expression(parser_t* p);
 expression_t*  ast_parse_expr_int_lit(parser_t* p);
 expression_t*  ast_parse_expr_string_lit(parser_t* p);
+expression_t*  ast_parse_expr_var(parser_t* p);
 
 void free_declaration(declaration_t* d);
 void free_statement(statement_t* s);

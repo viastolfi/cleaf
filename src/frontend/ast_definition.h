@@ -1,6 +1,8 @@
 #ifndef AST_DEFINITION_H
 #define AST_DEFINITION_H
 
+// ----------------- Enums ------------------
+
 typedef enum 
 {
   DECLARATION_VAR,
@@ -16,27 +18,49 @@ typedef enum
 
 typedef enum 
 {
-  EXPRESSION_LIT,
+  EXPRESSION_INT_LIT,
+  EXPRESSION_STRING_LIT,
   EXPRESSION_VAR,
   EXPRESSION_BINARY,
   EXPRESSION_CALL,
   EXPRESSION_ASSIGN
 } expression_kind;
 
-typedef struct 
+typedef enum
 {
-  char* name;
-  char* type;
+  TYPE_INT,
+  TYPE_STRING
+} type_kind;
 
-  int int_value;
-
-  char* string_value;
-  int string_len;
-} function_parameter_t;
+// ----------------- Forward Declarations ------------------
 
 typedef struct declaration_t declaration_t;
 typedef struct statement_t statement_t;
 typedef struct expression_t expression_t;
+
+// ----------------- Types and Identifiers ------------------
+
+typedef struct 
+{
+  type_kind kind;
+  char* name;
+} type_t;
+
+typedef struct 
+{
+  char* name;
+  type_t type;
+} typed_identifier_t;
+
+// ----------------- Dynamic arrays ------------------
+
+typedef struct 
+{
+  typed_identifier_t* items;
+  size_t count;
+  size_t capacity;
+} function_param_array;
+
 
 typedef struct 
 {
@@ -45,15 +69,28 @@ typedef struct
   size_t capacity;
 } declaration_array;
 
+// ----------------- Declarations ------------------
+
 struct declaration_t
 {
   declaration_kind type;
   declaration_t* next;
   union {
-    struct { char* name; char* type; expression_t* init; } var;
-    struct { char* name; char* return_type; function_parameter_t* params; statement_t* body; } func;
+    struct { 
+      typed_identifier_t ident; 
+      expression_t* init; 
+    } var_decl;
+
+    struct { 
+      char* name;  
+      type_t return_type; 
+      function_param_array params; 
+      statement_t* body; 
+    } func;
   };
 };
+
+// ----------------- Statements ------------------
 
 struct statement_t 
 {
@@ -61,20 +98,23 @@ struct statement_t
   statement_t* next;
 
   union {
-    struct { char* type; char* id_name; int int_value; char* string_value; int string_len; } ret;
-    struct { expression_t* e; } expr;
-    struct { declaration_t* var; } decl;
+    struct { expression_t* value; } ret;
+    struct { expression_t* expr; } expr_stmt;
+    struct { declaration_t* decl; } decl_stmt;
   };
 };
+
+// ----------------- Expressions ------------------
 
 struct expression_t 
 {
   expression_kind type;
 
-  int int_value;
-
-  char* string_value;
-  int string_len;
+  union {
+    struct { int value; } int_lit;
+    struct { char* value; } string_lit;
+    struct { char* name; } var;
+  };
 };
 
 #endif // AST_DEFINITION_H

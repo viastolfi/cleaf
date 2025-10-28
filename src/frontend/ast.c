@@ -5,35 +5,45 @@
 
 void free_expression(expression_t* e) 
 {
-  if (e->string_value)
-    free(e->string_value);
+  if (!e)
+    return;
+
+  if (e->type == EXPRESSION_STRING_LIT && e->string_lit.value) 
+      free(e->string_lit.value);
+
+  if (e->type == EXPRESSION_VAR) {
+    if (e->var.name)
+      free(e->var.name);
+  }
 
   free(e);
 }
 
 void free_statement(statement_t* s) 
 {
+  if (!s)
+    return;
+
   if (s->next) 
     free_statement(s->next);
 
-  if (s->type == STATEMENT_RETURN) {
-    if (s->ret.type)
-      free(s->ret.type);
+  if (s->type == STATEMENT_RETURN) 
+    free_expression(s->ret.value);
 
-    if (s->ret.string_value)
-      free(s->ret.string_value);
-  }
+  if (s->type == STATEMENT_DECL)
+      free_declaration(s->decl_stmt.decl);
 
-  if (s->type == STATEMENT_DECL) {
-    if (s->decl.var)
-      free_declaration(s->decl.var);
-  }
+  if (s->type == STATEMENT_EXPR)
+    free_expression(s->expr_stmt.expr);
 
   free(s);
 }
 
 void free_declaration(declaration_t* d) 
 {
+  if (!d)
+    return;
+
   if (d->next)
     free_declaration(d->next);
 
@@ -41,25 +51,24 @@ void free_declaration(declaration_t* d)
     if (d->func.name)
       free(d->func.name);
 
-    // TODO: create function that free function params completely
-    // if (d->func.params)
+    da_free(&(d->func.params));
 
-    if (d->func.return_type)
-      free(d->func.return_type);
+    if (d->func.return_type.name)
+      free(d->func.return_type.name);
 
     if (d->func.body)
       free_statement(d->func.body);
   }
 
   if (d->type == DECLARATION_VAR) {
-    if (d->var.name)
-      free(d->var.name);
+    if (d->var_decl.ident.name) 
+      free(d->var_decl.ident.name);
 
-    if(d->var.type)
-      free(d->var.type);
+    if (d->var_decl.ident.type.name)
+      free(d->var_decl.ident.type.name);
 
-    if(d->var.init)
-      free_expression(d->var.init);
+    if(d->var_decl.init)
+      free_expression(d->var_decl.init);
   }
   
   free(d);
@@ -92,7 +101,7 @@ bool check_is_type(parser_t* p)
   // TODO: add other types
   if (strcmp(peek(p)->string_value, "int") == 0)
     return true;
-  if (strcmp(peek(p)->string_value, "string") == 0);
+  if (strcmp(peek(p)->string_value, "string") == 0)
     return true;
 
   return false;
@@ -109,6 +118,20 @@ bool expect(parser_t* p, long kind, char* err)
   return false;
 }
 
+type_kind get_type_kind_from_string(char* type_string) 
+{
+  if (strcmp(type_string, "int") == 0) 
+    return TYPE_INT;
+
+  if (strcmp(type_string, "string") == 0)
+    return TYPE_STRING;
+
+
+  // Some unexpected fallback
+  // TODO: implement this in a better way
+  return TYPE_INT;
+}
+
 expression_t*  ast_parse_expr_int_lit(parser_t* p) {
   expression_t* e = (expression_t*) malloc(sizeof(expression_t));
   
@@ -118,10 +141,10 @@ expression_t*  ast_parse_expr_int_lit(parser_t* p) {
   }
 
   memset(e, 0, sizeof(expression_t));
-  e->type = EXPRESSION_LIT;
+  e->type = EXPRESSION_INT_LIT;
   token_t* t = advance(p);
 
-  e->int_value = t->int_value;
+  e->int_lit.value = t->int_value;
   return e;
 }
 
@@ -134,20 +157,47 @@ expression_t* ast_parse_expr_string_lit(parser_t* p)
   }
   memset(e, 0, sizeof(expression_t));
 
-  e->type = EXPRESSION_LIT;
+  e->type = EXPRESSION_STRING_LIT;
   token_t* t = advance(p);
 
-  e->string_value = strdup(t->string_value);
-  e->string_len = strlen(e->string_value);
+  if (!t->string_value) {
+    fprintf(stderr, "ERROR - string expression has no value");
+    free_expression(e);
+    return NULL;
+  }
 
+  e->string_lit.value = strdup(t->string_value);
+
+  return e;
+}
+
+expression_t* ast_parse_expr_var(parser_t* p) 
+{
+  expression_t* e = (expression_t*) malloc(sizeof(expression_t));
+  if (!e) {
+    fprintf(stderr, "ERROR - oom while ast_parse_expr_var\n");
+    return NULL;
+  }
+  memset(e, 0, sizeof(expression_t));
+
+  e->type = EXPRESSION_VAR;
+  token_t* var_tok = advance(p);
+
+  if (!var_tok->string_value) {
+    fprintf(stderr, "ERROR - ident token has no string value on ast_parse_expr_var\n");
+    free_expression(e);
+    return NULL;
+  }
+
+  e->var.name = strdup(var_tok->string_value);
+  
   return e;
 }
 
 expression_t* parse_expression(parser_t* p) 
 {
   if (check(p, LEXER_token_id)) {
-    // TODO: Implement this
-    //return ast_parse_expr_var(p);
+    return ast_parse_expr_var(p);
   } else if (check(p, LEXER_token_dqstring)) {
     return ast_parse_expr_string_lit(p);
   } else {
@@ -188,7 +238,6 @@ declaration_t* ast_parse_function(parser_t* p)
     return NULL;
   }
 
-  decl->func.params = NULL;
   while (!check(p, ')')) {
     // TODO: parse function params
     if ((size_t) p->pos >= p->count) {
@@ -205,26 +254,29 @@ declaration_t* ast_parse_function(parser_t* p)
   // we don't use expect here cause function can have no return type
   if (check(p, ':')) {
     advance(p);
-    if (check(p, LEXER_token_id)) {
-      token_t* ret_tok = advance(p); 
-      if (ret_tok->string_value) {
-        decl->func.return_type = strdup(ret_tok->string_value);
-        if (!decl->func.return_type) {
-          fprintf(stderr, "ERROR - oom\n");
-          free_declaration(decl);
-          return NULL;
-        }
-      } else {
-        fprintf(stderr, "ERROR - no return type specified after ':'");
-        free_declaration(decl);
-        return NULL;
-      }
-    } else {
+
+    if (!check(p, LEXER_token_id)) {
       fprintf(stderr, "ERROR - specify return type");
       free_declaration(decl);
+      return NULL;
     }
-  } else {
-    decl->func.return_type = NULL;
+
+    token_t* ret_tok = advance(p); 
+    if (!ret_tok->string_value) {
+      fprintf(stderr, "ERROR - no return type specified after ':'");
+      free_declaration(decl);
+      return NULL;
+    }
+
+    decl->func.return_type.name = strdup(ret_tok->string_value);
+    decl->func.return_type.kind = get_type_kind_from_string(decl->func.return_type.name);
+
+    if (!decl->func.return_type.name) {
+      fprintf(stderr, "ERROR - oom at ast_parse_function\n");
+      free_declaration(decl);
+      return NULL;
+    }
+
   }
 
   if (!expect(p, '{', "ERROR - missing token '{'")) {
@@ -277,9 +329,21 @@ declaration_t* ast_parse_var_decl(parser_t* p)
   // Which mean that next token is an token_id with a string_value
   // This Might cause error later on
   token_t* type_tok = advance(p);
-  d->var.type = strdup(type_tok->string_value);
-  if (!d->var.type) {
+  d->var_decl.ident.type.name = strdup(type_tok->string_value);
+  if (!d->var_decl.ident.type.name) {
     fprintf(stderr, "ERROR - can't get type\n");
+    free_declaration(d);
+    return NULL;
+  }
+
+  if (strcmp(d->var_decl.ident.type.name, "int") == 0) {
+    d->var_decl.ident.type.kind = TYPE_INT;
+  } else if (strcmp(d->var_decl.ident.type.name, "string") == 0) {
+    d->var_decl.ident.type.kind = TYPE_STRING;
+  } else {
+    // For now, let's mark this as an error,
+    // In a more advanced compiler this should be marked as TYPE_CUSTOM
+    fprintf(stderr, "ERROR - unknown type in parse_var_decl\n");
     free_declaration(d);
     return NULL;
   }
@@ -297,8 +361,8 @@ declaration_t* ast_parse_var_decl(parser_t* p)
     return NULL;
   }
 
-  d->var.name = strdup(name_tok->string_value);
-  if (!d->var.name) {
+  d->var_decl.ident.name = strdup(name_tok->string_value);
+  if (!d->var_decl.ident.name) {
     fprintf(stderr, "ERROR - oom\n");
     free_declaration(d);
     return NULL;
@@ -315,7 +379,7 @@ declaration_t* ast_parse_var_decl(parser_t* p)
     free_declaration(d);
     return NULL;
   }
-  d->var.init = e;
+  d->var_decl.init = e;
 
   if (!expect(p, ';', "ERROR - missing ';' token")) {
     free_declaration(d);
@@ -349,40 +413,7 @@ statement_t* ast_parse_return_stmt(parser_t* p)
   memset(s, 0, sizeof(statement_t));
 
   s->type = STATEMENT_RETURN;
-  if (check(p, LEXER_token_id)) {
-    token_t* name_tok = advance(p);
-    if (!name_tok->string_value) {
-      fprintf(stderr, "ERROR - id has no name\n");
-      free_statement(s);
-      return NULL;
-    }
-    s->ret.id_name = strdup(name_tok->string_value);
-    if (!s->ret.id_name) {
-      free_statement(s);
-      fprintf(stderr, "oom\n");
-      return NULL;
-    }
-  } else if (check(p, LEXER_token_dqstring)) {
-    token_t* str_tok = advance(p);
-    if (!str_tok->string_value) {
-      fprintf(stderr, "ERROR - dqstring token has no stored string\n");
-      free_statement(s);
-      return NULL;
-    }
-    s->ret.type = strdup("string");
-    if (!s->ret.type) {
-      fprintf(stderr, "ERRROR - oom on parse return stmt\n");
-      free_statement(s);
-      return NULL;
-    }
-    s->ret.string_value = strdup(str_tok->string_value);
-    s->ret.string_len = str_tok->string_len;
-  } else {
-    // return lit int
-    token_t* val_token = advance(p);
-    s->ret.type = strdup("int");
-    s->ret.int_value = val_token->int_value;
-  }
+  s->ret.value = parse_expression(p);
 
   if (!expect(p, ';', "ERROR - missing token ';' at end of line")) {
     free_statement(s);
@@ -404,8 +435,8 @@ statement_t* ast_parse_decl_stmt(parser_t* p)
   s->type = STATEMENT_DECL;
   s->next = NULL;
   
-  s->decl.var = ast_parse_var_decl(p);
-  if (!s->decl.var) {
+  s->decl_stmt.decl = ast_parse_var_decl(p);
+  if (!s->decl_stmt.decl) {
     fprintf(stderr, "ERROR - parsing var declaration\n");
     free_statement(s);
     return NULL;

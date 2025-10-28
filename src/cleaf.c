@@ -56,7 +56,7 @@ int main(int argc, char** argv)
       printf("ERROR / END of ast parsing\n");
       break;
     }
-    print_declaration(decl, 1);
+    // print_declaration(decl, 1);
     free_declaration(decl);
     // ATM this raise segfault 
     // We comment it for now
