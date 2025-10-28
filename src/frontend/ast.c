@@ -97,6 +97,14 @@ bool check(parser_t* p, long kind)
   return false;
 }
 
+bool check_next(parser_t* p, long kind, int range) 
+{
+  if ((size_t) (p->pos + range) > p->count)
+    return false;
+
+  return p->items[p->pos + range].type == kind;
+}
+
 bool check_is_type(parser_t* p) 
 {
   if (!peek(p)->string_value) {
@@ -201,9 +209,57 @@ expression_t* ast_parse_expr_var(parser_t* p)
   return e;
 }
 
+expression_t* ast_parse_expr_assign(parser_t* p)
+{
+  expression_t* e = (expression_t*) malloc(sizeof(expression_t));
+  if (!e) {
+    fprintf(stderr, "ERROR - oom while parse_expr_assign\n");
+    return NULL; 
+  }
+  memset(e, 0, sizeof(expression_t));
+
+  e->type = EXPRESSION_ASSIGN;
+  // We compute lhs here hence we fallback in infinit loop 'id ='
+
+  expression_t* lhs = (expression_t*) malloc(sizeof(expression_t));
+  if (!lhs) {
+    fprintf(stderr, "ERROR - oom while parse_expr_assign\n");
+    free_expression(e);
+    return NULL;
+  }
+
+  lhs->type = EXPRESSION_VAR;
+
+  token_t* var_tok = advance(p);
+  if (!var_tok->string_value) {
+    fprintf(stderr, "ERROR - var_tok should have string value at parse_expr_assign\n"); 
+    free_expression(e);
+    free_expression(lhs);
+    return NULL;
+  }
+
+  lhs->var.name = strdup(var_tok->string_value);
+  if (!lhs->var.name) {
+    fprintf(stderr, "ERROR - oom at parse_expr_assign\n"); 
+    free_expression(e);
+    free_expression(lhs);
+    return NULL;
+  }
+
+  e->assign.lhs = lhs;
+
+  expect(p, '=', "ERROR - should get = after id in parse assign\n");
+
+  e->assign.rhs = parse_expression(p);
+
+  return e;
+}
+
 expression_t* parse_expression(parser_t* p) 
 {
-  if (check(p, LEXER_token_id)) {
+  if (check(p, LEXER_token_id) && check_next(p, '=', 1)) {
+    return ast_parse_expr_assign(p);
+  } else if (check(p, LEXER_token_id)) {
     return ast_parse_expr_var(p);
   } else if (check(p, LEXER_token_dqstring)) {
     return ast_parse_expr_string_lit(p);
@@ -494,6 +550,33 @@ statement_t* ast_parse_decl_stmt(parser_t* p)
   return s;
 }
 
+statement_t* ast_parse_expr_stmt(parser_t* p) 
+{
+  statement_t* s = (statement_t*) malloc(sizeof(statement_t));
+  if (!s) {
+    fprintf(stderr, "ERROR - oom while parse_expr_stmt\n"); 
+    return NULL;
+  }
+  memset(s, 0, sizeof(statement_t));
+
+  s->type = STATEMENT_EXPR;
+  s->next = NULL;
+
+  s->expr_stmt.expr = parse_expression(p);
+  if (!s->expr_stmt.expr) {
+    fprintf(stderr, "ERROR - parsing expr\n");
+    free_statement(s);
+    return NULL;
+  }
+
+  if(!expect(p, ';', "ERROR - missing ';' token at end of statement\n")) {
+    free_statement(s);
+    return NULL; 
+  }
+
+  return s;
+}
+
 statement_t* parse_statement(parser_t* p) 
 {
   if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "return") == 0) {
@@ -501,6 +584,10 @@ statement_t* parse_statement(parser_t* p)
     return ast_parse_return_stmt(p);
   } else if (check(p, LEXER_token_id) && check_is_type(p)) {
     return ast_parse_decl_stmt(p);
+  } else if (check(p, LEXER_token_id)) {
+    // This is some kind of fallback
+    // TODO: work on this to include other use case 
+    return ast_parse_expr_stmt(p);
   }
 
   return NULL;

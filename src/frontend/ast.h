@@ -25,6 +25,7 @@ token_t* advance(parser_t* p);
 
 // Check if the actual token is of kind 
 bool check(parser_t* p, long kind);
+bool check_next(parser_t* p, long kind, int range);
 bool check_is_type(parser_t* p);
 
 // Check if the actual token is of kind
@@ -38,11 +39,13 @@ declaration_t* ast_parse_var_decl(parser_t* p);
 declaration_t* parse_declaration(parser_t* p);
 statement_t*   ast_parse_return_stmt(parser_t* p);
 statement_t*   ast_parse_decl_stmt(parser_t* p);
+statement_t*   ast_parse_expr_stmt(parser_t* p);
 statement_t*   parse_statement(parser_t* p);
 expression_t*  parse_expression(parser_t* p);
 expression_t*  ast_parse_expr_int_lit(parser_t* p);
 expression_t*  ast_parse_expr_string_lit(parser_t* p);
 expression_t*  ast_parse_expr_var(parser_t* p);
+expression_t*  ast_parse_expr_assign(parser_t* p);
 
 void free_declaration(declaration_t* d);
 void free_statement(statement_t* s);

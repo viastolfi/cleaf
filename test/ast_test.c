@@ -244,7 +244,70 @@ void test_string_lit_return(const char* name, char* source_code)
   ASSERT_MSG(s->ret.value->string_lit.value != NULL,
               "Return string value should not be NULL");
   ASSERT_MSG(strcmp(s->ret.value->string_lit.value, "test") == 0,
-              "Return string value should be the same as in the source cod");
+              "Return string value should be the same as in the source code");
+
+  printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
+  
+  free_statement(s);
+  da_free(&parser);
+}
+
+void test_var_return(const char* name, char* source_code)
+{
+  printf(COLOR_YELLOW "→ Running test:" COLOR_RESET " %s\n", name);
+  parser_t parser = get_token(source_code);
+
+  statement_t* s = parse_statement(&parser);
+
+  ASSERT_MSG(s != NULL, "Statement should not be NULL");
+  ASSERT_MSG(s->type == (statement_kind) STATEMENT_RETURN,
+              "Statement kind should be STATEMENT_RETURN");
+  ASSERT_MSG(s->ret.value != NULL,
+              "Return type should not be NULL");
+  ASSERT_MSG(s->ret.value->type == EXPRESSION_VAR,
+              "Return type should be typed VAR");
+  ASSERT_MSG(s->ret.value->var.name != NULL,
+              "Return var name should not be NULL");
+  ASSERT_MSG(strcmp(s->ret.value->var.name, "a") == 0,
+              "Return string value should be the same as in the source code");
+
+  printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
+  
+  free_statement(s);
+  da_free(&parser);
+}
+
+void test_expr_assign(const char* name, char* source_code)
+{
+  printf(COLOR_YELLOW "→ Running test:" COLOR_RESET " %s\n", name);
+  parser_t parser = get_token(source_code);
+
+  statement_t* s = parse_statement(&parser);
+
+  ASSERT_MSG(s != NULL, "Statement should not be NULL");
+  ASSERT_MSG(s->type == STATEMENT_EXPR,
+              "Statement should be of type EXPR");
+  ASSERT_MSG(s->expr_stmt.expr != NULL,
+              "Statement expression should not be NULL");
+  expression_t* e = s->expr_stmt.expr;
+  ASSERT_MSG(e->type == EXPRESSION_ASSIGN,
+              "Expression should be of type ASSIGN");
+  ASSERT_MSG(e->assign.lhs != NULL,
+              "Assign left expression should not be NULL");
+  expression_t* lhs = e->assign.lhs;
+  ASSERT_MSG(lhs->type == EXPRESSION_VAR,
+              "Assign left expression should be of type VAR"); 
+  ASSERT_MSG(lhs->var.name != NULL,
+              "Assign left expression var name should not be NULL");
+  ASSERT_MSG(strcmp(lhs->var.name, "i") == 0,
+              "Assign left expression var name should be the same as in the source code");
+  ASSERT_MSG(e->assign.rhs != NULL,
+              "Assign right expression should not be NULL");
+  expression_t* rhs = e->assign.rhs;
+  ASSERT_MSG(rhs->type == EXPRESSION_INT_LIT,
+              "Assign right expression type should be the same as in the source code");
+  ASSERT_MSG(rhs->int_lit.value == 4,
+              "Assign right expression value should be the same as in the source code");
 
   printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
   
@@ -263,6 +326,8 @@ int main(void)
   test_typed_string_var_decl("Typed string var declaration", "string i = \"test\";");
   test_int_lit_return("Integer literal return statement", "return 1;");
   test_string_lit_return("String literal return statement", "return \"test\";");
+  test_var_return("Variable return statement", "return a;");
+  test_expr_assign("Variable assignment", "i = 4;");
 
   printf(COLOR_GREEN "🎉 All tests passed successfully!\n" COLOR_RESET);
   return 0;

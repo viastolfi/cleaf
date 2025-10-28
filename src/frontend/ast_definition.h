@@ -114,6 +114,7 @@ struct expression_t
     struct { int value; } int_lit;
     struct { char* value; } string_lit;
     struct { char* name; } var;
+    struct { expression_t* lhs; expression_t* rhs; } assign;
   };
 };
 
