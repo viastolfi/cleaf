@@ -219,8 +219,8 @@ expression_t* ast_parse_expr_assign(parser_t* p)
   memset(e, 0, sizeof(expression_t));
 
   e->type = EXPRESSION_ASSIGN;
-  // We compute lhs here hence we fallback in infinit loop 'id ='
-
+  
+  // We compute lhs here otherwise we fallback in infinit loop 'id ='
   expression_t* lhs = (expression_t*) malloc(sizeof(expression_t));
   if (!lhs) {
     fprintf(stderr, "ERROR - oom while parse_expr_assign\n");
