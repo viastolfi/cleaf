@@ -315,6 +315,46 @@ void test_expr_assign(const char* name, char* source_code)
   da_free(&parser);
 }
 
+void test_expr_binary(const char* name, char* source_code)
+{
+  printf(COLOR_YELLOW "→ Running test:" COLOR_RESET " %s\n", name);
+  parser_t parser = get_token(source_code);
+
+  statement_t* s = parse_statement(&parser);
+
+  ASSERT_MSG(s != NULL, "Statement should not be NULL");
+  ASSERT_MSG(s->type == STATEMENT_EXPR,
+              "Statement should be of type EXPR");
+  ASSERT_MSG(s->expr_stmt.expr != NULL,
+              "Statement expression should not be NULL");
+  expression_t* e = s->expr_stmt.expr;
+  ASSERT_MSG(e->type == EXPRESSION_BINARY,
+              "Expression type should be BINARY");
+  ASSERT_MSG(e->binary.op == '+',
+              "Binary op should be the same as in the source code");
+  ASSERT_MSG(e->binary.left != NULL,
+              "Binary op left expr should not be NULL");
+  expression_t* l = e->binary.left;
+  ASSERT_MSG(l->type == EXPRESSION_VAR,
+              "Binary left expr type should be the same as in the source code");
+  ASSERT_MSG(l->var.name != NULL,
+              "Left expression var name should not be NULL");
+  ASSERT_MSG(strcmp(l->var.name, "i") == 0,
+              "Left expression var name should be the same as in the source code");
+  ASSERT_MSG(e->binary.right != NULL,
+              "Binary op right expr should not be NULL");
+  expression_t* r = e->binary.right;
+  ASSERT_MSG(r->type == EXPRESSION_INT_LIT,
+              "Right expression type should be the same as in the source code");
+  ASSERT_MSG(r->int_lit.value == 4,
+              "Right expression int_lit value should be the same as in the source code");
+
+  printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
+  
+  free_statement(s);
+  da_free(&parser);
+}
+
 int main(void)
 {
   printf(COLOR_CYAN "\n=== Running AST Tests ===\n\n" COLOR_RESET);
@@ -328,6 +368,7 @@ int main(void)
   test_string_lit_return("String literal return statement", "return \"test\";");
   test_var_return("Variable return statement", "return a;");
   test_expr_assign("Variable assignment", "i = 4;");
+  test_expr_binary("Binary operation", "i + 4;");
 
   printf(COLOR_GREEN "🎉 All tests passed successfully!\n" COLOR_RESET);
   return 0;
