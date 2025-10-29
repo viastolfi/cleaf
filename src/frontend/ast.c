@@ -2,6 +2,7 @@
 
 #define DA_LIB_IMPLEMENTATION
 #include "../thirdparty/da.h"
+#include "error.h"
 
 void free_expression(expression_t* e) 
 {
@@ -115,8 +116,12 @@ bool check_next(parser_t* p, long kind, int range)
 
 bool check_is_type(parser_t* p) 
 {
-  if (!peek(p)->string_value) {
-    fprintf(stderr, "ERROR - unknown token, looking for type declaration");
+  token_t* tok = peek(p);
+  if (!tok->string_value) {
+    if (p->error_ctx) {
+      error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR, 
+                           "expected type name");
+    }
     return false;
   }
 
@@ -137,7 +142,14 @@ bool expect(parser_t* p, long kind, char* err)
     return true;
   }
 
-  fprintf(stderr, "ERROR - parsing : %s\n", err);
+  if (p->error_ctx) {
+    token_t* tok = peek(p);
+    if (tok) {
+      error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR, "%s", err);
+    } else {
+      error_report_general(ERROR_SEVERITY_ERROR, "%s", err);
+    }
+  }
   return false;
 }
 
@@ -159,7 +171,7 @@ expression_t*  ast_parse_expr_int_lit(parser_t* p) {
   expression_t* e = (expression_t*) malloc(sizeof(expression_t));
   
   if (!e) {
-    fprintf(stderr, "ERROR - oom while parse_expr_int_lit\n");
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return NULL;
   }
 
@@ -175,7 +187,7 @@ expression_t* ast_parse_expr_string_lit(parser_t* p)
 {
   expression_t* e = (expression_t*) malloc(sizeof(expression_t));
   if (!e) {
-    fprintf(stderr, "ERROR - oom while parse_expr_string_lit\n");
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return NULL;
   }
   memset(e, 0, sizeof(expression_t));
@@ -184,7 +196,10 @@ expression_t* ast_parse_expr_string_lit(parser_t* p)
   token_t* t = advance(p);
 
   if (!t->string_value) {
-    fprintf(stderr, "ERROR - string expression has no value");
+    if (p->error_ctx) {
+      error_report_at_token(p->error_ctx, t, ERROR_SEVERITY_ERROR,
+                           "string literal has no value");
+    }
     free_expression(e);
     return NULL;
   }
@@ -198,7 +213,7 @@ expression_t* ast_parse_expr_var(parser_t* p)
 {
   expression_t* e = (expression_t*) malloc(sizeof(expression_t));
   if (!e) {
-    fprintf(stderr, "ERROR - oom while ast_parse_expr_var\n");
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return NULL;
   }
   memset(e, 0, sizeof(expression_t));
@@ -207,7 +222,10 @@ expression_t* ast_parse_expr_var(parser_t* p)
   token_t* var_tok = advance(p);
 
   if (!var_tok->string_value) {
-    fprintf(stderr, "ERROR - ident token has no string value on ast_parse_expr_var\n");
+    if (p->error_ctx) {
+      error_report_at_token(p->error_ctx, var_tok, ERROR_SEVERITY_ERROR,
+                           "identifier has no value");
+    }
     free_expression(e);
     return NULL;
   }
@@ -221,7 +239,7 @@ expression_t* ast_parse_expr_assign(parser_t* p)
 {
   expression_t* e = (expression_t*) malloc(sizeof(expression_t));
   if (!e) {
-    fprintf(stderr, "ERROR - oom while parse_expr_assign\n");
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return NULL; 
   }
   memset(e, 0, sizeof(expression_t));
@@ -231,7 +249,7 @@ expression_t* ast_parse_expr_assign(parser_t* p)
   // We compute lhs here otherwise we fallback in infinit loop 'id ='
   expression_t* lhs = (expression_t*) malloc(sizeof(expression_t));
   if (!lhs) {
-    fprintf(stderr, "ERROR - oom while parse_expr_assign\n");
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     free_expression(e);
     return NULL;
   }
@@ -240,7 +258,10 @@ expression_t* ast_parse_expr_assign(parser_t* p)
 
   token_t* var_tok = advance(p);
   if (!var_tok->string_value) {
-    fprintf(stderr, "ERROR - var_tok should have string value at parse_expr_assign\n"); 
+    if (p->error_ctx) {
+      error_report_at_token(p->error_ctx, var_tok, ERROR_SEVERITY_ERROR,
+                           "expected identifier in assignment");
+    }
     free_expression(e);
     free_expression(lhs);
     return NULL;
@@ -248,7 +269,7 @@ expression_t* ast_parse_expr_assign(parser_t* p)
 
   lhs->var.name = strdup(var_tok->string_value);
   if (!lhs->var.name) {
-    fprintf(stderr, "ERROR - oom at parse_expr_assign\n"); 
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     free_expression(e);
     free_expression(lhs);
     return NULL;
@@ -256,7 +277,7 @@ expression_t* ast_parse_expr_assign(parser_t* p)
 
   e->assign.lhs = lhs;
 
-  expect(p, '=', "ERROR - should get = after id in parse assign\n");
+  expect(p, '=', "expected '=' in assignment");
 
   e->assign.rhs = parse_expression(p);
 
@@ -267,7 +288,7 @@ expression_t* ast_parse_expr_binary(parser_t* p)
 {
   expression_t* e = (expression_t*) malloc(sizeof(expression_t)); 
   if (!e) {
-    fprintf(stderr, "ERROR - oom at parse_expr_binary\n");
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return NULL;
   }
   memset(e, 0, sizeof(expression_t));
@@ -276,7 +297,7 @@ expression_t* ast_parse_expr_binary(parser_t* p)
 
   expression_t* left = (expression_t*) malloc(sizeof(expression_t));
   if (!left) {
-    fprintf(stderr, "ERROR - oom at parse_expr_binary\n");
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     free_expression(e);
     return NULL;
   }
@@ -291,14 +312,17 @@ expression_t* ast_parse_expr_binary(parser_t* p)
     case LEXER_token_dqstring:
       left->type = EXPRESSION_STRING_LIT;
       if (!left_tok->string_value) {
-        fprintf(stderr, "ERROR - sq string token has no string value at parse_expr_binary\n");
+        if (p->error_ctx) {
+          error_report_at_token(p->error_ctx, left_tok, ERROR_SEVERITY_ERROR,
+                               "string literal has no value");
+        }
         free_expression(e);
         free_expression(left);
         return NULL;
       }
       left->string_lit.value = strdup(left_tok->string_value);
       if (!left->string_lit.value) {
-        fprintf(stderr, "ERROR - oom on parse_expr_binary\n");
+        error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
         free_expression(e);
         free_expression(left);
         return NULL;
@@ -307,14 +331,17 @@ expression_t* ast_parse_expr_binary(parser_t* p)
     case LEXER_token_id:
       left->type = EXPRESSION_VAR;
       if (!left_tok->string_value) {
-        fprintf(stderr, "ERROR - id token has no string value at parse_expr_binary\n");
+        if (p->error_ctx) {
+          error_report_at_token(p->error_ctx, left_tok, ERROR_SEVERITY_ERROR,
+                               "identifier has no value");
+        }
         free_expression(e);
         free_expression(left);
         return NULL;
       }
       left->var.name = strdup(left_tok->string_value);
       if (!left->var.name) {
-        fprintf(stderr, "ERROR - oom on parse_expr_binary\n");
+        error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
         free_expression(e);
         free_expression(left);
         return NULL;
@@ -322,8 +349,10 @@ expression_t* ast_parse_expr_binary(parser_t* p)
       break;
     default:
       // unexpected 
-      // TODO: maybe add a not implemented like error
-      fprintf(stderr, "ERROR - not implemented on parse_expr_binary\n");
+      if (p->error_ctx) {
+        error_report_at_token(p->error_ctx, left_tok, ERROR_SEVERITY_ERROR,
+                             "unexpected token in binary expression");
+      }
       free_expression(e);
       free_expression(left);
       return NULL;
@@ -336,7 +365,10 @@ expression_t* ast_parse_expr_binary(parser_t* p)
 
   e->binary.right = parse_expression(p);
   if (!e->binary.right) {
-    fprintf(stderr, "ERROR - binary right expression is NULL\n");
+    if (p->error_ctx) {
+      error_report_at_token(p->error_ctx, op_tok, ERROR_SEVERITY_ERROR,
+                           "expected expression after binary operator");
+    }
     free_expression(e);
     return NULL;
   }
@@ -367,7 +399,10 @@ expression_t* parse_expression(parser_t* p)
 declaration_t* ast_parse_function(parser_t* p)
 {
   declaration_t* decl = (declaration_t*) malloc(sizeof(declaration_t));
-  if (!decl) { fprintf(stderr, "Out of memory\n"); return NULL; }
+  if (!decl) { 
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return NULL; 
+  }
   memset(decl, 0, sizeof(declaration_t));
 
   decl->type = DECLARATION_FUNC;
@@ -378,18 +413,22 @@ declaration_t* ast_parse_function(parser_t* p)
     if (name_tok->string_value) {
       decl->func.name = strdup(name_tok->string_value);
       if (!decl->func.name) { 
-        fprintf(stderr,"oom\n"); 
+        error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
         free_declaration(decl); 
         return NULL; 
       }
     }
   } else {
-    fprintf(stderr, "ERROR - specify function name\n");
+    token_t* tok = peek(p);
+    if (p->error_ctx && tok) {
+      error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR,
+                           "expected function name");
+    }
     free_declaration(decl);
     return NULL;
   }
 
-  if (!expect(p, '(', "missing token : '(' after function name")) {
+  if (!expect(p, '(', "expected '(' after function name")) {
     free_declaration(decl);
     return NULL;
   }
@@ -398,7 +437,11 @@ declaration_t* ast_parse_function(parser_t* p)
     typed_identifier_t param;
 
     if (!check(p, LEXER_token_id) || !check_is_type(p)) {
-      fprintf(stderr, "ERROR - should get param type\n");
+      token_t* tok = peek(p);
+      if (p->error_ctx && tok) {
+        error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR,
+                             "expected parameter type");
+      }
       free_declaration(decl);
       return NULL;
     }
@@ -406,14 +449,17 @@ declaration_t* ast_parse_function(parser_t* p)
     token_t* type_tok = advance(p);
 
     if (!type_tok->string_value) {
-      fprintf(stderr, "ERROR - param type not found\n");
+      if (p->error_ctx) {
+        error_report_at_token(p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
+                             "parameter type has no value");
+      }
       free_declaration(decl);
       return NULL;
     }
 
     param.type.name = strdup(type_tok->string_value);
     if (!param.type.name) {
-      fprintf(stderr, "ERROR - oom on function param parsing\n");
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
       free_declaration(decl);
       return NULL;
     }
@@ -421,21 +467,28 @@ declaration_t* ast_parse_function(parser_t* p)
     param.type.kind = get_type_kind_from_string(param.type.name);
 
     if (!check(p, LEXER_token_id)) {
-      fprintf(stderr, "ERROR - should get var name after param type\n");
+      token_t* tok = peek(p);
+      if (p->error_ctx && tok) {
+        error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR,
+                             "expected parameter name after type");
+      }
       free_declaration(decl);
       return NULL;
     }
     token_t* name_tok = advance(p);
 
     if (!name_tok->string_value) {
-      fprintf(stderr, "ERROR - id token does not have string value\n");
+      if (p->error_ctx) {
+        error_report_at_token(p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
+                             "parameter name has no value");
+      }
       free_declaration(decl);
       return NULL;
     }
 
     param.name = strdup(name_tok->string_value);
     if (!param.name) {
-      fprintf(stderr, "ERROR - oom on function param name parsing\n");
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
       free_declaration(decl);
       return NULL;
     }
@@ -454,14 +507,21 @@ declaration_t* ast_parse_function(parser_t* p)
     advance(p);
 
     if (!check(p, LEXER_token_id)) {
-      fprintf(stderr, "ERROR - specify return type");
+      token_t* tok = peek(p);
+      if (p->error_ctx && tok) {
+        error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR,
+                             "expected return type after ':'");
+      }
       free_declaration(decl);
       return NULL;
     }
 
     token_t* ret_tok = advance(p); 
     if (!ret_tok->string_value) {
-      fprintf(stderr, "ERROR - no return type specified after ':'");
+      if (p->error_ctx) {
+        error_report_at_token(p->error_ctx, ret_tok, ERROR_SEVERITY_ERROR,
+                             "return type has no value");
+      }
       free_declaration(decl);
       return NULL;
     }
@@ -470,14 +530,14 @@ declaration_t* ast_parse_function(parser_t* p)
     decl->func.return_type.kind = get_type_kind_from_string(decl->func.return_type.name);
 
     if (!decl->func.return_type.name) {
-      fprintf(stderr, "ERROR - oom at ast_parse_function\n");
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
       free_declaration(decl);
       return NULL;
     }
 
   }
 
-  if (!expect(p, '{', "ERROR - missing token '{'")) {
+  if (!expect(p, '{', "expected '{' to start function body")) {
     free_declaration(decl);
     return NULL;
   }
@@ -487,12 +547,25 @@ declaration_t* ast_parse_function(parser_t* p)
 
   while (!check(p, '}')) {
     if ((size_t) p->pos >= p->count) {
-      fprintf(stderr, "ERROR - early EOF / missing '}' token\n");
+      token_t* tok = peek(p);
+      if (p->error_ctx && tok) {
+        error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR,
+                             "unexpected end of file, expected '}'");
+      } else {
+        error_report_general(ERROR_SEVERITY_ERROR, 
+                           "unexpected end of file, expected '}'");
+      }
+      free_declaration(decl);
+      return NULL;
     }
 
     statement_t* stmt = parse_statement(p);
     if (!stmt) {
-      fprintf(stderr, "ERROR - parse statement didn't work");
+      token_t* tok = peek(p);
+      if (p->error_ctx && tok) {
+        error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR,
+                             "failed to parse statement");
+      }
       free_declaration(decl);
       return NULL;
     }
@@ -515,7 +588,7 @@ declaration_t* ast_parse_var_decl(parser_t* p)
 {
   declaration_t* d = (declaration_t*) malloc(sizeof(declaration_t));
   if (!d) {
-    fprintf(stderr, "ERROR - oom while var decl\n");
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return NULL;
   }
   memset(d, 0, sizeof(declaration_t));
@@ -529,7 +602,7 @@ declaration_t* ast_parse_var_decl(parser_t* p)
   token_t* type_tok = advance(p);
   d->var_decl.ident.type.name = strdup(type_tok->string_value);
   if (!d->var_decl.ident.type.name) {
-    fprintf(stderr, "ERROR - can't get type\n");
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     free_declaration(d);
     return NULL;
   }
@@ -541,45 +614,59 @@ declaration_t* ast_parse_var_decl(parser_t* p)
   } else {
     // For now, let's mark this as an error,
     // In a more advanced compiler this should be marked as TYPE_CUSTOM
-    fprintf(stderr, "ERROR - unknown type in parse_var_decl\n");
+    if (p->error_ctx) {
+      error_report_at_token(p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
+                           "unknown type '%s'", d->var_decl.ident.type.name);
+    }
     free_declaration(d);
     return NULL;
   }
 
   if (!check(p, LEXER_token_id)) {
-    fprintf(stderr, "ERROR - please provide var name\n");
+    token_t* tok = peek(p);
+    if (p->error_ctx && tok) {
+      error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR,
+                           "expected variable name");
+    }
     free_declaration(d);
     return NULL;
   }
 
   token_t* name_tok = advance(p);
   if (!name_tok->string_value) {
-    fprintf(stderr, "ERROR - var name not found\n");
+    if (p->error_ctx) {
+      error_report_at_token(p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
+                           "variable name has no value");
+    }
     free_declaration(d);
     return NULL;
   }
 
   d->var_decl.ident.name = strdup(name_tok->string_value);
   if (!d->var_decl.ident.name) {
-    fprintf(stderr, "ERROR - oom\n");
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     free_declaration(d);
     return NULL;
   }
 
-  if (!expect(p, '=', "ERROR - missing '=' token")) {
+  if (!expect(p, '=', "expected '=' in variable declaration")) {
     free_declaration(d);
     return NULL;
   }
 
   expression_t* e = parse_expression(p);
   if (!e) {
-    fprintf(stderr, "ERROR - d->var.e is NULL\n");
+    token_t* tok = peek(p);
+    if (p->error_ctx && tok) {
+      error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR,
+                           "expected expression in variable initialization");
+    }
     free_declaration(d);
     return NULL;
   }
   d->var_decl.init = e;
 
-  if (!expect(p, ';', "ERROR - missing ';' token")) {
+  if (!expect(p, ';', "expected ';' after variable declaration")) {
     free_declaration(d);
     return NULL;
   }
@@ -605,7 +692,7 @@ statement_t* ast_parse_return_stmt(parser_t* p)
 {
   statement_t* s = (statement_t*) malloc(sizeof(statement_t));
   if (s == NULL) {
-    fprintf(stderr, "ERROR - oom\n");
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return NULL;
   }
   memset(s, 0, sizeof(statement_t));
@@ -613,7 +700,7 @@ statement_t* ast_parse_return_stmt(parser_t* p)
   s->type = STATEMENT_RETURN;
   s->ret.value = parse_expression(p);
 
-  if (!expect(p, ';', "ERROR - missing token ';' at end of line")) {
+  if (!expect(p, ';', "expected ';' after return statement")) {
     free_statement(s);
     return NULL;
   }
@@ -625,7 +712,7 @@ statement_t* ast_parse_decl_stmt(parser_t* p)
 {
   statement_t* s = (statement_t*) malloc(sizeof(statement_t));
   if (s == NULL) {
-    fprintf(stderr, "ERROR - oom\n");
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return NULL;
   }
   memset(s, 0, sizeof(statement_t));
@@ -635,7 +722,7 @@ statement_t* ast_parse_decl_stmt(parser_t* p)
   
   s->decl_stmt.decl = ast_parse_var_decl(p);
   if (!s->decl_stmt.decl) {
-    fprintf(stderr, "ERROR - parsing var declaration\n");
+    // Error already reported by ast_parse_var_decl
     free_statement(s);
     return NULL;
   }
@@ -647,7 +734,7 @@ statement_t* ast_parse_expr_stmt(parser_t* p)
 {
   statement_t* s = (statement_t*) malloc(sizeof(statement_t));
   if (!s) {
-    fprintf(stderr, "ERROR - oom while parse_expr_stmt\n"); 
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return NULL;
   }
   memset(s, 0, sizeof(statement_t));
@@ -657,12 +744,12 @@ statement_t* ast_parse_expr_stmt(parser_t* p)
 
   s->expr_stmt.expr = parse_expression(p);
   if (!s->expr_stmt.expr) {
-    fprintf(stderr, "ERROR - parsing expr\n");
+    // Error already reported by parse_expression
     free_statement(s);
     return NULL;
   }
 
-  if(!expect(p, ';', "ERROR - missing ';' token at end of statement\n")) {
+  if(!expect(p, ';', "expected ';' after expression statement")) {
     free_statement(s);
     return NULL; 
   }

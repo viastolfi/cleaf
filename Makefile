@@ -5,10 +5,12 @@ TEST = test
 CS = \
         $(SRC)/cleaf.c \
         $(SRC)/frontend/ast.c \
+        $(SRC)/frontend/error.c \
 
 OBJ = \
         $(BUILD)/cleaf.o \
         $(BUILD)/frontend/ast.o \
+        $(BUILD)/frontend/error.o \
 
 CC = gcc
 CFLAGS = -Wall -Wextra -g
@@ -33,7 +35,7 @@ test: $(TEST_BIN)
 	@echo "Running AST tests..."
 	@$(TEST_BIN) 2> test.log
 
-$(TEST_BIN): $(TEST_SRC) $(SRC)/frontend/ast.c
+$(TEST_BIN): $(TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/frontend/error.c
 	@mkdir -p $(BUILD)
 	@$(CC) $(CFLAGS) $^ -o $@
 

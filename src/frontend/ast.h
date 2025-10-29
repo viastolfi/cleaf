@@ -7,6 +7,7 @@
 
 #include "lexer.h"
 #include "ast_definition.h"
+#include "error.h"
 
 typedef struct 
 {
@@ -15,6 +16,8 @@ typedef struct
   size_t capacity;
 
   int pos;
+  
+  error_context_t* error_ctx;
 } parser_t;
 
 // Get the actual token at pos

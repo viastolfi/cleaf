@@ -88,6 +88,8 @@ typedef struct
 
   char* string_value;
   int string_len;
+  
+  const char* source_pos;
 } token_t;
 
 // We start at 256 since this is the end of the ASCII table
@@ -157,6 +159,8 @@ static token_t lexer_copy_token(lexer_t* lex)
 {
   token_t token;
   token.type = lex->token;
+  token.source_pos = lex->parse_point;
+  
   switch (lex->token) {
     case LEXER_token_id: case LEXER_token_dqstring: 
       token.string_value = strdup(lex->string_value);

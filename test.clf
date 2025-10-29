@@ -1,4 +1,4 @@
 fn main(int a, string b): int {
-  i = n;
+  i =;
   i = 3 + 4;
 }
