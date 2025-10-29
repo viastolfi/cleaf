@@ -25,6 +25,14 @@ void free_expression(expression_t* e)
       free_expression(e->assign.rhs);
   }
 
+  if (e->type == EXPRESSION_BINARY) {
+    if (e->binary.left)
+     free(e->binary.left); 
+
+    if (e->binary.right)
+      free(e->binary.right);
+  }
+
   free(e);
 }
 
