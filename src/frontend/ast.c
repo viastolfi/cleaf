@@ -16,6 +16,14 @@ void free_expression(expression_t* e)
       free(e->var.name);
   }
 
+  if (e->type == EXPRESSION_ASSIGN) {
+    if (e->assign.lhs)
+      free_expression(e->assign.lhs);
+
+    if (e->assign.rhs)
+      free_expression(e->assign.rhs);
+  }
+
   free(e);
 }
 
