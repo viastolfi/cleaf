@@ -46,6 +46,7 @@ expression_t*  ast_parse_expr_int_lit(parser_t* p);
 expression_t*  ast_parse_expr_string_lit(parser_t* p);
 expression_t*  ast_parse_expr_var(parser_t* p);
 expression_t*  ast_parse_expr_assign(parser_t* p);
+expression_t*  ast_parse_expr_binary(parser_t* p);
 
 void free_declaration(declaration_t* d);
 void free_statement(statement_t* s);

@@ -263,20 +263,105 @@ expression_t* ast_parse_expr_assign(parser_t* p)
   return e;
 }
 
-expression_t* parse_expression(parser_t* p) 
+expression_t* ast_parse_expr_binary(parser_t* p) 
 {
-  if (check(p, LEXER_token_id) && check_next(p, '=', 1)) {
-    return ast_parse_expr_assign(p);
-  } else if (check(p, LEXER_token_id)) {
-    return ast_parse_expr_var(p);
-  } else if (check(p, LEXER_token_dqstring)) {
-    return ast_parse_expr_string_lit(p);
-  } else {
-    return ast_parse_expr_int_lit(p);
+  expression_t* e = (expression_t*) malloc(sizeof(expression_t)); 
+  if (!e) {
+    fprintf(stderr, "ERROR - oom at parse_expr_binary\n");
+    return NULL;
+  }
+  memset(e, 0, sizeof(expression_t));
+
+  e->type = EXPRESSION_BINARY;
+
+  expression_t* left = (expression_t*) malloc(sizeof(expression_t));
+  if (!left) {
+    fprintf(stderr, "ERROR - oom at parse_expr_binary\n");
+    free_expression(e);
+    return NULL;
+  }
+  memset(left, 0, sizeof(expression_t));
+
+  token_t* left_tok = advance(p);
+  switch (left_tok->type) {
+    case LEXER_token_intlit:
+      left->type = EXPRESSION_INT_LIT;
+      left->int_lit.value = left_tok->int_value;
+      break;
+    case LEXER_token_dqstring:
+      left->type = EXPRESSION_STRING_LIT;
+      if (!left_tok->string_value) {
+        fprintf(stderr, "ERROR - sq string token has no string value at parse_expr_binary\n");
+        free_expression(e);
+        free_expression(left);
+        return NULL;
+      }
+      left->string_lit.value = strdup(left_tok->string_value);
+      if (!left->string_lit.value) {
+        fprintf(stderr, "ERROR - oom on parse_expr_binary\n");
+        free_expression(e);
+        free_expression(left);
+        return NULL;
+      }
+      break;
+    case LEXER_token_id:
+      left->type = EXPRESSION_VAR;
+      if (!left_tok->string_value) {
+        fprintf(stderr, "ERROR - id token has no string value at parse_expr_binary\n");
+        free_expression(e);
+        free_expression(left);
+        return NULL;
+      }
+      left->var.name = strdup(left_tok->string_value);
+      if (!left->var.name) {
+        fprintf(stderr, "ERROR - oom on parse_expr_binary\n");
+        free_expression(e);
+        free_expression(left);
+        return NULL;
+      }  
+      break;
+    default:
+      // unexpected 
+      // TODO: maybe add a not implemented like error
+      fprintf(stderr, "ERROR - not implemented on parse_expr_binary\n");
+      free_expression(e);
+      free_expression(left);
+      return NULL;
   }
 
-  // Unreachable (normally)
-  return NULL;
+  e->binary.left = left;
+
+  token_t* op_tok = advance(p);
+  e->binary.op = (char) op_tok->type;
+
+  e->binary.right = parse_expression(p);
+  if (!e->binary.right) {
+    fprintf(stderr, "ERROR - binary right expression is NULL\n");
+    free_expression(e);
+    return NULL;
+  }
+
+  return e;
+}
+
+expression_t* parse_expression(parser_t* p) 
+{
+  if (check_next(p, '=', 1)) 
+    return ast_parse_expr_assign(p);
+
+  if (check_next(p, '+', 1) ||
+      check_next(p, '-', 1) ||
+      check_next(p, '*', 1) ||
+      check_next(p, '/', 1))
+    return ast_parse_expr_binary(p);
+
+  if (check(p, LEXER_token_id)) 
+    return ast_parse_expr_var(p);
+
+  if (check(p, LEXER_token_dqstring)) 
+    return ast_parse_expr_string_lit(p);
+  
+  return ast_parse_expr_int_lit(p);
 }
 
 declaration_t* ast_parse_function(parser_t* p)
@@ -592,7 +677,9 @@ statement_t* parse_statement(parser_t* p)
     return ast_parse_return_stmt(p);
   } else if (check(p, LEXER_token_id) && check_is_type(p)) {
     return ast_parse_decl_stmt(p);
-  } else if (check(p, LEXER_token_id)) {
+  } else if (check(p, LEXER_token_id) || 
+             check(p, LEXER_token_intlit) ||
+             check(p, LEXER_token_sqstring)) {
     // This is some kind of fallback
     // TODO: work on this to include other use case 
     return ast_parse_expr_stmt(p);

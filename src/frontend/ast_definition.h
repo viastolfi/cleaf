@@ -115,6 +115,11 @@ struct expression_t
     struct { char* value; } string_lit;
     struct { char* name; } var;
     struct { expression_t* lhs; expression_t* rhs; } assign;
+    struct { 
+      expression_t* left; 
+      expression_t* right; 
+      char op; 
+    } binary;
   };
 };
 
