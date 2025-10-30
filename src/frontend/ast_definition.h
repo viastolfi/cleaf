@@ -65,7 +65,7 @@ typedef struct
 
 typedef struct 
 {
-  declaration_t* items;
+  declaration_t** items;
   size_t count;
   size_t capacity;
 } declaration_array;

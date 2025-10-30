@@ -58,20 +58,20 @@ int main(int argc, char** argv)
 
   free(lex.string_storage);
 
-  //declaration_array program = {0};
+  declaration_array program = {0};
   while ((size_t) parser.pos < parser.count) {
     declaration_t* decl = parse_declaration(&parser); 
     if (decl == NULL) {
       break;
     }
     // print_declaration(decl, 1);
-    free_declaration(decl);
-    // ATM this raise segfault 
-    // We comment it for now
-    //da_append(&program, *decl);
+    da_append(&program, decl);
   }
 
-
+  da_foreach(declaration_t*, it, &program) {
+    free_declaration(*it);
+  }
+  da_free(&program);
   da_free(&parser);
   free(text);
   return 0;
