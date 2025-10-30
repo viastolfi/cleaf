@@ -289,6 +289,11 @@ expression_t* ast_parse_expr_assign(parser_t* p)
 
   e->assign.rhs = parse_expression(p);
 
+  if (!e->assign.rhs) {
+    error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+                          "expected expression on assignment");
+  }
+
   return e;
 }
 
@@ -401,7 +406,10 @@ expression_t* parse_expression(parser_t* p)
   if (check(p, LEXER_token_dqstring)) 
     return ast_parse_expr_string_lit(p);
   
-  return ast_parse_expr_int_lit(p);
+  if (check(p, LEXER_token_intlit))
+      return ast_parse_expr_int_lit(p);
+
+  return NULL;
 }
 
 declaration_t* ast_parse_function(parser_t* p)
