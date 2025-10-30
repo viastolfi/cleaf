@@ -29,7 +29,8 @@ typedef enum
 typedef enum
 {
   TYPE_INT,
-  TYPE_STRING
+  TYPE_STRING,
+  TYPE_UNTYPE
 } type_kind;
 
 // ----------------- Forward Declarations ------------------

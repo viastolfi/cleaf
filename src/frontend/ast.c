@@ -665,6 +665,12 @@ declaration_t* ast_parse_var_decl(parser_t* p)
     return NULL;
   }
 
+  if (check(p, ';')) {
+    // consume ';'
+    advance(p);
+    return d;
+  }
+
   if (!expect(p, '=', "expected '=' in variable declaration")) {
     free_declaration(d);
     return NULL;
@@ -690,6 +696,81 @@ declaration_t* ast_parse_var_decl(parser_t* p)
   return d;
 }
 
+declaration_t* ast_parse_untype_var_decl(parser_t* p) 
+{
+  declaration_t* d = (declaration_t*) malloc(sizeof(declaration_t));
+  if (!d) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return NULL;
+  }
+  memset(d, 0, sizeof(declaration_t));
+
+  d->type = DECLARATION_VAR;
+  d->next = NULL;
+
+  // consume _var
+  advance(p);
+
+  d->var_decl.ident.type.kind = TYPE_UNTYPE;
+  d->var_decl.ident.type.name = strdup("var");
+  if (!d->var_decl.ident.type.name) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    free_declaration(d);
+    return NULL;
+  }
+
+  if (!check(p, LEXER_token_id)) {
+    error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+                            "expected identifier variable name");
+    free_declaration(d);
+    return NULL;
+  }
+
+  token_t* name_tok = advance(p);
+  if (!name_tok->string_value) {
+    error_report_at_token(p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
+                            "identifier token has no value");
+    free_declaration(d);
+    return NULL;
+  }
+
+  d->var_decl.ident.name = strdup(name_tok->string_value);
+  if (!d->var_decl.ident.name) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    free_declaration(d);
+    return NULL;
+  }
+
+  // case untype var as no init value
+   if (check(p, ';')) {
+    // consume ';'
+    advance(p);
+    return d;
+  }
+
+  if (!expect(p, '=', "expected '=' in variable declaration")) {
+    free_declaration(d);
+    return NULL;
+  }
+
+  expression_t* e = parse_expression(p);
+  if (!e) {
+    error_report_general(ERROR_SEVERITY_ERROR,
+                          "error on expression parsing");
+    free_declaration(d);
+    return NULL;
+  }
+
+  d->var_decl.init = e;
+
+  if (!expect(p, ';', "expected ';' after variable declaration")) {
+    free_declaration(d);
+    return NULL;
+  }
+
+  return d;
+}
+
 declaration_t* parse_declaration(parser_t* p)
 {
   if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "fn") == 0) {
@@ -700,7 +781,11 @@ declaration_t* parse_declaration(parser_t* p)
   if (check(p, LEXER_token_id) && check_is_type(p)) {
     return ast_parse_var_decl(p);
   }
-  // Do we risk to fall here ?
+
+  if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "var") == 0) {
+    return ast_parse_untype_var_decl(p);
+  }
+
   return NULL;
 }
 
@@ -736,7 +821,7 @@ statement_t* ast_parse_decl_stmt(parser_t* p)
   s->type = STATEMENT_DECL;
   s->next = NULL;
   
-  s->decl_stmt.decl = ast_parse_var_decl(p);
+  s->decl_stmt.decl = parse_declaration(p);
   if (!s->decl_stmt.decl) {
     // Error already reported by ast_parse_var_decl
     free_statement(s);
@@ -778,7 +863,7 @@ statement_t* parse_statement(parser_t* p)
   if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "return") == 0) {
     advance(p);
     return ast_parse_return_stmt(p);
-  } else if (check(p, LEXER_token_id) && check_is_type(p)) {
+  } else if (check(p, LEXER_token_id) && (check_is_type(p)) || strcmp(peek(p)->string_value, "var") == 0) {
     return ast_parse_decl_stmt(p);
   } else if (check(p, LEXER_token_id) || 
              check(p, LEXER_token_intlit) ||
