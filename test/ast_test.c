@@ -387,6 +387,36 @@ void test_untype_string_var_decl(const char* name, char* source_code) {
   da_free(&parser);
 }
 
+test_uninitialize_var_decl(const char* name, char* source_code) 
+{
+  printf(COLOR_YELLOW "→ Running test:" COLOR_RESET " %s\n", name);
+  parser_t parser = get_token(source_code);
+  
+  declaration_t* decl = parse_declaration(&parser);
+
+  ASSERT_MSG(decl != NULL, "Declaration should not be NULL");
+  ASSERT_MSG(decl->type == DECLARATION_VAR, 
+              "Declaration should be of type VAR");
+  ASSERT_MSG(decl->var_decl.ident.name != NULL,
+              "Variable identifier name should not be NULL");
+  ASSERT_MSG(strcmp(decl->var_decl.ident.name, "i") == 0,
+              "Variable identifier name should be the same as in the source code");
+  ASSERT_MSG(decl->var_decl.ident.type.kind == TYPE_UNTYPE,
+              "Variable indetifier type sould be of type UNTYPE");
+  ASSERT_MSG(decl->var_decl.ident.type.name != NULL,
+              "Variable identifier type name should not be NULL");
+  ASSERT_MSG(strcmp(decl->var_decl.ident.type.name, "var") == 0,
+              "Variable identifier type should be the same as in the source code");
+  ASSERT_MSG(decl->var_decl.init == NULL,
+              "Variable init expression should be NULL");
+
+  printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
+  
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+
 int main(void)
 {
   printf(COLOR_CYAN "\n=== Running AST Tests ===\n\n" COLOR_RESET);
@@ -396,7 +426,8 @@ int main(void)
   test_fn_params("Function parameters", "fn main(int a, string b) {}");
   test_typed_int_var_decl("Typed int var declaration", "int i = 3;");
   test_typed_string_var_decl("Typed string var declaration", "string i = \"test\";");
-  test_untype_string_var_decl("Untyped string var declaraion", "var i = 3;");
+  test_untype_string_var_decl("Untyped var declaraion", "var i = 3;");
+  test_uninitialize_var_decl("Uninitialize var declaration", "var i;");
   test_int_lit_return("Integer literal return statement", "return 1;");
   test_string_lit_return("String literal return statement", "return \"test\";");
   test_var_return("Variable return statement", "return a;");
