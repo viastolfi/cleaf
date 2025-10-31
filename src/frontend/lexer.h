@@ -392,7 +392,7 @@ int lexer_get_token(lexer_t* l)
     case '"':
         LEXER_LIB_DQ_STRINGS(return lexer_parse_string(l, p, LEXER_token_dqstring);)
         goto single_char;
-    case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+    case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
     {
       LEXER_LIB_DECIMAL_INTS(
         const char* q = p;
