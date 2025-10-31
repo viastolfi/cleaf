@@ -11,3 +11,7 @@ fn main(int a, string b): int {
   // return statement 
   return 0;
 }
+
+fn test(int a, int b, string c) {
+  int a = 2;
+}

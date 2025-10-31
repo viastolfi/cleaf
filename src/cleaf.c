@@ -62,6 +62,7 @@ int main(int argc, char** argv)
   while ((size_t) parser.pos < parser.count) {
     declaration_t* decl = parse_declaration(&parser); 
     if (decl == NULL) {
+      printf("END / ERROR PARSING \n");
       break;
     }
     // print_declaration(decl, 1);

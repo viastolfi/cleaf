@@ -74,9 +74,6 @@ void free_declaration(declaration_t* d)
   if (!d)
     return;
 
-  if (d->next)
-    free_declaration(d->next);
-
   if (d->type == DECLARATION_FUNC) {
     if (d->func.name)
       free(d->func.name);
@@ -513,7 +510,6 @@ declaration_t* ast_parse_function(parser_t* p)
   memset(decl, 0, sizeof(declaration_t));
 
   decl->type = DECLARATION_FUNC;
-  decl->next = NULL;
 
   if (check(p, LEXER_token_id)) {
     token_t * name_tok = advance(p);
@@ -688,6 +684,8 @@ declaration_t* ast_parse_function(parser_t* p)
     }
   }
 
+  // consume '}'
+  advance(p);
   return decl;
 }
 
@@ -701,7 +699,6 @@ declaration_t* ast_parse_var_decl(parser_t* p)
   memset(d, 0, sizeof(declaration_t));
 
   d->type = DECLARATION_VAR;
-  d->next = NULL;
 
   // For now, we assume that we can only fall back here if the newt token is a typedef
   // Which mean that next token is an token_id with a string_value
@@ -797,7 +794,6 @@ declaration_t* ast_parse_untype_var_decl(parser_t* p)
   memset(d, 0, sizeof(declaration_t));
 
   d->type = DECLARATION_VAR;
-  d->next = NULL;
 
   // consume _var
   advance(p);

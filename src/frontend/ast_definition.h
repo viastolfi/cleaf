@@ -75,7 +75,6 @@ typedef struct
 struct declaration_t
 {
   declaration_kind type;
-  declaration_t* next;
   union {
     struct { 
       typed_identifier_t ident; 
