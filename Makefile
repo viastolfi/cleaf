@@ -20,7 +20,7 @@ CFLAGS = -Wall -Wextra -g
 all: $(BUILD)/cleaf
 
 $(BUILD)/cleaf: $(OBJ)
-	$(CC) -o $@ $^
+	$(CC) -o $@ $^ -lm
 	@$(BUILD)/cleaf test.clf 2> cleaf.log
 
 $(BUILD)/%.o: $(SRC)/%.c

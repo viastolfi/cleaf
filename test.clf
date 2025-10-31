@@ -1,4 +1,13 @@
+// function declaration with params and return typed value
 fn main(int a, string b): int {
+  // variable declaration
   int i = 4;
+  string w = "test";
   var d;
+
+  // function calling
+  test(a, 5, "test");
+
+  // return statement 
+  return 0;
 }

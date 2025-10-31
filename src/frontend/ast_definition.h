@@ -121,6 +121,11 @@ struct expression_t
       expression_t* right; 
       char op; 
     } binary;
+    struct { 
+      char* callee; 
+      expression_t** args; 
+      size_t arg_count; } 
+    call;
   };
 };
 

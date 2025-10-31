@@ -103,6 +103,11 @@ token_t* peek(parser_t* p)
   return (size_t) p->pos < p->count ? &p->items[p->pos] : NULL;
 }
 
+token_t* peek_next(parser_t* p, int range) 
+{
+  return (size_t) p->pos + range < p->count ? &p->items[p->pos + range] : NULL; 
+}
+
 token_t* advance(parser_t* p)
 {
   return (size_t) p->pos < p->count ? &p->items[p->pos++] : NULL;
@@ -389,6 +394,75 @@ expression_t* ast_parse_expr_binary(parser_t* p)
   return e;
 }
 
+expression_t*  ast_parse_expr_call(parser_t* p) 
+{
+  expression_t* e = (expression_t*) malloc(sizeof(expression_t));
+  if (!e) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return NULL;
+  }
+  e->type = EXPRESSION_CALL;
+
+  token_t* name_tok = advance(p);
+  if (!name_tok->string_value) {
+    error_report_at_token(p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
+                          "identifier has no value");
+    free_expression(e);
+    return NULL;
+  }
+  e->call.callee = strdup(name_tok->string_value);
+  if (!e->call.callee) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    free_expression(e);
+    return NULL;
+  }
+
+  // consume '('
+  advance(p);
+
+  int l = 0;
+  while (!check_next(p, ')', l)) {
+    if ((size_t) p->pos + l > p->count) {
+      error_report_at_token(p->error_ctx, peek_next(p, l - 1), ERROR_SEVERITY_ERROR, 
+                            "unexpected EOF, looking for ')' token");
+    }
+    ++l;
+  }
+
+  e->call.arg_count = (size_t) ceil((double) l / 2);
+  e->call.args = (expression_t**) calloc(e->call.arg_count, sizeof(expression_t));
+
+  for (size_t i = 0; i < e->call.arg_count; ++i) {
+    expression_t* arg = parse_expression(p);  
+    if (!arg) {
+      error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+          "unexpected NULL argument");
+      free_expression(e);
+      return NULL;
+    }
+    e->call.args[i] = arg;
+
+    if (!check(p, ')') && i == e->call.arg_count - 1) {
+      error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+          "expected ')' after argument declaration");
+      free_expression(e);
+      return NULL;
+    } 
+
+    // if it's not the last, then it should be ','
+    if (!check(p, ',') && i != e->call.arg_count - 1) {
+      error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR, 
+          "expected ',' after argument declaration");
+      free_expression(e);
+      return NULL;
+    }
+
+    advance(p);
+  }
+
+  return e;
+}
+
 expression_t* parse_expression(parser_t* p) 
 {
   if (check_next(p, '=', 1)) 
@@ -399,6 +473,10 @@ expression_t* parse_expression(parser_t* p)
       check_next(p, '*', 1) ||
       check_next(p, '/', 1))
     return ast_parse_expr_binary(p);
+
+  if (check(p, LEXER_token_id) && check_next(p, '(', 1)) {
+    return ast_parse_expr_call(p);
+  }
 
   if (check(p, LEXER_token_id)) 
     return ast_parse_expr_var(p);
@@ -863,9 +941,13 @@ statement_t* parse_statement(parser_t* p)
   if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "return") == 0) {
     advance(p);
     return ast_parse_return_stmt(p);
-  } else if (check(p, LEXER_token_id) && (check_is_type(p)) || strcmp(peek(p)->string_value, "var") == 0) {
+  } 
+
+  if (check(p, LEXER_token_id) && ((check_is_type(p)) || strcmp(peek(p)->string_value, "var") == 0)) {
     return ast_parse_decl_stmt(p);
-  } else if (check(p, LEXER_token_id) || 
+  } 
+
+  if (check(p, LEXER_token_id) || 
              check(p, LEXER_token_intlit) ||
              check(p, LEXER_token_sqstring)) {
     // This is some kind of fallback
