@@ -33,6 +33,19 @@ void free_expression(expression_t* e)
       free(e->binary.right);
   }
 
+  if (e->type == EXPRESSION_CALL) {
+    if (e->call.callee)
+      free(e->call.callee);
+  
+    if (e->call.args) {
+      for (size_t i = 0; i < e->call.arg_count; ++i) 
+        free_expression(e->call.args[i]);
+
+      free(e->call.args);
+    }
+
+  }
+
   free(e);
 }
 
