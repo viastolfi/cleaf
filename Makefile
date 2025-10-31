@@ -37,7 +37,7 @@ test: $(TEST_BIN)
 
 $(TEST_BIN): $(TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/frontend/error.c
 	@mkdir -p $(BUILD)
-	@$(CC) $(CFLAGS) $^ -o $@
+	@$(CC) $(CFLAGS) $^ -o $@ -lm
 
 clean:
 	rm -rf $(BUILD)

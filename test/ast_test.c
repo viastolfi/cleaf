@@ -387,7 +387,7 @@ void test_untype_string_var_decl(const char* name, char* source_code) {
   da_free(&parser);
 }
 
-test_uninitialize_var_decl(const char* name, char* source_code) 
+void test_uninitialize_var_decl(const char* name, char* source_code) 
 {
   printf(COLOR_YELLOW "→ Running test:" COLOR_RESET " %s\n", name);
   parser_t parser = get_token(source_code);
@@ -416,6 +416,60 @@ test_uninitialize_var_decl(const char* name, char* source_code)
   da_free(&parser);
 }
 
+void test_function_call(const char* name, char* source_code)
+{
+  printf(COLOR_YELLOW "→ Running test:" COLOR_RESET " %s\n", name);
+  parser_t parser = get_token(source_code);
+
+  statement_t* s = parse_statement(&parser);
+
+  ASSERT_MSG(s != NULL, "Statement should not be NULL");
+  ASSERT_MSG(s->type == STATEMENT_EXPR,
+      "Statement should be of type EXPR");
+  ASSERT_MSG(s->expr_stmt.expr != NULL,
+      "Statement expression should not be NULL");
+  expression_t* e = s->expr_stmt.expr;
+  ASSERT_MSG(e->type == EXPRESSION_CALL,
+      "Expression type should be CALL");
+  ASSERT_MSG(e->call.callee != NULL,
+      "Expression function call name should not be NULL");
+  ASSERT_MSG(strcmp(e->call.callee, "test") == 0,
+      "Expression function call name should be the same as in the source code");
+  ASSERT_MSG(e->call.arg_count == 3,
+      "Expression function call arg count should be the same as in the source code");
+  ASSERT_MSG(e->call.args != NULL,
+      "Expression function call args should not be NULL");
+  ASSERT_MSG(e->call.args[0] != NULL,
+      "Func call first arg should not be NULL");
+  expression_t* a1 = e->call.args[0];
+  ASSERT_MSG(a1->type == EXPRESSION_VAR,
+      "First arg should be of type VAR");
+  ASSERT_MSG(a1->var.name != NULL,
+      "First arg var name should not be NULL");
+  ASSERT_MSG(strcmp(a1->var.name, "a") == 0,
+      "First arg var name should be the same as in the source code");
+  ASSERT_MSG(e->call.args[1] != NULL,
+      "Function call second arg should not be NULL");
+  expression_t* a2 = e->call.args[1];
+  ASSERT_MSG(a2->type == EXPRESSION_INT_LIT,
+      "Second arg should be of type INT_LIT");
+  ASSERT_MSG(a2->int_lit.value == 5,
+      "Second arg int value should be the same as in the source code");
+  ASSERT_MSG(e->call.args[2] != NULL,
+      "Function call third arg should not be NULL");
+  expression_t* a3 = e->call.args[2];
+  ASSERT_MSG(a3->type == EXPRESSION_STRING_LIT,
+      "Third argument should be of type STRING_LIT");
+  ASSERT_MSG(a3->string_lit.value != NULL,
+      "Third argument string value should not be NULL");
+  ASSERT_MSG(strcmp(a3->string_lit.value, "test") == 0,
+      "Third argument string value should be the same as in the source code");
+
+  printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
+  
+  free_statement(s);
+  da_free(&parser);
+}
 
 int main(void)
 {
@@ -433,6 +487,7 @@ int main(void)
   test_var_return("Variable return statement", "return a;");
   test_expr_assign("Variable assignment", "i = 4;");
   test_expr_binary("Binary operation", "i + 4;");
+  test_function_call("Function call", "test(a, 5, \"test\");");
 
   printf(COLOR_GREEN "🎉 All tests passed successfully!\n" COLOR_RESET);
   return 0;
