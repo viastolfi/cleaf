@@ -406,7 +406,7 @@ expression_t* ast_parse_expr_binary(parser_t* p)
   e->binary.left = left;
 
   token_t* op_tok = advance(p);
-  e->binary.op = (char) op_tok->type;
+  e->binary.op = op_tok->type;
 
   e->binary.right = parse_expression(p);
   if (!e->binary.right) {
@@ -498,7 +498,11 @@ expression_t* parse_expression(parser_t* p)
   if (check_next(p, '+', 1) ||
       check_next(p, '-', 1) ||
       check_next(p, '*', 1) ||
-      check_next(p, '/', 1))
+      check_next(p, '/', 1) ||
+      check_next(p, LEXER_token_eq, 1) ||
+      check_next(p, LEXER_token_neq, 1) ||
+      check_next(p, LEXER_token_gteq, 1) ||
+      check_next(p, LEXER_token_lseq, 1))
     return ast_parse_expr_binary(p);
 
   if (check(p, LEXER_token_id) && check_next(p, '(', 1)) {
@@ -950,6 +954,16 @@ statement_t* ast_parse_if_stmt(parser_t* p)
              "expected condition"); 
     free_statement(s);
     return NULL;
+  }
+
+  if (!expect(p, ')', "expected ')' after expression")) {
+    free_statement(s);
+    return NULL; 
+  }
+
+  if (!expect(p, '{', "expected '{' after statement")) {
+    free_statement(s);
+    return NULL;  
   }
 
   statement_block_t* then_sb = (statement_block_t*) malloc(sizeof(statement_block_t));

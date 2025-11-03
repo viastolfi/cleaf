@@ -5,6 +5,12 @@ fn main(int a, string b): int {
   string w = "test";
   var d;
 
+  if (a == 4) {
+    a = 3;  
+  } else {
+    a = 4; 
+  }
+
   // function calling
   test(a, 5, "test");
 

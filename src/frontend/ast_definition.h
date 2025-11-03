@@ -131,7 +131,7 @@ struct expression_t
     struct { 
       expression_t* left; 
       expression_t* right; 
-      char op; 
+      long op; 
     } binary;
     struct { 
       char* callee; 
