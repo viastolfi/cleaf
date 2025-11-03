@@ -63,6 +63,21 @@ void free_statement(statement_t* s)
   if (s->type == STATEMENT_EXPR)
     free_expression(s->expr_stmt.expr);
 
+  if (s->type == STATEMENT_IF) {
+    if (s->if_stmt.condition) 
+      free_expression(s->if_stmt.condition); 
+    if (s->if_stmt.then_branch) {
+      da_foreach(statement_t*, it, s->if_stmt.then_branch)
+        free_statement(*(it)); 
+      free(s->if_stmt.then_branch);
+    }
+    if (s->if_stmt.else_branch) {
+      da_foreach(statement_t*, it, s->if_stmt.else_branch)
+        free_statement(*(it));
+      free(s->if_stmt.else_branch);
+    }
+  }
+
   free(s);
 }
 
