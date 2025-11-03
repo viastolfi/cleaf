@@ -471,6 +471,65 @@ void test_function_call(const char* name, char* source_code)
   da_free(&parser);
 }
 
+void test_if_stmt(const char* name, char* source_code) 
+{
+  printf(COLOR_YELLOW "→ Running test:" COLOR_RESET " %s\n", name);
+  parser_t parser = get_token(source_code);
+
+  statement_t* s = parse_statement(&parser);
+
+  ASSERT_MSG(s != NULL, "Statement should not be NULL");
+  ASSERT_MSG(s->type == STATEMENT_IF, "Statement type should be IF");
+  ASSERT_MSG(s->if_stmt.condition != NULL, 
+      "If statement condition should not be NULL");
+  expression_t* e = s->if_stmt.condition;
+  ASSERT_MSG(e->type == EXPRESSION_BINARY,
+      "Expression type should be BINARY");
+  ASSERT_MSG(e->binary.op == LEXER_token_eq,
+      "Expression operation should be the same as in the source code");
+  ASSERT_MSG(e->binary.left->type == EXPRESSION_VAR,
+      "Binary operation left expression should be of type VAR");
+  ASSERT_MSG(strcmp(e->binary.left->var.name, "a") == 0,
+      "Binary operation left expression var name should be the same as in the source code");
+  ASSERT_MSG(e->binary.right->type == EXPRESSION_INT_LIT,
+      "Binary operation right expression should be of type INT_LIT");
+  ASSERT_MSG(e->binary.right->int_lit.value == 4,
+      "Binary operation right expression should be the same as in the source code");
+  ASSERT_MSG(s->if_stmt.then_branch->count == 1,
+      "Statement then branch count should be 1");
+  statement_t* t1 = s->if_stmt.then_branch->items[0];
+  ASSERT_MSG(t1->type == STATEMENT_EXPR,
+      "Then branch statement should be of type EXPR");
+  ASSERT_MSG(t1->expr_stmt.expr != NULL,
+      "Then branch first exression should not be NULL");
+  expression_t* e1 = t1->expr_stmt.expr;
+  ASSERT_MSG(e1->type == EXPRESSION_ASSIGN,
+      "Then branch expression should be of type ASSIGN");
+  ASSERT_MSG(strcmp(e1->assign.lhs->var.name, "a") == 0,
+      "Then branch expression var name should be the same as in the source code");
+  ASSERT_MSG(e1->assign.rhs->int_lit.value == 3,
+      "Then branch epression int lit value should be the same as in the source code");
+  ASSERT_MSG(s->if_stmt.else_branch->count == 1,
+      "Statement else branch count should be 1");
+  statement_t* t2 = s->if_stmt.else_branch->items[0];
+  ASSERT_MSG(t2->type == STATEMENT_EXPR,
+      "Else branch statement should be of type EXPR");
+  ASSERT_MSG(t2->expr_stmt.expr != NULL,
+      "Else branch expression should not be NULL");
+  expression_t* e2 = t2->expr_stmt.expr;
+  ASSERT_MSG(e2->type == EXPRESSION_ASSIGN,
+      "Else branch expression type should be ASSIGN");
+  ASSERT_MSG(strcmp(e2->assign.lhs->var.name, "a") == 0,
+      "Else branch expresion var name should be the same as in the source code");
+  ASSERT_MSG(e2->assign.rhs->int_lit.value == 4, 
+      "Else branch expression int lit value should be the same as in the source code");
+
+  printf(COLOR_GREEN "✅ Test passed:" COLOR_RESET " %s\n\n", name);
+  
+  free_statement(s);
+  da_free(&parser);
+}
+
 int main(void)
 {
   printf(COLOR_CYAN "\n=== Running AST Tests ===\n\n" COLOR_RESET);
@@ -488,6 +547,7 @@ int main(void)
   test_expr_assign("Variable assignment", "i = 4;");
   test_expr_binary("Binary operation", "i + 4;");
   test_function_call("Function call", "test(a, 5, \"test\");");
+  test_if_stmt("If statement", "if (a == 4) { a = 3; } else { a = 4; }");
 
   printf(COLOR_GREEN "🎉 All tests passed successfully!\n" COLOR_RESET);
   return 0;
