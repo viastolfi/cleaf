@@ -111,6 +111,8 @@ struct statement_t
     struct { declaration_t* decl; } decl_stmt;
     struct {
       expression_t* condition;  
+      statement_block_t* then_branch;
+      statement_block_t* else_branch;
     } if_stmt;
   };
 };

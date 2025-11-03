@@ -915,12 +915,94 @@ statement_t* ast_parse_expr_stmt(parser_t* p)
   return s;
 }
 
+statement_t* ast_parse_if_stmt(parser_t* p) 
+{
+  statement_t* s = (statement_t*) malloc(sizeof(statement_t));
+  if (!s) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return NULL; 
+  }
+  memset(s, 0, sizeof(statement_t));
+
+  s->type = STATEMENT_IF;
+  if (!expect(p, '(', "expected '(' after if statement")) {
+    free_statement(s);  
+    return NULL;
+  }
+  s->if_stmt.condition = parse_expression(p);
+  if (!s->if_stmt.condition) {
+    error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+             "expected condition"); 
+    free_statement(s);
+    return NULL;
+  }
+
+  statement_block_t* then_sb = (statement_block_t*) malloc(sizeof(statement_block_t));
+  if (!then_sb) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return NULL; 
+  }
+  while (!check(p, '}')) {
+    statement_t* stmt = parse_statement(p);
+    if (!stmt) {
+      error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR, 
+            "expected statement"); 
+      free_statement(stmt);
+    }
+    da_append(then_sb, stmt);
+  }
+  s->if_stmt.then_branch = then_sb;
+
+  if (!expect(p, '}', "expected '}' after if body")) {
+    free_statement(s); 
+    return NULL;
+  }
+
+  if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "else") == 0) {
+    advance(p); 
+
+    if (!expect(p, '{', "expected '{' after else stmt")) {
+      free_statement(s);
+      return NULL; 
+    }
+
+    statement_block_t* else_sb = (statement_block_t*) malloc(sizeof(statement_block_t));
+    if (!else_sb) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+      free_statement(s);
+      return NULL;
+    }
+    while (!check(p, '}')) {
+      statement_t* stmt = parse_statement(p);
+      if (!stmt) {
+        error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+        free_statement(s);
+        return NULL;
+      } 
+      da_append(else_sb, stmt);
+    }
+    s->if_stmt.else_branch = else_sb;
+
+    if (!expect(p, '}', "expected '}' after else body")) {
+      free_statement(s);
+      return NULL;
+    }
+  }
+
+  return s;
+}
+
 statement_t* parse_statement(parser_t* p) 
 {
   if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "return") == 0) {
     advance(p);
     return ast_parse_return_stmt(p);
   } 
+
+  if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "if") == 0) {
+    advance(p);  
+    return ast_parse_if_stmt(p);
+  }
 
   if (check(p, LEXER_token_id) && ((check_is_type(p)) || strcmp(peek(p)->string_value, "var") == 0)) {
     return ast_parse_decl_stmt(p);

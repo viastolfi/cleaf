@@ -46,6 +46,7 @@ declaration_t* parse_declaration(parser_t* p);
 statement_t*   ast_parse_return_stmt(parser_t* p);
 statement_t*   ast_parse_decl_stmt(parser_t* p);
 statement_t*   ast_parse_expr_stmt(parser_t* p);
+statement_t*   ast_parse_if_stmt(parser_t* p);
 statement_t*   parse_statement(parser_t* p);
 expression_t*  parse_expression(parser_t* p);
 expression_t*  ast_parse_expr_int_lit(parser_t* p);
