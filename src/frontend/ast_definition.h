@@ -6,14 +6,15 @@
 typedef enum 
 {
   DECLARATION_VAR,
-  DECLARATION_FUNC
+  DECLARATION_FUNC,
 } declaration_kind;
 
 typedef enum
 {
   STATEMENT_EXPR,
   STATEMENT_RETURN,
-  STATEMENT_DECL
+  STATEMENT_DECL,
+  STATEMENT_IF
 } statement_kind;
 
 typedef enum 
@@ -23,7 +24,8 @@ typedef enum
   EXPRESSION_VAR,
   EXPRESSION_BINARY,
   EXPRESSION_CALL,
-  EXPRESSION_ASSIGN
+  EXPRESSION_ASSIGN,
+  EXPRESSION_COND
 } expression_kind;
 
 typedef enum
@@ -70,6 +72,13 @@ typedef struct
   size_t capacity;
 } declaration_array;
 
+typedef struct
+{
+  statement_t** items;
+  size_t count;
+  size_t capacity;
+} statement_block_t;
+
 // ----------------- Declarations ------------------
 
 struct declaration_t
@@ -85,7 +94,7 @@ struct declaration_t
       char* name;  
       type_t return_type; 
       function_param_array params; 
-      statement_t* body; 
+      statement_block_t* body;
     } func;
   };
 };
@@ -95,12 +104,14 @@ struct declaration_t
 struct statement_t 
 {
   statement_kind type;
-  statement_t* next;
 
   union {
     struct { expression_t* value; } ret;
     struct { expression_t* expr; } expr_stmt;
     struct { declaration_t* decl; } decl_stmt;
+    struct {
+      expression_t* condition;  
+    } if_stmt;
   };
 };
 

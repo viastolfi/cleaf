@@ -54,9 +54,6 @@ void free_statement(statement_t* s)
   if (!s)
     return;
 
-  if (s->next) 
-    free_statement(s->next);
-
   if (s->type == STATEMENT_RETURN) 
     free_expression(s->ret.value);
 
@@ -90,8 +87,13 @@ void free_declaration(declaration_t* d)
     if (d->func.return_type.name)
       free(d->func.return_type.name);
 
-    if (d->func.body)
-      free_statement(d->func.body);
+    if (d->func.body) {
+      da_foreach(statement_t*, it, d->func.body) {
+        free_statement(*it);
+      }
+
+      free(d->func.body);
+    }
   }
 
   if (d->type == DECLARATION_VAR) {
@@ -645,47 +647,17 @@ declaration_t* ast_parse_function(parser_t* p)
     return NULL;
   }
 
-  decl->func.body = parse_statement(p); 
-  // TODO: add error handling if body = NULL
+  statement_t* s;
+  statement_block_t* sb = (statement_block_t*) malloc(sizeof(statement_block_t));
+  while ((s = parse_statement(p)) != NULL)
+    da_append(sb, s);
 
-  while (!check(p, '}')) {
-    if ((size_t) p->pos >= p->count) {
-      token_t* tok = peek(p);
-      if (p->error_ctx && tok) {
-        error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR,
-                             "unexpected end of file, expected '}'");
-      } else {
-        error_report_general(ERROR_SEVERITY_ERROR, 
-                           "unexpected end of file, expected '}'");
-      }
-      free_declaration(decl);
-      return NULL;
-    }
-
-    statement_t* stmt = parse_statement(p);
-    if (!stmt) {
-      token_t* tok = peek(p);
-      if (p->error_ctx && tok) {
-        error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR,
-                             "failed to parse statement");
-      }
-      free_declaration(decl);
-      return NULL;
-    }
-
-    statement_t** p = &decl->func.body;
-    if (!*p) {
-      *p = stmt;
-    } else {
-      while ((*p)->next) {
-        p = &(*p)->next;
-      }
-      (*p)->next = stmt;
-    }
-  }
-
+  decl->func.body = sb;
   // consume '}'
-  advance(p);
+  if (!expect(p, '}', "expected '}' after function body")) {
+    free_declaration(decl);
+    return NULL; 
+  }
   return decl;
 }
 
@@ -906,7 +878,6 @@ statement_t* ast_parse_decl_stmt(parser_t* p)
   memset(s, 0, sizeof(statement_t));
   
   s->type = STATEMENT_DECL;
-  s->next = NULL;
   
   s->decl_stmt.decl = parse_declaration(p);
   if (!s->decl_stmt.decl) {
@@ -928,7 +899,6 @@ statement_t* ast_parse_expr_stmt(parser_t* p)
   memset(s, 0, sizeof(statement_t));
 
   s->type = STATEMENT_EXPR;
-  s->next = NULL;
 
   s->expr_stmt.expr = parse_expression(p);
   if (!s->expr_stmt.expr) {
