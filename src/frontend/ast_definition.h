@@ -25,7 +25,7 @@ typedef enum
   EXPRESSION_BINARY,
   EXPRESSION_CALL,
   EXPRESSION_ASSIGN,
-  EXPRESSION_COND
+  EXPRESSION_UNARY
 } expression_kind;
 
 typedef enum
@@ -34,6 +34,16 @@ typedef enum
   TYPE_STRING,
   TYPE_UNTYPE
 } type_kind;
+
+typedef enum 
+{
+  UNARY_NEGATE,
+  UNARY_NOT,
+  UNARY_PRE_INC,
+  UNARY_PRE_DEC,
+  UNARY_POST_INC,
+  UNARY_POST_DEC
+} unary_op_kind;
 
 // ----------------- Forward Declarations ------------------
 
@@ -136,8 +146,12 @@ struct expression_t
     struct { 
       char* callee; 
       expression_t** args; 
-      size_t arg_count; } 
-    call;
+      size_t arg_count; 
+    } call;
+    struct {
+      unary_op_kind op;
+      expression_t* operand;
+    } unary;
   };
 };
 

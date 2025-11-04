@@ -5,6 +5,21 @@ fn main(int a, string b): int {
   string w = "test";
   var d;
 
+  // binary expression
+  4 + 6;
+  1 - 2;
+  9 / 8;
+  4 * 2;
+
+  // unary expression
+  i++;
+  ++i;
+  -i;
+  --i;
+  i--;
+  !i;
+
+  // if else statement
   if (a == 4) {
     a = 3;  
   } else {

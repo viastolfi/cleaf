@@ -490,10 +490,99 @@ expression_t*  ast_parse_expr_call(parser_t* p)
   return e;
 }
 
+expression_t* ast_parse_expr_unary(parser_t* p) 
+{
+  expression_t* e = (expression_t*) malloc(sizeof(expression_t));
+  if (!e) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return NULL;
+  }
+  memset(e, 0, sizeof(expression_t));
+  
+  e->type = EXPRESSION_UNARY;
+
+  if (check(p, LEXER_token_plusplus) ||
+      check(p, LEXER_token_minusminus) ||
+      check(p, '-') ||
+      check(p, '!')) {
+    token_t* op_tok = advance(p);
+    switch (op_tok->type) {
+      case LEXER_token_plusplus:
+       e->unary.op = UNARY_PRE_INC; 
+       break;
+      case LEXER_token_minusminus:
+       e->unary.op = UNARY_PRE_DEC;
+       break;
+      case '!':
+       e->unary.op = UNARY_NOT;
+       break;
+      case '-':
+       e->unary.op = UNARY_NEGATE;
+       break;
+      default:
+       puts("UNREACHABLE");
+    }
+
+    expression_t* operand = parse_expression(p);
+    if (!operand) {
+      error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+          "expected expression after unary operation");
+      free_expression(e);
+      return NULL;
+    }
+    e->unary.operand = operand;
+  } else {
+    expression_t* operand = (expression_t*) malloc(sizeof(expression_t));
+    if (!operand) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+      free_expression(e);
+      return NULL;
+    }
+    // since normally unary operand or only available for vars
+    operand->type = EXPRESSION_VAR;
+
+    token_t* var_tok = advance(p);
+    if (!var_tok->string_value) {
+      error_report_at_token(p->error_ctx, var_tok, ERROR_SEVERITY_ERROR,
+        "expected var before unary expression");
+      free_expression(e);
+      return NULL;
+    }
+    operand->var.name = strdup(var_tok->string_value);
+    if (!operand->var.name) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+      free_expression(e);
+      return NULL; 
+    }
+    e->unary.operand = operand;
+
+    token_t* op_tok = advance(p);
+    switch (op_tok->type) {
+      case LEXER_token_plusplus:
+       e->unary.op = UNARY_POST_INC;
+       break;
+      case LEXER_token_minusminus:
+       e->unary.op = UNARY_POST_DEC; 
+       break;
+      default:
+       puts("UNREACHABLE");
+    }
+  }
+
+  return e;
+}
+
 expression_t* parse_expression(parser_t* p) 
 {
   if (check_next(p, '=', 1)) 
     return ast_parse_expr_assign(p);
+
+  if (check(p, LEXER_token_plusplus) ||
+      check(p, LEXER_token_minusminus) ||
+      check_next(p, LEXER_token_plusplus, 1) ||
+      check_next(p, LEXER_token_minusminus, 1) ||
+      check(p, '-'))
+    return ast_parse_expr_unary(p);
 
   if (check_next(p, '+', 1) ||
       check_next(p, '-', 1) ||
@@ -1033,6 +1122,8 @@ statement_t* parse_statement(parser_t* p)
     return ast_parse_if_stmt(p);
   }
 
+  // WARNING: this can be unsafe if string_value is NULL
+  // TODO: keep an eye on this
   if (check(p, LEXER_token_id) && ((check_is_type(p)) || strcmp(peek(p)->string_value, "var") == 0)) {
     return ast_parse_decl_stmt(p);
   } 
