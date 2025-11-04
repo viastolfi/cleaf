@@ -43,8 +43,11 @@ void free_expression(expression_t* e)
 
       free(e->call.args);
     }
-
   }
+
+  if (e->type == EXPRESSION_UNARY) 
+    if (e->unary.operand)
+      free_expression(e->unary.operand);  
 
   free(e);
 }
