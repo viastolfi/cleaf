@@ -173,23 +173,23 @@ static void add_test(ct_test* t) {
     } \
   } while(0)
 
-static void ct_assert_eq_int(int x, int y, const char* message, const char* file, int line) 
+static void ct_assert_eq_core(long long x, long long y, const char* fmt, const char* message, const char* file, int line)
 {
   total++;
   if (x == y) {
     CT_PRINT(COLOR_SUCCESS "[PASS] " COLOR_RESET);
-    CT_PRINT("(%s:%d) ", file, line); 
-    CT_PRINT("%s\n", message);
-    success++; 
-  }
-  else {
+    CT_PRINT("(%s:%d) %s\n", file, line, message);
+    success++;
+  } else {
     CT_PRINT(COLOR_FAIL "[FAIL] " COLOR_RESET);
-    CT_PRINT("(%s:%d) ", file, line); 
-    CT_PRINT("%s", message);
+    CT_PRINT("(%s:%d) %s", file, line, message);
     CT_PRINT(COLOR_HINT "\n[HINT] " COLOR_RESET);
-    CT_PRINT(COLOR_BOLD COLOR_SUM "expected : " COLOR_RESET BOLD_OFF "%d\n", x);
-    CT_PRINT(COLOR_HINT "[HINT] " COLOR_RESET);
-    CT_PRINT(COLOR_BOLD COLOR_SUM "result   : " COLOR_RESET BOLD_OFF "%d\n", y);
+    CT_PRINT(COLOR_BOLD COLOR_SUM "expected : " COLOR_RESET BOLD_OFF);
+    CT_PRINT(fmt, x);
+    CT_PRINT("\n" COLOR_HINT "[HINT] " COLOR_RESET);
+    CT_PRINT(COLOR_BOLD COLOR_SUM "result   : " COLOR_RESET BOLD_OFF);
+    CT_PRINT(fmt, y);
+    CT_PRINT("\n");
   }
 }
 
@@ -213,12 +213,19 @@ static void ct_assert_eq_string(const char* x, const char* y, const char* messag
   }
 }
 
-static void ct_assert_unsigned_int(unsigned int x, unsigned int y, const char* message, const char* file, int line) {
-  ct_assert_eq_int((int) x, (int) y, message, file, line);
+static void ct_assert_eq_int(int x, int y, const char* message, const char* file, int line)
+{
+  ct_assert_eq_core((long long)x, (long long)y, "%d", message, file, line);
 }
 
-static void ct_assert_long(long x, long y, const char* message, const char* file, int line) {
-  ct_assert_eq_int((int) x, (int) y, message, file, line);
+static void ct_assert_eq_unsigned_int(unsigned int x, unsigned int y, const char* message, const char* file, int line)
+{
+  ct_assert_eq_core((long long)x, (long long)y, "%u", message, file, line);
+}
+
+static void ct_assert_eq_long(long x, long y, const char* message, const char* file, int line)
+{
+  ct_assert_eq_core((long long)x, (long long)y, "%ld", message, file, line);
 }
 
 #define ct_assert_eq(x, y, message) \
@@ -226,8 +233,9 @@ static void ct_assert_long(long x, long y, const char* message, const char* file
     int: ct_assert_eq_int, \
     char*: ct_assert_eq_string, \
     const char*: ct_assert_eq_string, \
-    unsigned int: ct_assert_unsigned_int, \
-    long: ct_assert_long \
+    unsigned int: ct_assert_eq_unsigned_int, \
+    long: ct_assert_eq_long, \
+    default: ct_assert_eq_int \
   )(x, y, message, __FILE__, __LINE__)
 
 int main(void) 
