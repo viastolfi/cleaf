@@ -584,7 +584,8 @@ expression_t* parse_expression(parser_t* p)
       check(p, LEXER_token_minusminus) ||
       check_next(p, LEXER_token_plusplus, 1) ||
       check_next(p, LEXER_token_minusminus, 1) ||
-      check(p, '-'))
+      check(p, '-') ||
+      check(p, '!'))
     return ast_parse_expr_unary(p);
 
   if (check_next(p, '+', 1) ||
@@ -1131,13 +1132,7 @@ statement_t* parse_statement(parser_t* p)
     return ast_parse_decl_stmt(p);
   } 
 
-  if (check(p, LEXER_token_id) || 
-             check(p, LEXER_token_intlit) ||
-             check(p, LEXER_token_sqstring)) {
-    // This is some kind of fallback
-    // TODO: work on this to include other use case 
-    return ast_parse_expr_stmt(p);
-  }
-
-  return NULL;
+  // for now, we can maybe assume that this is the always wanted fallback
+  // TODO: keep an eye on this
+  return ast_parse_expr_stmt(p);
 }
