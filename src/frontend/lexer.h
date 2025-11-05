@@ -413,6 +413,7 @@ int lexer_get_token(lexer_t* l)
   return 0;
 }
 
+__attribute__ ((unused))
 static void lexer_print_token(lexer_t *l) 
 {
   switch (l->token)
