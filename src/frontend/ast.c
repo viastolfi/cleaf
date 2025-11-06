@@ -91,6 +91,22 @@ void free_statement(statement_t* s)
     }
   }
 
+  if (s->type == STATEMENT_FOR) {
+    if (s->for_stmt.decl_init)
+     free_declaration(s->for_stmt.decl_init);
+    if (s->for_stmt.expr_init)
+     free_expression(s->for_stmt.expr_init); 
+    if (s->for_stmt.condition)
+      free_expression(s->for_stmt.condition);
+    if (s->for_stmt.loop)
+      free_expression(s->for_stmt.loop);
+    if (s->for_stmt.body) {
+      da_foreach(statement_t*, it, s->for_stmt.body)
+       free_statement(*(it)); 
+      da_free(s->for_stmt.body);
+    }
+  }
+
   free(s);
 }
 
