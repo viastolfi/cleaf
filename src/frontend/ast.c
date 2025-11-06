@@ -81,6 +81,16 @@ void free_statement(statement_t* s)
     }
   }
 
+  if (s->type == STATEMENT_WHILE) {
+    if (s->while_stmt.condition)
+     free_expression(s->while_stmt.condition); 
+    if (s->while_stmt.body) {
+      da_foreach(statement_t*, it, s->while_stmt.body)
+        free_statement(*(it));
+      da_free(s->while_stmt.body); 
+    }
+  }
+
   free(s);
 }
 
