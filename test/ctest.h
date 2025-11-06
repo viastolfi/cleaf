@@ -266,7 +266,7 @@ int main(void)
 
   CT_PRINT("[" COLOR_SUM "====" COLOR_RESET "] " COLOR_BOLD "Summary : " COLOR_HINT "%d " COLOR_RESET COLOR_BOLD "Test | " COLOR_SUCCESS "%d " COLOR_RESET COLOR_BOLD "Success | " COLOR_FAIL "%d " COLOR_RESET COLOR_BOLD "Fail\n" BOLD_OFF, total, success, total - success);
 
-  return 0;
+  return total - success;
 }
 
 #endif // CT_TEST_IMPLEMENTATION
