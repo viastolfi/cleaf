@@ -1,0 +1,19 @@
+name: AddressSanitizer Checks
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  asan:
+    name: ASan / UBSan Run
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build & test with ASan/UBSan
+        run: |
+          CFLAGS="-fsanitize=address,undefined -g -O1" make asan-test || make test
+

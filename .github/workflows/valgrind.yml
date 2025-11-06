@@ -1,0 +1,29 @@
+name: Valgrind Memory Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  valgrind:
+    name: Valgrind Full Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Valgrind
+        run: sudo apt-get update && sudo apt-get install -y valgrind
+
+      - name: Build
+        run: make all
+
+      - name: Run tests under Valgrind
+        run: |
+          valgrind --leak-check=full \
+                   --show-leak-kinds=all \
+                   --track-origins=yes \
+                   --error-exitcode=1 \
+                   ./build/ast_test
+

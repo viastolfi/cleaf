@@ -15,7 +15,7 @@ OBJ = \
 CC = gcc
 CFLAGS = -Wall -Wextra -g
 
-.PHONY: all clean test
+.PHONY: all clean test asan-test valgrind-test
 
 all: $(BUILD)/cleaf
 
@@ -38,6 +38,13 @@ test: $(TEST_BIN)
 $(TEST_BIN): $(TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/frontend/error.c
 	@mkdir -p $(BUILD)
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
+
+asan-test:
+	CFLAGS="-fsanitize=address,undefined -g -O1" make test
+
+valgrind-test:
+	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./test_executable_name
+
 
 clean:
 	rm -rf $(BUILD)

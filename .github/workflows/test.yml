@@ -1,18 +1,22 @@
-name: C test CI
+name: C Tests
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - "**"
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
-  build:
-
+  test:
+    name: Run unit tests
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: make
-      run: CFLAGS="-fsanitize=address,undefined -g -O1" make test
+      - uses: actions/checkout@v4
+
+      - name: Build & run tests
+        run: |
+          make test
 
