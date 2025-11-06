@@ -14,4 +14,5 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: make
-      run: make test
+      run: CFLAGS="-fsanitize=address,undefined -g -O1" make test
+
