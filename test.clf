@@ -32,6 +32,11 @@ fn main(int a, string b): int {
     ++i;
   }
 
+  // for statement
+  for (var i = 0; i < 10; ++i) {
+    var b = 3; 
+  }
+
   // function calling
   test(a, 5, "test");
 

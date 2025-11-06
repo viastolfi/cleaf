@@ -1233,6 +1233,108 @@ statement_t* ast_parse_while_stmt(parser_t* p)
   return s;
 }
 
+statement_t* ast_parse_for_stmt(parser_t* p)
+{
+  statement_t* s = (statement_t*) malloc(sizeof(statement_t));
+  if (!s) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return NULL;
+  }
+  memset(s, 0, sizeof(statement_t));
+
+  if (!expect(p, '(', "expected '(' after for statement")) {
+    free_statement(s);
+    return NULL; 
+  }
+  
+  if (check_is_type(p) || strcmp(peek(p)->string_value, "var") == 0) {
+    declaration_t* init = parse_declaration(p);
+    if (!init) {
+      error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+         "expected init declaration"); 
+      free_statement(s);
+      return NULL;
+    }
+    s->for_stmt.decl_init = init;
+  } else {
+    expression_t* init = parse_expression(p);
+    if (!init) {
+      error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+          "expected init expression"); 
+      free_statement(s);
+      return NULL;
+    }
+    s->for_stmt.expr_init = init;
+
+    if (!expect(p, ';', "expected ';' between for expressions")) {
+      free_statement(s);
+      return NULL; 
+    }  
+  }
+
+  expression_t* condition = parse_expression(p);
+  if (!condition) {
+    error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+       "expected condition expression"); 
+    free_statement(s);
+    return NULL;
+  }
+  s->for_stmt.condition = condition;
+
+  if (!expect(p, ';', "expected ';' between for expressions")) {
+    free_statement(s);
+    return NULL; 
+  }
+
+  expression_t* loop = parse_expression(p);
+  if (!loop) {
+    error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+       "expected loop expression"); 
+    free_statement(s);
+    return NULL;
+  }
+  s->for_stmt.loop = loop;
+
+  if (!expect(p, ')', "expected ')' after for statement")) {
+    free_statement(s);
+    return NULL; 
+  }
+
+  if (!expect(p, '{', "expected '{' after for declaration")) {
+    free_statement(s); 
+    return NULL;
+  }
+
+  statement_block_t* body = (statement_block_t*) malloc(sizeof(statement_block_t));
+  if (!body) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    free_statement(s);
+    return NULL;
+  }
+
+  while(!check(p, '}')) {
+    statement_t* stmt = parse_statement(p); 
+    if (!stmt) {
+      error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+         "expected statement"); 
+      da_foreach(statement_t*, it, body)
+        free_statement(*(it));
+      da_free(body);
+      free_statement(s);
+      return NULL;
+    }
+    da_append(body, stmt);
+  }
+  s->for_stmt.body = body;
+
+  if (!expect(p, '}', "expected '}' after body")) {
+    free_statement(s);
+    return NULL; 
+  }
+
+  return s;
+}
+
 statement_t* parse_statement(parser_t* p) 
 {
   if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "return") == 0) {
@@ -1248,6 +1350,11 @@ statement_t* parse_statement(parser_t* p)
   if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "while") == 0) {
     advance(p); 
     return ast_parse_while_stmt(p);
+  }
+
+  if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "for") == 0) {
+    advance(p);
+    return ast_parse_for_stmt(p); 
   }
 
   // WARNING: this can be unsafe if string_value is NULL
