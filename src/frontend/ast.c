@@ -185,7 +185,7 @@ bool check(parser_t* p, long kind)
 
 bool check_next(parser_t* p, long kind, int range) 
 {
-  if ((size_t) (p->pos + range) > p->count)
+  if ((size_t) (p->pos + range) >= p->count)
     return false;
 
   return p->items[p->pos + range].type == kind;
@@ -194,6 +194,9 @@ bool check_next(parser_t* p, long kind, int range)
 bool check_is_type(parser_t* p) 
 {
   token_t* tok = peek(p);
+  if (!tok)
+    return false;
+
   if (!tok->string_value) {
     if (p->error_ctx) {
       error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR, 
