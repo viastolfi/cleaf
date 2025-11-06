@@ -251,6 +251,19 @@ ct_test(ast, unary_post_dec, "i--;")
   da_free(&parser);
 }
 
+ct_test(ast, unary_single_char, "!i;")
+{
+  statement_t* s = parse_statement(&parser);
+  expression_t* e = s->expr_stmt.expr;
+
+  ct_assert_eq(e->type, EXPRESSION_UNARY, "Expression type should be UNARY");
+  ct_assert_eq(e->unary.op, UNARY_NOT, "Unary op should be NOT");
+  ct_assert_eq(e->unary.operand->var.name, "i", "Unary operand name should be 'i'");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
 // === CONTROL FLOW ===
 
 ct_test(ast, if_statement, "if (a == 4) { a = 3; } else { a = 4; }")
