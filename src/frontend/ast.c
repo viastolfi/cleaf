@@ -1069,7 +1069,11 @@ statement_t* ast_parse_if_stmt(parser_t* p)
     if (!stmt) {
       error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR, 
             "expected statement"); 
-      free_statement(stmt);
+      free_statement(s);
+      da_foreach(statement_t*, it, then_sb) 
+        free_statement(*(it)); 
+      da_free(then_sb);
+      return NULL;
     }
     da_append(then_sb, stmt);
   }
@@ -1099,6 +1103,9 @@ statement_t* ast_parse_if_stmt(parser_t* p)
       if (!stmt) {
         error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
         free_statement(s);
+        da_foreach(statement_t*, it, else_sb)
+          free_statement(*(it));
+        da_free(else_sb);
         return NULL;
       } 
       da_append(else_sb, stmt);
