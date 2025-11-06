@@ -157,20 +157,27 @@ extern void lexer_init_lexer(lexer_t* l, const char* input_stream, const char* e
 
 static token_t lexer_copy_token(lexer_t* lex) 
 {
-  token_t token;
+  token_t token = {0};
   token.type = lex->token;
   token.source_pos = lex->parse_point;
   
   switch (lex->token) {
     case LEXER_token_id: case LEXER_token_dqstring: 
-      token.string_value = strdup(lex->string_value);
-      token.string_len = strlen(lex->string_value);
+      if (lex->string_value) {
+        token.string_value = strdup(lex->string_value);
+        token.string_len = strlen(lex->string_value);
+      } else {
+        token.string_value = NULL;
+        token.string_len = 0;  
+      }
       break;
     case LEXER_token_intlit:
       token.int_value = lex->int_value;
       break;
     default:
-      // TODO: implement this
+      token.string_value = NULL;
+      token.string_len = 0;
+      token.int_value = 0;
       return token;
   }
 

@@ -823,6 +823,12 @@ declaration_t* ast_parse_function(parser_t* p)
 
   statement_t* s;
   statement_block_t* sb = (statement_block_t*) malloc(sizeof(statement_block_t));
+  if (!sb) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    free_declaration(decl);
+    return NULL;
+  }
+  memset(sb, 0, sizeof(statement_block_t));
   while ((s = parse_statement(p)) != NULL)
     da_append(sb, s);
 
@@ -1126,6 +1132,7 @@ statement_t* ast_parse_if_stmt(parser_t* p)
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return NULL; 
   }
+  memset(then_sb, 0, sizeof(statement_block_t));
   while (!check(p, '}')) {
     statement_t* stmt = parse_statement(p);
     if (!stmt) {
@@ -1160,6 +1167,7 @@ statement_t* ast_parse_if_stmt(parser_t* p)
       free_statement(s);
       return NULL;
     }
+    memset(else_sb, 0, sizeof(statement_block_t));
     while (!check(p, '}')) {
       statement_t* stmt = parse_statement(p);
       if (!stmt) {
@@ -1225,6 +1233,7 @@ statement_t* ast_parse_while_stmt(parser_t* p)
     free_statement(s);
     return NULL;
   }
+  memset(block, 0, sizeof(statement_block_t));
   while(!check(p, '}')) {
     statement_t* stmt = parse_statement(p); 
     if (!stmt) {
@@ -1327,6 +1336,7 @@ statement_t* ast_parse_for_stmt(parser_t* p)
     free_statement(s);
     return NULL;
   }
+  memset(body, 0, sizeof(statement_block_t));
 
   while(!check(p, '}')) {
     statement_t* stmt = parse_statement(p); 
