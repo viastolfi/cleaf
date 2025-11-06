@@ -320,3 +320,21 @@ ct_test(ast, while_statement, "while (i == 10) { i = 3; }")
   free_statement(s);
   da_free(&parser);
 }
+
+ct_test(ast, for_statement, "for (var i = 0; i < 10; ++i) { b = 3; }")
+{
+  statement_t* s = parse_statement(&parser);
+  ct_assert_eq(s->type, STATEMENT_FOR, "Statement type should be FOR");
+  ct_assert_not_null(s->for_stmt.decl_init, "For statement declaration should not be NULL");
+  ct_assert_eq(s->for_stmt.decl_init->type, DECLARATION_VAR, "Declaration type should be VAR");
+  expression_t* cond = s->for_stmt.condition;
+  ct_assert_eq(cond->type, EXPRESSION_BINARY, "Condition type should be BINARY");
+  ct_assert_eq(cond->binary.op, BINARY_LT, "Binary expression type should be LT");
+  expression_t* loop = s->for_stmt.loop;
+  ct_assert_eq(loop->type, EXPRESSION_UNARY, "Loop type should be UNARY");
+  ct_assert_eq(loop->unary.op, UNARY_PRE_INC, "Unary expression type should be PRE_INC");
+  ct_assert_eq(s->for_stmt.body->items[0]->expr_stmt.expr->type, EXPRESSION_ASSIGN, "Body expression type should be assign");
+
+  free_statement(s);
+  da_free(&parser);
+}
