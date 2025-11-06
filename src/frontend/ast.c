@@ -636,6 +636,8 @@ expression_t* parse_expression(parser_t* p)
       check_next(p, '-', 1) ||
       check_next(p, '*', 1) ||
       check_next(p, '/', 1) ||
+      check_next(p, '<', 1) ||
+      check_next(p, '>', 1) ||
       check_next(p, LEXER_token_eq, 1) ||
       check_next(p, LEXER_token_neq, 1) ||
       check_next(p, LEXER_token_gteq, 1) ||
