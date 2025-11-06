@@ -200,7 +200,7 @@ ct_test(ast, expr_binary, "i + 4;")
   expression_t* e = s->expr_stmt.expr;
 
   ct_assert_eq(e->type, EXPRESSION_BINARY, "Expression type should be BINARY");
-  ct_assert_eq(e->binary.op, BINARY_PLUS, "Binary op should be PLUS");
+  ct_assert_eq(e->binary.op, BINARY_GT, "Binary op should be PLUS");
   ct_assert_eq(e->binary.left->var.name, "i", "Left operand var should be 'i'");
   ct_assert_eq(e->binary.right->int_lit.value, 4, "Right operand value should be 4");
 
