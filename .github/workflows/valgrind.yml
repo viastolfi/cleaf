@@ -25,5 +25,5 @@ jobs:
                    --show-leak-kinds=all \
                    --track-origins=yes \
                    --error-exitcode=1 \
-                   ./build/ast_test
+                   ./build/cleaf test.clf
 
