@@ -419,7 +419,41 @@ expression_t* ast_parse_expr_binary(parser_t* p)
   e->binary.left = left;
 
   token_t* op_tok = advance(p);
-  e->binary.op = op_tok->type;
+  switch (op_tok->type) {
+    case '+':
+     e->binary.op = BINARY_PLUS;
+     break; 
+    case '-':
+     e->binary.op = BINARY_MINUS;
+     break;
+    case '*':
+     e->binary.op = BINARY_MUL;
+     break;
+    case '/':
+     e->binary.op = BINARY_DIV;
+     break;
+    case '>':
+     e->binary.op = BINARY_GT;
+     break;
+    case LEXER_token_gteq:
+     e->binary.op = BINARY_GTE;
+     break;
+    case '<':
+     e->binary.op = BINARY_LT;
+     break;
+    case LEXER_token_lseq:
+     e->binary.op = BINARY_LTE;
+     break;
+    case LEXER_token_eq:
+     e->binary.op = BINARY_EQ;
+     break;
+    case LEXER_token_neq:
+     e->binary.op = BINARY_NEQ;
+     break;
+    default:
+     error_report_at_token(p->error_ctx, op_tok, ERROR_SEVERITY_ERROR,
+         "unexpected binary operation token");
+  }
 
   e->binary.right = parse_expression(p);
   if (!e->binary.right) {

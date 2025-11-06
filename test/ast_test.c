@@ -200,7 +200,7 @@ ct_test(ast, expr_binary, "i + 4;")
   expression_t* e = s->expr_stmt.expr;
 
   ct_assert_eq(e->type, EXPRESSION_BINARY, "Expression type should be BINARY");
-  ct_assert_eq(e->binary.op, '+', "Binary op should be '+'");
+  ct_assert_eq(e->binary.op, BINARY_PLUS, "Binary op should be '+'");
   ct_assert_eq(e->binary.left->var.name, "i", "Left operand var should be 'i'");
   ct_assert_eq(e->binary.right->int_lit.value, 4, "Right operand value should be 4");
 
@@ -273,7 +273,7 @@ ct_test(ast, if_statement, "if (a == 4) { a = 3; } else { a = 4; }")
   expression_t* cond = s->if_stmt.condition;
 
   ct_assert_eq(cond->type, EXPRESSION_BINARY, "Condition should be BINARY expression");
-  ct_assert_eq(cond->binary.op, LEXER_token_eq, "Binary op should be '=='");
+  ct_assert_eq(cond->binary.op, BINARY_EQ, "Binary op should be '=='");
   ct_assert_eq(cond->binary.left->var.name, "a", "LHS var name should be 'a'");
   ct_assert_eq(cond->binary.right->int_lit.value, 4, "RHS literal should be 4");
 
@@ -294,7 +294,7 @@ ct_test(ast, while_statement, "while (i == 10) { i = 3; }")
   expression_t* cond = s->while_stmt.condition;
 
   ct_assert_eq(cond->type, EXPRESSION_BINARY, "Condition should be BINARY expression");
-  ct_assert_eq(cond->binary.op, LEXER_token_eq, "Binary op should be '=='");
+  ct_assert_eq(cond->binary.op, BINARY_EQ, "Binary op should be '=='");
   ct_assert_eq(cond->binary.left->var.name, "i", "LHS var name should be 'i'");
   ct_assert_eq(cond->binary.right->int_lit.value, 10, "RHS literal should be 10");
 

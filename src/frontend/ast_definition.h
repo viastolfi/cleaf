@@ -46,6 +46,20 @@ typedef enum
   UNARY_POST_DEC
 } unary_op_kind;
 
+typedef enum 
+{
+  BINARY_PLUS,
+  BINARY_MINUS,
+  BINARY_MUL,
+  BINARY_DIV,
+  BINARY_GT,
+  BINARY_GTE,
+  BINARY_LT,
+  BINARY_LTE,
+  BINARY_EQ,
+  BINARY_NEQ
+} binary_op_kind;
+
 // ----------------- Forward Declarations ------------------
 
 typedef struct declaration_t declaration_t;
@@ -146,7 +160,7 @@ struct expression_t
     struct { 
       expression_t* left; 
       expression_t* right; 
-      long op; 
+      binary_op_kind op;
     } binary;
     struct { 
       char* callee; 
