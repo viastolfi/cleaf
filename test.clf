@@ -26,6 +26,12 @@ fn main(int a, string b): int {
     a = 4; 
   }
 
+  // while statement
+  var i = 0;
+  while (i == 0) {
+    ++i;
+  }
+
   // function calling
   test(a, 5, "test");
 

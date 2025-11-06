@@ -14,7 +14,8 @@ typedef enum
   STATEMENT_EXPR,
   STATEMENT_RETURN,
   STATEMENT_DECL,
-  STATEMENT_IF
+  STATEMENT_IF,
+  STATEMENT_WHILE
 } statement_kind;
 
 typedef enum 
@@ -124,6 +125,10 @@ struct statement_t
       statement_block_t* then_branch;
       statement_block_t* else_branch;
     } if_stmt;
+    struct {
+      expression_t* condition;
+      statement_block_t* body;
+    } while_stmt;
   };
 };
 

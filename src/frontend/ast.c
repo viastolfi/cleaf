@@ -1114,6 +1114,72 @@ statement_t* ast_parse_if_stmt(parser_t* p)
   return s;
 }
 
+statement_t* ast_parse_while_stmt(parser_t* p)
+{
+  statement_t* s = (statement_t*) malloc(sizeof(statement_t));
+  if (!s) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return NULL;
+  }
+  memset(s, 0, sizeof(statement_t));
+
+  s->type = STATEMENT_WHILE;
+
+  if (!expect(p, '(', "expected '(' after while identifier")) {
+    free_statement(s);
+    return NULL; 
+  }
+
+  expression_t* cond = parse_expression(p);
+  if (!cond) {
+    error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+        "expected condition in while statement");
+    free_statement(s);
+    return NULL;
+  }
+
+  s->while_stmt.condition = cond;
+
+  if (!expect(p, ')', "expected ')' after condition")) {
+    free_statement(s); 
+    return NULL;
+  }
+
+  if (!expect(p, '{', "expected '{' after while declaration")) {
+    free_statement(s);  
+    return NULL;
+  }
+
+  statement_block_t* block = (statement_block_t*) malloc(sizeof(statement_block_t));
+  if (!block) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    free_statement(s);
+    return NULL;
+  }
+  while(!check(p, '}')) {
+    statement_t* stmt = parse_statement(p); 
+    if (!stmt) {
+      error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+         "expected statement in while body"); 
+      free_statement(s);
+      da_foreach(statement_t*, it, block) {
+        free_statement(*(it)); 
+      }
+      free(block);
+      return NULL;
+    }
+    da_append(block, stmt);
+  }
+  s->while_stmt.body = block;
+
+  if (!expect(p, '}', "expected '}' after while body")) {
+    free_statement(s); 
+    return NULL;
+  }
+
+  return s;
+}
+
 statement_t* parse_statement(parser_t* p) 
 {
   if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "return") == 0) {
@@ -1124,6 +1190,11 @@ statement_t* parse_statement(parser_t* p)
   if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "if") == 0) {
     advance(p);  
     return ast_parse_if_stmt(p);
+  }
+
+  if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "while") == 0) {
+    advance(p); 
+    return ast_parse_while_stmt(p);
   }
 
   // WARNING: this can be unsafe if string_value is NULL
