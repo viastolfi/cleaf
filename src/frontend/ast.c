@@ -27,10 +27,10 @@ void free_expression(expression_t* e)
 
   if (e->type == EXPRESSION_BINARY) {
     if (e->binary.left)
-     free(e->binary.left); 
+      free_expression(e->binary.left); 
 
     if (e->binary.right)
-      free(e->binary.right);
+      free_expression(e->binary.right);
   }
 
   if (e->type == EXPRESSION_CALL) {
@@ -72,11 +72,13 @@ void free_statement(statement_t* s)
     if (s->if_stmt.then_branch) {
       da_foreach(statement_t*, it, s->if_stmt.then_branch)
         free_statement(*(it)); 
+      da_free(s->if_stmt.then_branch);
       free(s->if_stmt.then_branch);
     }
     if (s->if_stmt.else_branch) {
       da_foreach(statement_t*, it, s->if_stmt.else_branch)
         free_statement(*(it));
+      da_free(s->if_stmt.else_branch);
       free(s->if_stmt.else_branch);
     }
   }
@@ -88,14 +90,19 @@ void free_statement(statement_t* s)
       da_foreach(statement_t*, it, s->while_stmt.body)
         free_statement(*(it));
       da_free(s->while_stmt.body); 
+      free(s->while_stmt.body);
     }
   }
 
   if (s->type == STATEMENT_FOR) {
-    if (s->for_stmt.decl_init)
-     free_declaration(s->for_stmt.decl_init);
-    if (s->for_stmt.expr_init)
-     free_expression(s->for_stmt.expr_init); 
+    if (s->for_stmt.decl_init) {
+      declaration_t* d = s->for_stmt.decl_init;
+      if (d->type == DECLARATION_VAR || d->type == DECLARATION_FUNC) {
+        free_declaration(s->for_stmt.decl_init);
+      } else {
+        free_expression(s->for_stmt.expr_init);
+      }
+    }
     if (s->for_stmt.condition)
       free_expression(s->for_stmt.condition);
     if (s->for_stmt.loop)
@@ -104,6 +111,7 @@ void free_statement(statement_t* s)
       da_foreach(statement_t*, it, s->for_stmt.body)
        free_statement(*(it)); 
       da_free(s->for_stmt.body);
+      free(s->for_stmt.body);
     }
   }
 
@@ -135,7 +143,7 @@ void free_declaration(declaration_t* d)
       da_foreach(statement_t*, it, d->func.body) {
         free_statement(*it);
       }
-
+      da_free(d->func.body);
       free(d->func.body);
     }
   }
@@ -1130,23 +1138,22 @@ statement_t* ast_parse_if_stmt(parser_t* p)
   statement_block_t* then_sb = (statement_block_t*) malloc(sizeof(statement_block_t));
   if (!then_sb) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    free_statement(s);
     return NULL; 
   }
   memset(then_sb, 0, sizeof(statement_block_t));
+  s->if_stmt.then_branch = then_sb;
+  
   while (!check(p, '}')) {
     statement_t* stmt = parse_statement(p);
     if (!stmt) {
       error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR, 
             "expected statement"); 
       free_statement(s);
-      da_foreach(statement_t*, it, then_sb) 
-        free_statement(*(it)); 
-      da_free(then_sb);
       return NULL;
     }
     da_append(then_sb, stmt);
   }
-  s->if_stmt.then_branch = then_sb;
 
   if (!expect(p, '}', "expected '}' after if body")) {
     free_statement(s); 
@@ -1168,19 +1175,17 @@ statement_t* ast_parse_if_stmt(parser_t* p)
       return NULL;
     }
     memset(else_sb, 0, sizeof(statement_block_t));
+    s->if_stmt.else_branch = else_sb;
+    
     while (!check(p, '}')) {
       statement_t* stmt = parse_statement(p);
       if (!stmt) {
         error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
         free_statement(s);
-        da_foreach(statement_t*, it, else_sb)
-          free_statement(*(it));
-        da_free(else_sb);
         return NULL;
       } 
       da_append(else_sb, stmt);
     }
-    s->if_stmt.else_branch = else_sb;
 
     if (!expect(p, '}', "expected '}' after else body")) {
       free_statement(s);
@@ -1234,21 +1239,18 @@ statement_t* ast_parse_while_stmt(parser_t* p)
     return NULL;
   }
   memset(block, 0, sizeof(statement_block_t));
+  s->while_stmt.body = block;
+  
   while(!check(p, '}')) {
     statement_t* stmt = parse_statement(p); 
     if (!stmt) {
       error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
          "expected statement in while body"); 
       free_statement(s);
-      da_foreach(statement_t*, it, block) {
-        free_statement(*(it)); 
-      }
-      free(block);
       return NULL;
     }
     da_append(block, stmt);
   }
-  s->while_stmt.body = block;
 
   if (!expect(p, '}', "expected '}' after while body")) {
     free_statement(s); 
@@ -1266,6 +1268,8 @@ statement_t* ast_parse_for_stmt(parser_t* p)
     return NULL;
   }
   memset(s, 0, sizeof(statement_t));
+
+  s->type = STATEMENT_FOR;
 
   if (!expect(p, '(', "expected '(' after for statement")) {
     free_statement(s);
@@ -1337,21 +1341,18 @@ statement_t* ast_parse_for_stmt(parser_t* p)
     return NULL;
   }
   memset(body, 0, sizeof(statement_block_t));
+  s->for_stmt.body = body;
 
   while(!check(p, '}')) {
     statement_t* stmt = parse_statement(p); 
     if (!stmt) {
       error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
          "expected statement"); 
-      da_foreach(statement_t*, it, body)
-        free_statement(*(it));
-      da_free(body);
       free_statement(s);
       return NULL;
     }
     da_append(body, stmt);
   }
-  s->for_stmt.body = body;
 
   if (!expect(p, '}', "expected '}' after body")) {
     free_statement(s);

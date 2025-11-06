@@ -308,7 +308,7 @@ ct_test(ast, while_statement, "while (i == 10) { i = 3; }")
   expression_t* cond = s->while_stmt.condition;
 
   ct_assert_eq(cond->type, EXPRESSION_BINARY, "Condition should be BINARY expression");
-  ct_assert_eq(cond->binary.op, BINARY_PLUS, "Binary op should be EQ");
+  ct_assert_eq(cond->binary.op, BINARY_EQ, "Binary op should be EQ");
   ct_assert_eq(cond->binary.left->var.name, "i", "LHS var name should be 'i'");
   ct_assert_eq(cond->binary.right->int_lit.value, 10, "RHS literal should be 10");
 

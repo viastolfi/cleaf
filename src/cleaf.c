@@ -35,7 +35,6 @@ int main(int argc, char** argv)
   }
   fclose(f);
 
-  // Initialize error context
   error_context_t error_ctx;
   error_init(&error_ctx, argv[1], text, len);
 
@@ -73,6 +72,13 @@ int main(int argc, char** argv)
     free_declaration(*it);
   }
   da_free(&program);
+  
+  for (size_t i = 0; i < parser.count; i++) {
+    if (parser.items[i].string_value) {
+      free(parser.items[i].string_value);
+    }
+  }
+  
   da_free(&parser);
   free(text);
   return 0;
