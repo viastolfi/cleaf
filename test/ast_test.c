@@ -287,3 +287,22 @@ ct_test(ast, if_statement, "if (a == 4) { a = 3; } else { a = 4; }")
   da_free(&parser);
 }
 
+ct_test(ast, while_statement, "while (i == 10) { i = 3; }") 
+{
+  statement_t* s = parse_statement(&parser);
+  ct_assert_eq(s->type, STATEMENT_WHILE, "Statemet type should be WHILE");
+  expression_t* cond = s->while_stmt.condition;
+
+  ct_assert_eq(cond->type, EXPRESSION_BINARY, "Condition should be BINARY expression");
+  ct_assert_eq(cond->binary.op, LEXER_token_eq, "Binary op should be '=='");
+  ct_assert_eq(cond->binary.left->var.name, "i", "LHS var name should be 'i'");
+  ct_assert_eq(cond->binary.right->int_lit.value, 10, "RHS literal should be 10");
+
+  statement_t* body = s->while_stmt.body->items[0];
+
+  ct_assert_eq(body->expr_stmt.expr->assign.lhs->var.name, "i", "LHS var name should be 'i'");
+  ct_assert_eq(body->expr_stmt.expr->assign.rhs->int_lit.value, 3, "RHS literal value should be 3");
+
+  free_statement(s);
+  da_free(&parser);
+}
