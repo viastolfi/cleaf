@@ -780,6 +780,8 @@ declaration_t* ast_parse_function(parser_t* p)
       return NULL;
     }
 
+    param.source_pos = name_tok->source_pos;
+
     da_append(&(decl->func.params), param);
     if (check(p, ',')) {
       advance(p);

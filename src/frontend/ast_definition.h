@@ -73,6 +73,7 @@ typedef struct
 {
   char* name;
   type_kind type;
+  const char* source_pos;
 } typed_identifier_t;
 
 // ----------------- Dynamic arrays ------------------
@@ -83,7 +84,6 @@ typedef struct
   size_t count;
   size_t capacity;
 } function_param_array;
-
 
 typedef struct 
 {
