@@ -69,7 +69,11 @@ int main(int argc, char** argv)
     da_append(&program, decl);
   }
 
-  semantic_analyze(&program);
+  semantic_analyzer_t analyzer = {0};
+  analyzer.error_ctx = &error_ctx;
+  analyzer.ast = &program;
+
+  semantic_analyze(&analyzer);
 
   da_foreach(declaration_t*, it, &program) {
     free_declaration(*it);

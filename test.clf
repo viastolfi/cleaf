@@ -44,6 +44,6 @@ fn main(int a, string b): int {
   return 0;
 }
 
-fn test(int a, int b, string c) {
+fn test(int a, int a, string b) {
   int a = 2;
 }

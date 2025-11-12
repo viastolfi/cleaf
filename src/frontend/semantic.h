@@ -11,6 +11,13 @@
 
 typedef struct 
 {
+  char** items;
+  size_t count;
+  size_t capacity;
+} function_params_name_t;
+
+typedef struct 
+{
   char* name;
   type_kind return_type;
   type_kind* params_type;
@@ -24,8 +31,19 @@ typedef struct
   size_t capacity;
 } function_symbol_table_t;
 
-void semantic_analyze(declaration_array* ast);
-function_symbol_table_t* semantic_load_function_definition(declaration_array* ast);
-void semantic_free_function_definition(function_symbol_table_t* fst);
+typedef struct 
+{
+  error_context_t* error_ctx;
+
+  declaration_array* ast;
+
+  function_symbol_table_t* fst;
+} semantic_analyzer_t;
+
+int is_param_name_declared(function_params_name_t* fpn, const char* name);
+
+void semantic_analyze(semantic_analyzer_t* analyzer);
+void semantic_load_function_definition(semantic_analyzer_t* analyzer);
+void semantic_free_function_definition(semantic_analyzer_t* analyzer);
 
 #endif // SEMANTIC_H
