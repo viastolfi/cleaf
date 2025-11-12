@@ -52,9 +52,7 @@ ct_test(ast, fn_ret_type, "fn main(): int {}")
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_not_null(decl, "Declaration should not be NULL");
-  ct_assert_not_null(decl->func.return_type.name, "Return type should not be NULL");
-  ct_assert_eq(decl->func.return_type.name, "int", "Return type name should match source code");
-  ct_assert_eq(decl->func.return_type.kind, TYPE_INT, "Return type kind should be TYPE_INT");
+  ct_assert_eq(decl->func.return_type, TYPE_INT, "Return type kind should be TYPE_INT");
 
   free_declaration(decl);
   da_free(&parser);
@@ -70,12 +68,10 @@ ct_test(ast, fn_params, "fn main(int a, string b) {}")
   typed_identifier_t p2 = decl->func.params.items[1];
 
   ct_assert_eq(p1.name, "a", "First parameter name should be 'a'");
-  ct_assert_eq(p1.type.kind, TYPE_INT, "First parameter type should be TYPE_INT");
-  ct_assert_eq(p1.type.name, "int", "First parameter type name should be 'int'");
+  ct_assert_eq(p1.type, TYPE_INT, "First parameter type should be TYPE_INT");
 
   ct_assert_eq(p2.name, "b", "Second parameter name should be 'b'");
-  ct_assert_eq(p2.type.kind, TYPE_STRING, "Second parameter type should be TYPE_STRING");
-  ct_assert_eq(p2.type.name, "string", "Second parameter type name should be 'string'");
+  ct_assert_eq(p2.type, TYPE_STRING, "Second parameter type should be TYPE_STRING");
 
   free_declaration(decl);
   da_free(&parser);
@@ -88,8 +84,7 @@ ct_test(ast, typed_int_var, "int i = 3;")
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_eq(decl->var_decl.ident.name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type.name, "int", "Variable type name should be 'int'");
-  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_INT, "Variable type should be TYPE_INT");
+  ct_assert_eq(decl->var_decl.ident.type, TYPE_INT, "Variable type should be TYPE_INT");
   ct_assert_not_null(decl->var_decl.init, "Variable init expression should not be NULL");
   ct_assert_eq(decl->var_decl.init->type, EXPRESSION_INT_LIT, "Init expression should be INT literal");
   ct_assert_eq(decl->var_decl.init->int_lit.value, 3, "Init int value should be 3");
@@ -103,8 +98,7 @@ ct_test(ast, typed_string_var, "string i = \"test\";")
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_eq(decl->var_decl.ident.name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type.name, "string", "Variable type name should be 'string'");
-  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_STRING, "Variable type should be TYPE_STRING");
+  ct_assert_eq(decl->var_decl.ident.type, TYPE_STRING, "Variable type should be TYPE_STRING");
   ct_assert_eq(decl->var_decl.init->type, EXPRESSION_STRING_LIT, "Init expression should be STRING literal");
   ct_assert_eq(decl->var_decl.init->string_lit.value, "test", "Init string literal should be 'test'");
 
@@ -118,8 +112,7 @@ ct_test(ast, untyped_var_decl, "var i = 3;")
 
   ct_assert_eq(decl->type, DECLARATION_VAR, "Declaration type should be VAR");
   ct_assert_eq(decl->var_decl.ident.name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_UNTYPE, "Variable type should be UNTYPE");
-  ct_assert_eq(decl->var_decl.ident.type.name, "var", "Variable type name should be 'var'");
+  ct_assert_eq(decl->var_decl.ident.type, TYPE_UNTYPE, "Variable type should be UNTYPE");
   ct_assert_eq(decl->var_decl.init->type, EXPRESSION_INT_LIT, "Init expression should be INT literal");
   ct_assert_eq(decl->var_decl.init->int_lit.value, 3, "Init int literal value should be 3");
 
@@ -133,8 +126,7 @@ ct_test(ast, uninitialized_var_decl, "var i;")
 
   ct_assert_eq(decl->type, DECLARATION_VAR, "Declaration type should be VAR");
   ct_assert_eq(decl->var_decl.ident.name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_UNTYPE, "Variable type should be UNTYPE");
-  ct_assert_eq(decl->var_decl.ident.type.name, "var", "Variable type name should be 'var'");
+  ct_assert_eq(decl->var_decl.ident.type, TYPE_UNTYPE, "Variable type should be UNTYPE");
   ct_assert(!decl->var_decl.init, "Init expression should be NULL for uninitialized var");
 
   free_declaration(decl);
