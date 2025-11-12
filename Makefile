@@ -6,11 +6,13 @@ CS = \
         $(SRC)/cleaf.c \
         $(SRC)/frontend/ast.c \
         $(SRC)/frontend/error.c \
+				$(SRC)/frontend/semantic.c \
 
 OBJ = \
         $(BUILD)/cleaf.o \
         $(BUILD)/frontend/ast.o \
         $(BUILD)/frontend/error.o \
+				$(BUILD)/frontend/semantic.o \
 
 CC = gcc
 CFLAGS = -Wall -Wextra -g
@@ -35,7 +37,7 @@ test: $(TEST_BIN)
 	@echo "Running AST tests..."
 	@$(TEST_BIN) 2> test.log
 
-$(TEST_BIN): $(TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/frontend/error.c
+$(TEST_BIN): $(TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/frontend/error.c $(SRC)/frontend/semantic.c
 	@mkdir -p $(BUILD)
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
 
@@ -43,7 +45,7 @@ asan-test:
 	CFLAGS="-fsanitize=address,undefined -g -O1" make test
 
 valgrind-test:
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./test_executable_name
+	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test.clf
 
 
 clean:

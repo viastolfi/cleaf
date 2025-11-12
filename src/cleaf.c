@@ -9,6 +9,7 @@
 #include "frontend/ast.h"
 #include "frontend/ast_printer.h"
 #include "frontend/error.h"
+#include "frontend/semantic.h"
 
 int main(int argc, char** argv) 
 {
@@ -48,8 +49,8 @@ int main(int argc, char** argv)
       error_report_general(ERROR_SEVERITY_ERROR, "lexer parse error");
       break;
     }
-    lexer_print_token(&lex);
-    printf("    ");
+    //lexer_print_token(&lex);
+    //printf("    ");
     token_t t = lexer_copy_token(&lex);
     da_append(&parser, t);
   }
@@ -68,11 +69,13 @@ int main(int argc, char** argv)
     da_append(&program, decl);
   }
 
+  semantic_analyze(&program);
+
   da_foreach(declaration_t*, it, &program) {
     free_declaration(*it);
   }
   da_free(&program);
-  
+
   for (size_t i = 0; i < parser.count; i++) {
     if (parser.items[i].string_value) {
       free(parser.items[i].string_value);
