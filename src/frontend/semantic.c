@@ -84,7 +84,7 @@ void semantic_load_function_definition(semantic_analyzer_t* analyzer)
 
       for (size_t i = 0; i < (*it)->func.params.count; ++i) {
         if (is_param_name_declared(&declared, (*it)->func.params.items[i].name)) {
-          error_report_at_position(analyzer->error_ctx, (*it)->func.params.items[i].source_pos, ERROR_SEVERITY_ERROR,
+          error_report_at_position(analyzer->error_ctx, (*it)->func.params.items[i].source_pos - 1, ERROR_SEVERITY_ERROR,
               "already defined variable name");
         } else {
           da_append(&declared, (*it)->func.params.items[i].name);

@@ -54,7 +54,6 @@ int main(int argc, char** argv)
     token_t t = lexer_copy_token(&lex);
     da_append(&parser, t);
   }
-  printf("\n");
 
   free(lex.string_storage);
 
