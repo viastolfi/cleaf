@@ -76,6 +76,7 @@ void semantic_load_function_definition(semantic_analyzer_t* analyzer)
         f.params_type[i] = (*it)->func.params.items[i].type; 
       }
 
+      da_free(&declared);
     }
     da_append(fst, f);
   }
