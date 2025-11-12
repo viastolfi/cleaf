@@ -104,6 +104,8 @@ typedef struct
 struct declaration_t
 {
   declaration_kind type;
+  const char* source_pos;
+
   union {
     struct { 
       typed_identifier_t ident; 
@@ -124,6 +126,7 @@ struct declaration_t
 struct statement_t 
 {
   statement_kind type;
+  const char* source_pos;
 
   union {
     struct { expression_t* value; } ret;
@@ -155,6 +158,7 @@ struct statement_t
 struct expression_t 
 {
   expression_kind type;
+  const char* source_pos;
 
   union {
     struct { int value; } int_lit;

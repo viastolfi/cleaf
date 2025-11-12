@@ -249,9 +249,11 @@ expression_t*  ast_parse_expr_int_lit(parser_t* p) {
 
   memset(e, 0, sizeof(expression_t));
   e->type = EXPRESSION_INT_LIT;
-  token_t* t = advance(p);
+  e->source_pos = peek(p)->source_pos;
 
+  token_t* t = advance(p);
   e->int_lit.value = t->int_value;
+
   return e;
 }
 
@@ -265,8 +267,9 @@ expression_t* ast_parse_expr_string_lit(parser_t* p)
   memset(e, 0, sizeof(expression_t));
 
   e->type = EXPRESSION_STRING_LIT;
-  token_t* t = advance(p);
+  e->source_pos = peek(p)->source_pos;
 
+  token_t* t = advance(p);
   if (!t->string_value) {
     if (p->error_ctx) {
       error_report_at_token(p->error_ctx, t, ERROR_SEVERITY_ERROR,
@@ -291,8 +294,9 @@ expression_t* ast_parse_expr_var(parser_t* p)
   memset(e, 0, sizeof(expression_t));
 
   e->type = EXPRESSION_VAR;
-  token_t* var_tok = advance(p);
+  e->source_pos = peek(p)->source_pos;
 
+  token_t* var_tok = advance(p);
   if (!var_tok->string_value) {
     if (p->error_ctx) {
       error_report_at_token(p->error_ctx, var_tok, ERROR_SEVERITY_ERROR,
@@ -303,7 +307,7 @@ expression_t* ast_parse_expr_var(parser_t* p)
   }
 
   e->var.name = strdup(var_tok->string_value);
-  
+
   return e;
 }
 
@@ -317,6 +321,7 @@ expression_t* ast_parse_expr_assign(parser_t* p)
   memset(e, 0, sizeof(expression_t));
 
   e->type = EXPRESSION_ASSIGN;
+  e->source_pos = peek(p)->source_pos;
   
   // We compute lhs here otherwise we fallback in infinit loop 'id ='
   expression_t* lhs = (expression_t*) malloc(sizeof(expression_t));
@@ -371,6 +376,7 @@ expression_t* ast_parse_expr_binary(parser_t* p)
   memset(e, 0, sizeof(expression_t));
 
   e->type = EXPRESSION_BINARY;
+  e->source_pos = peek(p)->source_pos;
 
   expression_t* left = (expression_t*) malloc(sizeof(expression_t));
   if (!left) {
@@ -495,6 +501,7 @@ expression_t*  ast_parse_expr_call(parser_t* p)
     return NULL;
   }
   e->type = EXPRESSION_CALL;
+  e->source_pos = peek(p)->source_pos;
 
   token_t* name_tok = advance(p);
   if (!name_tok->string_value) {
@@ -566,6 +573,7 @@ expression_t* ast_parse_expr_unary(parser_t* p)
   memset(e, 0, sizeof(expression_t));
   
   e->type = EXPRESSION_UNARY;
+  e->source_pos = peek(p)->source_pos;
 
   if (check(p, LEXER_token_plusplus) ||
       check(p, LEXER_token_minusminus) ||
@@ -689,6 +697,10 @@ declaration_t* ast_parse_function(parser_t* p)
   memset(decl, 0, sizeof(declaration_t));
 
   decl->type = DECLARATION_FUNC;
+  decl->source_pos = peek(p)->source_pos;
+
+  // consume 'fn'
+  advance(p);
 
   if (check(p, LEXER_token_id)) {
     token_t * name_tok = advance(p);
@@ -839,6 +851,7 @@ declaration_t* ast_parse_var_decl(parser_t* p)
   memset(d, 0, sizeof(declaration_t));
 
   d->type = DECLARATION_VAR;
+  d->source_pos = peek(p)->source_pos;
 
   // For now, we assume that we can only fall back here if the newt token is a typedef
   // Which mean that next token is an token_id with a string_value
@@ -935,6 +948,7 @@ declaration_t* ast_parse_untype_var_decl(parser_t* p)
   memset(d, 0, sizeof(declaration_t));
 
   d->type = DECLARATION_VAR;
+  d->source_pos = peek(p)->source_pos;
 
   // consume _var
   advance(p);
@@ -996,7 +1010,6 @@ declaration_t* ast_parse_untype_var_decl(parser_t* p)
 declaration_t* parse_declaration(parser_t* p)
 {
   if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "fn") == 0) {
-    advance(p);
     return ast_parse_function(p);
   }
 
@@ -1021,6 +1034,11 @@ statement_t* ast_parse_return_stmt(parser_t* p)
   memset(s, 0, sizeof(statement_t));
 
   s->type = STATEMENT_RETURN;
+  s->source_pos = peek(p)->source_pos;
+
+  // consume 'return'
+  advance(p);
+
   s->ret.value = parse_expression(p);
 
   if (!expect(p, ';', "expected ';' after return statement")) {
@@ -1041,6 +1059,7 @@ statement_t* ast_parse_decl_stmt(parser_t* p)
   memset(s, 0, sizeof(statement_t));
   
   s->type = STATEMENT_DECL;
+  s->source_pos = peek(p)->source_pos;
   
   s->decl_stmt.decl = parse_declaration(p);
   if (!s->decl_stmt.decl) {
@@ -1062,6 +1081,7 @@ statement_t* ast_parse_expr_stmt(parser_t* p)
   memset(s, 0, sizeof(statement_t));
 
   s->type = STATEMENT_EXPR;
+  s->source_pos = peek(p)->source_pos;
 
   s->expr_stmt.expr = parse_expression(p);
   if (!s->expr_stmt.expr) {
@@ -1088,6 +1108,11 @@ statement_t* ast_parse_if_stmt(parser_t* p)
   memset(s, 0, sizeof(statement_t));
 
   s->type = STATEMENT_IF;
+  s->source_pos = peek(p)->source_pos;
+
+  // consume _if
+  advance(p);
+
   if (!expect(p, '(', "expected '(' after if statement")) {
     free_statement(s);  
     return NULL;
@@ -1181,6 +1206,10 @@ statement_t* ast_parse_while_stmt(parser_t* p)
   memset(s, 0, sizeof(statement_t));
 
   s->type = STATEMENT_WHILE;
+  s->source_pos = peek(p)->source_pos;
+
+  // consume _while
+  advance(p);
 
   if (!expect(p, '(', "expected '(' after while identifier")) {
     free_statement(s);
@@ -1245,6 +1274,10 @@ statement_t* ast_parse_for_stmt(parser_t* p)
   memset(s, 0, sizeof(statement_t));
 
   s->type = STATEMENT_FOR;
+  s->source_pos = peek(p)->source_pos;
+
+  // consume _for
+  advance(p);
 
   if (!expect(p, '(', "expected '(' after for statement")) {
     free_statement(s);
@@ -1340,22 +1373,18 @@ statement_t* ast_parse_for_stmt(parser_t* p)
 statement_t* parse_statement(parser_t* p) 
 {
   if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "return") == 0) {
-    advance(p);
     return ast_parse_return_stmt(p);
   } 
 
   if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "if") == 0) {
-    advance(p);  
     return ast_parse_if_stmt(p);
   }
 
   if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "while") == 0) {
-    advance(p); 
     return ast_parse_while_stmt(p);
   }
 
   if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "for") == 0) {
-    advance(p);
     return ast_parse_for_stmt(p); 
   }
 
