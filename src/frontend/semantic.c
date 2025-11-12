@@ -12,11 +12,11 @@ function_symbol_table_t* semantic_load_function_definition(declaration_array* as
   da_foreach(declaration_t*, it, ast) {
     function_symbol_t f = {0};
     char* name = strdup((*it)->func.name); 
-    type_t return_type = (*it)->func.return_type;
+    type_kind return_type = (*it)->func.return_type;
     f.name = name;
     f.return_type = return_type;
     if ((*it)->func.params.count > 0) {
-      f.params_type = calloc((*it)->func.params.count, sizeof(type_t));
+      f.params_type = calloc((*it)->func.params.count, sizeof(type_kind));
       for (size_t i = 0; i < (*it)->func.params.count; ++i) 
         f.params_type[i] = (*it)->func.params.items[i].type; 
     }

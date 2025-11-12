@@ -71,14 +71,8 @@ typedef struct expression_t expression_t;
 
 typedef struct 
 {
-  type_kind kind;
   char* name;
-} type_t;
-
-typedef struct 
-{
-  char* name;
-  type_t type;
+  type_kind type;
 } typed_identifier_t;
 
 // ----------------- Dynamic arrays ------------------
@@ -118,7 +112,7 @@ struct declaration_t
 
     struct { 
       char* name;  
-      type_t return_type; 
+      type_kind return_type; 
       function_param_array params; 
       statement_block_t* body;
     } func;

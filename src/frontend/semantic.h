@@ -11,8 +11,8 @@
 typedef struct 
 {
   char* name;
-  type_t return_type;
-  type_t* params_type;
+  type_kind return_type;
+  type_kind * params_type;
   // TODO: add var for error logging info
 } function_symbol_t;
 

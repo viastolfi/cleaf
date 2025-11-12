@@ -130,14 +130,9 @@ void free_declaration(declaration_t* d)
     da_foreach(typed_identifier_t, it, &(d->func.params)) {
       if (it->name)
         free(it->name);
-      if (it->type.name)
-        free(it->type.name);
     }
 
     da_free(&(d->func.params));
-
-    if (d->func.return_type.name)
-      free(d->func.return_type.name);
 
     if (d->func.body) {
       da_foreach(statement_t*, it, d->func.body) {
@@ -151,9 +146,6 @@ void free_declaration(declaration_t* d)
   if (d->type == DECLARATION_VAR) {
     if (d->var_decl.ident.name) 
       free(d->var_decl.ident.name);
-
-    if (d->var_decl.ident.type.name)
-      free(d->var_decl.ident.type.name);
 
     if(d->var_decl.init)
       free_expression(d->var_decl.init);
@@ -747,14 +739,7 @@ declaration_t* ast_parse_function(parser_t* p)
       return NULL;
     }
 
-    param.type.name = strdup(type_tok->string_value);
-    if (!param.type.name) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      free_declaration(decl);
-      return NULL;
-    }
-
-    param.type.kind = get_type_kind_from_string(param.type.name);
+    param.type = get_type_kind_from_string(type_tok->string_value);
 
     if (!check(p, LEXER_token_id)) {
       token_t* tok = peek(p);
@@ -816,15 +801,7 @@ declaration_t* ast_parse_function(parser_t* p)
       return NULL;
     }
 
-    decl->func.return_type.name = strdup(ret_tok->string_value);
-    decl->func.return_type.kind = get_type_kind_from_string(decl->func.return_type.name);
-
-    if (!decl->func.return_type.name) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      free_declaration(decl);
-      return NULL;
-    }
-
+    decl->func.return_type = get_type_kind_from_string(ret_tok->string_value);
   }
 
   if (!expect(p, '{', "expected '{' to start function body")) {
@@ -867,23 +844,24 @@ declaration_t* ast_parse_var_decl(parser_t* p)
   // Which mean that next token is an token_id with a string_value
   // This Might cause error later on
   token_t* type_tok = advance(p);
-  d->var_decl.ident.type.name = strdup(type_tok->string_value);
-  if (!d->var_decl.ident.type.name) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+
+  if (!type_tok->string_value) {
+    error_report_at_token(p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
+       "expected type"); 
     free_declaration(d);
     return NULL;
   }
 
-  if (strcmp(d->var_decl.ident.type.name, "int") == 0) {
-    d->var_decl.ident.type.kind = TYPE_INT;
-  } else if (strcmp(d->var_decl.ident.type.name, "string") == 0) {
-    d->var_decl.ident.type.kind = TYPE_STRING;
+  if (strcmp(type_tok->string_value, "int") == 0) {
+    d->var_decl.ident.type = TYPE_INT;
+  } else if (strcmp(type_tok->string_value, "string") == 0) {
+    d->var_decl.ident.type = TYPE_STRING;
   } else {
     // For now, let's mark this as an error,
     // In a more advanced compiler this should be marked as TYPE_CUSTOM
     if (p->error_ctx) {
       error_report_at_token(p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
-                           "unknown type '%s'", d->var_decl.ident.type.name);
+                           "unknown type '%s'", type_tok->string_value);
     }
     free_declaration(d);
     return NULL;
@@ -961,13 +939,7 @@ declaration_t* ast_parse_untype_var_decl(parser_t* p)
   // consume _var
   advance(p);
 
-  d->var_decl.ident.type.kind = TYPE_UNTYPE;
-  d->var_decl.ident.type.name = strdup("var");
-  if (!d->var_decl.ident.type.name) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    free_declaration(d);
-    return NULL;
-  }
+  d->var_decl.ident.type = TYPE_UNTYPE;
 
   if (!check(p, LEXER_token_id)) {
     error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
