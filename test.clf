@@ -47,3 +47,7 @@ fn main(int a, string b): int {
 fn test(int a, int a, string b) {
   int a = 2;
 }
+
+fn test(int a) {
+  int a = 3;
+}

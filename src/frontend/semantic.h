@@ -41,6 +41,7 @@ typedef struct
 } semantic_analyzer_t;
 
 int is_param_name_declared(function_params_name_t* fpn, const char* name);
+int is_function_name_declared(function_symbol_table_t* fst, const char* name);
 
 void semantic_analyze(semantic_analyzer_t* analyzer);
 void semantic_load_function_definition(semantic_analyzer_t* analyzer);

@@ -9,6 +9,15 @@ int is_param_name_declared(function_params_name_t* fpn, const char* name)
   return 0;
 }
 
+int is_function_name_declared(function_symbol_table_t* fst, const char* name)
+{
+  da_foreach(function_symbol_t, it, fst) {
+    if (strcmp(it->name, name) == 0)
+     return 1; 
+  }
+  return 0;
+}
+
 void semantic_free_function_definition(semantic_analyzer_t* analyzer)
 {
   if (analyzer->fst) {
@@ -46,6 +55,13 @@ void semantic_load_function_definition(semantic_analyzer_t* analyzer)
   da_foreach(declaration_t*, it, analyzer->ast) {
     if ((*it)->type!= DECLARATION_FUNC)
       continue;
+
+    if (is_function_name_declared(fst, (*it)->func.name)) {
+      const char* pos = (*it)->source_pos + 1;
+      error_report_at_position(analyzer->error_ctx, pos, ERROR_SEVERITY_ERROR,
+          "already defined function name");
+      continue;
+    }
 
     function_symbol_t f = {0};
     char* name = strdup((*it)->func.name); 
