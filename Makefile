@@ -17,13 +17,14 @@ OBJ = \
 CC = gcc
 CFLAGS = -Wall -Wextra -g
 
+.PRECIOUS: build/cleaf
 .PHONY: all clean test asan-test valgrind-test
 
 all: $(BUILD)/cleaf
 
 $(BUILD)/cleaf: $(OBJ)
 	$(CC) -o $@ $^ -lm
-	@$(BUILD)/cleaf test.clf 2> cleaf.log
+	@$(BUILD)/cleaf test.clf 
 
 $(BUILD)/%.o: $(SRC)/%.c
 	@mkdir -p $(BUILD)

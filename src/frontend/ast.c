@@ -909,6 +909,8 @@ declaration_t* ast_parse_var_decl(parser_t* p)
     return NULL;
   }
 
+  d->var_decl.ident.source_pos = name_tok->source_pos;
+
   if (check(p, ';')) {
     // consume ';'
     advance(p);
@@ -978,6 +980,8 @@ declaration_t* ast_parse_untype_var_decl(parser_t* p)
     free_declaration(d);
     return NULL;
   }
+
+  d->var_decl.ident.source_pos = name_tok->source_pos;
 
   // case untype var as no init value
    if (check(p, ';')) {

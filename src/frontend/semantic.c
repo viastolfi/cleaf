@@ -25,10 +25,41 @@ void semantic_free_function_definition(semantic_analyzer_t* analyzer)
 
 void semantic_analyze(semantic_analyzer_t* analyzer) 
 {
-  if (analyzer->ast) 
+  if (analyzer->ast) {
     semantic_load_function_definition(analyzer);
+    da_foreach(declaration_t*, it, analyzer->ast) 
+      if ((*it)->type == DECLARATION_FUNC)
+        semantic_check_scope(analyzer, (*it)->func.body, (hashmap_t*) malloc(sizeof(hashmap_t))); 
+  }
 
   semantic_free_function_definition(analyzer);
+}
+
+void semantic_check_scope(semantic_analyzer_t* analyzer, statement_block_t* body, hashmap_t* known_symbols)
+{
+  hashmap_t* new_symbols = calloc(1, sizeof(hashmap_t));
+  if (!new_symbols) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return;
+  }
+
+  da_foreach(statement_t*, it, body) {
+   statement_t* stmt = *it; 
+
+   if (stmt->type == STATEMENT_DECL) {
+     if (stmt->decl_stmt.decl->type == DECLARATION_VAR) {
+       declaration_t* decl = stmt->decl_stmt.decl; 
+
+       if (hashmap_get(known_symbols, decl->var_decl.ident.name) ||
+           hashmap_get(new_symbols, decl->var_decl.ident.name)) {
+         error_report_at_position(analyzer->error_ctx, decl->var_decl.ident.source_pos - 1,ERROR_SEVERITY_ERROR, 
+             "already defined variable redifinition");
+       } else {
+         hashmap_put(new_symbols, decl->var_decl.ident.name, &decl->var_decl.ident.type);
+       }
+     }
+   }
+  }
 }
 
 void semantic_load_function_definition(semantic_analyzer_t* analyzer) 
@@ -47,7 +78,7 @@ void semantic_load_function_definition(semantic_analyzer_t* analyzer)
     if (hashmap_get(func_sym, (*it)->func.name)) {
       const char* pos = (*it)->source_pos + 1;
       error_report_at_position(analyzer->error_ctx, pos, ERROR_SEVERITY_ERROR,
-          "already defined function name");
+          "already defined function redifinition");
       continue;
     }
 
@@ -77,11 +108,9 @@ void semantic_load_function_definition(semantic_analyzer_t* analyzer)
       value->params_count = (*it)->func.params.count;
 
       for (size_t i = 0; i < (*it)->func.params.count; ++i) {
-
-        if (string_array_contains(value->params_name, actual_count, (*it)->func.params.items[i].name)) {
+        if (string_array_contains(value->params_name, actual_count, (*it)->func.params.items[i].name)) 
           error_report_at_position(analyzer->error_ctx, (*it)->func.params.items[i].source_pos - 1, ERROR_SEVERITY_ERROR,
-              "already defined variable name");
-        } 
+              "already defined function parameters redifinition");
 
         value->params_name[i] = (*it)->func.params.items[i].name;
         value->params_type[i] = (*it)->func.params.items[i].type;

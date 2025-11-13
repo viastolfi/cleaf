@@ -26,7 +26,7 @@ inline static unsigned hashmap_hash(const char* s)
 {
   unsigned h = 0;
   while (*s)
-   h = (h << 4) + *s++; 
+    h = (h << 4) + *s++; 
   return h % HASH_SIZE;
 }
 
