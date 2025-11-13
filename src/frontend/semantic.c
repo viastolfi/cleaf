@@ -12,6 +12,13 @@ int string_array_contains(char** source, size_t source_len, const char* name)
 void semantic_free_function_definition(semantic_analyzer_t* analyzer)
 {
   if (analyzer->function_symbols) {
+    for (size_t i = 0; i < 211; ++i) {
+      if (analyzer->function_symbols->buckets[i]) {
+        function_symbol_t* v = (function_symbol_t*) analyzer->function_symbols->buckets[i]->value;
+        free(v->params_name);
+        free(v->params_type);
+      } 
+    }
     hashmap_free(analyzer->function_symbols);
   }
 }

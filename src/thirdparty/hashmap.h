@@ -56,8 +56,9 @@ inline static void hashmap_free(hashmap_t* map)
     while (entry) {
       free(entry->key);
       free(entry->value);
+      hashmap_entry_t* e = entry->next;
       free(entry);
-      entry = entry->next;
+      entry = e;
     }  
   } 
   free(map->buckets);
