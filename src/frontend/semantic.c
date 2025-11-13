@@ -19,7 +19,8 @@ void semantic_free_function_definition(semantic_analyzer_t* analyzer)
         free(v->params_type);
       } 
     }
-    hashmap_free(analyzer->function_symbols);
+    hashmap_free(analyzer->function_symbols, 1);
+    free(analyzer->function_symbols);
   }
 }
 
@@ -28,8 +29,12 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
   if (analyzer->ast) {
     semantic_load_function_definition(analyzer);
     da_foreach(declaration_t*, it, analyzer->ast) 
-      if ((*it)->type == DECLARATION_FUNC)
-        semantic_check_scope(analyzer, (*it)->func.body, (hashmap_t*) malloc(sizeof(hashmap_t))); 
+      if ((*it)->type == DECLARATION_FUNC) {
+        hashmap_t* map = calloc(1, sizeof(hashmap_t));
+        semantic_check_scope(analyzer, (*it)->func.body, map); 
+        hashmap_free(map, 1);
+        free(map);
+      }
   }
 
   semantic_free_function_definition(analyzer);
@@ -60,6 +65,9 @@ void semantic_check_scope(semantic_analyzer_t* analyzer, statement_block_t* body
      }
    }
   }
+
+  hashmap_free(new_symbols, 0);
+  free(new_symbols);
 }
 
 void semantic_load_function_definition(semantic_analyzer_t* analyzer) 
@@ -85,7 +93,7 @@ void semantic_load_function_definition(semantic_analyzer_t* analyzer)
     function_symbol_t* value = (function_symbol_t*) malloc(sizeof(function_symbol_t));
     if (!value) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      hashmap_free(func_sym);
+      hashmap_free(func_sym, 1);
       return; 
     }
     memset(value, 0, sizeof(function_symbol_t));

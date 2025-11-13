@@ -3,6 +3,8 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <stddef.h>
 
 #define HASH_SIZE 211
 
@@ -26,14 +28,16 @@ inline static unsigned hashmap_hash(const char* s)
 {
   unsigned h = 0;
   while (*s)
-    h = (h << 4) + *s++; 
+    h = (h << 4) + (unsigned char)*s++;
   return h % HASH_SIZE;
 }
 
 inline static void hashmap_put(hashmap_t* map, const char* key, void* value)
 {
+  if (!map || !key) return;
   unsigned idx = hashmap_hash(key);
   hashmap_entry_t* e = malloc(sizeof(*e));
+  if (!e) return; /* OOM guard */
   e->key = strdup(key);
   e->value = value;
   e->next = map->buckets[idx];
@@ -42,26 +46,39 @@ inline static void hashmap_put(hashmap_t* map, const char* key, void* value)
 
 inline static void* hashmap_get(hashmap_t* map, const char* key)
 {
-  for (hashmap_entry_t* e = map->buckets[hashmap_hash(key)]; e; e = e->next)
+  if (!map || !key) return NULL;
+
+  unsigned idx = hashmap_hash(key);
+  hashmap_entry_t* e = map->buckets[idx];
+  if (!e) return NULL;
+
+  for (; e; e = e->next) {
     if (strcmp(key, e->key) == 0)
       return e->value ? e->value : (void*) &sentinel;
+  }
 
   return NULL;
 }
 
-inline static void hashmap_free(hashmap_t* map)
+inline static void hashmap_free(hashmap_t* map, int pointer_value)
 {
+  if (!map) return;
+
   for (size_t i = 0; i < HASH_SIZE; ++i) {
     hashmap_entry_t* entry = map->buckets[i];
     while (entry) {
       free(entry->key);
-      free(entry->value);
+      if (pointer_value && entry->value && entry->value != (void*)&sentinel) {
+        free(entry->value);
+      }
       hashmap_entry_t* e = entry->next;
-      free(entry);
+      if (entry)
+        free(entry);
       entry = e;
-    }  
-  } 
-  free(map->buckets);
+    }
+    map->buckets[i] = NULL;
+  }
 }
 
 #endif // HASHMAP_H
+
