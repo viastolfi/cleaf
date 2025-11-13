@@ -4,32 +4,20 @@
 #define DA_LIB_IMPLEMENTATION
 #include "../thirdparty/da.h"
 #include "ast_definition.h"
-#include "../frontend/error.h"
+#include "error.h"
+#include "../thirdparty/hashmap.h"
 
 #include <string.h>
 #include <stdlib.h>
 
 typedef struct 
 {
-  char** items;
-  size_t count;
-  size_t capacity;
-} function_params_name_t;
-
-typedef struct 
-{
-  char* name;
   type_kind return_type;
-  type_kind* params_type;
-  // TODO: add var for error logging info
-} function_symbol_t;
 
-typedef struct
-{
-  function_symbol_t* items;
-  size_t count;
-  size_t capacity;
-} function_symbol_table_t;
+  char** params_name;
+  type_kind* params_type;
+  size_t params_count;
+} function_symbol_t;
 
 typedef struct 
 {
@@ -37,14 +25,13 @@ typedef struct
 
   declaration_array* ast;
 
-  function_symbol_table_t* fst;
+  hashmap_t* function_symbols;
 } semantic_analyzer_t;
 
-int is_param_name_declared(function_params_name_t* fpn, const char* name);
-int is_function_name_declared(function_symbol_table_t* fst, const char* name);
+int string_array_contains(char** source, size_t source_len, const char* name);
 
 void semantic_analyze(semantic_analyzer_t* analyzer);
 void semantic_load_function_definition(semantic_analyzer_t* analyzer);
-void semantic_free_function_definition(semantic_analyzer_t* analyzer);
+//void semantic_free_function_definition(semantic_analyzer_t* analyzer);
 
 #endif // SEMANTIC_H
