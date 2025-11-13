@@ -29,45 +29,50 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
   if (analyzer->ast) {
     semantic_load_function_definition(analyzer);
     da_foreach(declaration_t*, it, analyzer->ast) 
-      if ((*it)->type == DECLARATION_FUNC) {
-        hashmap_t* map = calloc(1, sizeof(hashmap_t));
-        semantic_check_scope(analyzer, (*it)->func.body, map); 
-        hashmap_free(map, 1);
-        free(map);
-      }
+      if ((*it)->type == DECLARATION_FUNC) 
+        semantic_check_scope(analyzer, (*it)->func.body, NULL); 
   }
 
   semantic_free_function_definition(analyzer);
 }
 
-void semantic_check_scope(semantic_analyzer_t* analyzer, statement_block_t* body, hashmap_t* known_symbols)
+void semantic_check_scope(semantic_analyzer_t* analyzer, 
+                          statement_block_t* body, 
+                          scope_t* scope)
 {
-  hashmap_t* new_symbols = calloc(1, sizeof(hashmap_t));
-  if (!new_symbols) {
+  scope_t* local_scope = scope_enter(scope);
+  if (!local_scope) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
     return;
   }
 
   da_foreach(statement_t*, it, body) {
-   statement_t* stmt = *it; 
+    statement_t* stmt = *it; 
 
-   if (stmt->type == STATEMENT_DECL) {
-     if (stmt->decl_stmt.decl->type == DECLARATION_VAR) {
-       declaration_t* decl = stmt->decl_stmt.decl; 
+    if (stmt->type == STATEMENT_DECL) {
+      if (stmt->decl_stmt.decl->type == DECLARATION_VAR) {
+        declaration_t* decl = stmt->decl_stmt.decl; 
 
-       if (hashmap_get(known_symbols, decl->var_decl.ident.name) ||
-           hashmap_get(new_symbols, decl->var_decl.ident.name)) {
-         error_report_at_position(analyzer->error_ctx, decl->var_decl.ident.source_pos - 1,ERROR_SEVERITY_ERROR, 
-             "already defined variable redifinition");
-       } else {
-         hashmap_put(new_symbols, decl->var_decl.ident.name, &decl->var_decl.ident.type);
-       }
-     }
-   }
+        if (scope_resolve(local_scope, decl->var_decl.ident.name)) {
+          error_report_at_position(
+              analyzer->error_ctx, 
+              decl->var_decl.ident.source_pos - 1,
+              ERROR_SEVERITY_ERROR, 
+              "already defined variable redifinition");
+        } else {
+          hashmap_put(local_scope->symbols, 
+                      decl->var_decl.ident.name, 
+                      &decl->var_decl.ident.type);
+        }
+      }
+    }
+
+    if (stmt->type == STATEMENT_IF) {
+      semantic_check_scope(analyzer, stmt->if_stmt.then_branch, local_scope); 
+    } 
   }
 
-  hashmap_free(new_symbols, 0);
-  free(new_symbols);
+  scope_exit(local_scope);
 }
 
 void semantic_load_function_definition(semantic_analyzer_t* analyzer) 

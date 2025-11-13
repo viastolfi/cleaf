@@ -37,7 +37,7 @@ inline static void hashmap_put(hashmap_t* map, const char* key, void* value)
   if (!map || !key) return;
   unsigned idx = hashmap_hash(key);
   hashmap_entry_t* e = malloc(sizeof(*e));
-  if (!e) return; /* OOM guard */
+  if (!e) return; 
   e->key = strdup(key);
   e->value = value;
   e->next = map->buckets[idx];
@@ -78,6 +78,27 @@ inline static void hashmap_free(hashmap_t* map, int pointer_value)
     }
     map->buckets[i] = NULL;
   }
+}
+
+inline static hashmap_t* hashmap_merge(hashmap_t* map1, hashmap_t* map2) {
+  hashmap_t* map = calloc(1, sizeof(hashmap_t));
+  if (!map) {
+    free(map);
+    return NULL; 
+  }
+
+  for (size_t i = 0; i < HASH_SIZE; ++i) {
+    hashmap_entry_t* e = map1->buckets[i];
+    while (e) 
+      if (e->key)
+        hashmap_put(map, e->key, e->value);
+    e = map2->buckets[i];
+    while(e)
+      if (e->key)
+        hashmap_put(map, e->key, e->value);
+  }
+
+  return map;
 }
 
 #endif // HASHMAP_H

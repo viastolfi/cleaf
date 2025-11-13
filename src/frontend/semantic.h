@@ -6,6 +6,7 @@
 #include "ast_definition.h"
 #include "error.h"
 #include "../thirdparty/hashmap.h"
+#include "scope.h"    
 
 #include <string.h>
 #include <stdlib.h>
@@ -31,7 +32,9 @@ typedef struct
 int string_array_contains(char** source, size_t source_len, const char* name);
 
 void semantic_analyze(semantic_analyzer_t* analyzer);
-void semantic_check_scope(semantic_analyzer_t* analyzer, statement_block_t* func, hashmap_t* known_symbols);
+void semantic_check_scope(semantic_analyzer_t* analyzer, 
+                          statement_block_t* func, 
+                          scope_t* scope);
 void semantic_load_function_definition(semantic_analyzer_t* analyzer);
 void semantic_free_function_definition(semantic_analyzer_t* analyzer);
 
