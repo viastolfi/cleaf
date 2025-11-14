@@ -22,6 +22,8 @@ void semantic_free_function_definition(semantic_analyzer_t* analyzer)
     hashmap_free(analyzer->function_symbols, 1);
     free(analyzer->function_symbols);
   }
+
+  da_free(&analyzer->semantic_errors);
 }
 
 void semantic_analyze(semantic_analyzer_t* analyzer) 
