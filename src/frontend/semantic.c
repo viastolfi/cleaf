@@ -49,7 +49,6 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
   }
 
   semantic_error_display(analyzer); 
-  semantic_free_function_definition(analyzer);
 }
 
 int analyze_declaration(semantic_analyzer_t* analyzer,
@@ -224,11 +223,13 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
 
         if (analyze_declaration(analyzer, decl, local_scope)) {
           type_kind type = decl->var_decl.ident.type;
-          if (type == TYPE_UNTYPE) 
+          if (type == TYPE_UNTYPE) {
             if (decl->var_decl.init)
               type = semantic_type_resolve(analyzer,
                                            decl->var_decl.init,
                                            local_scope);
+          } else 
+            analyze_expression(analyzer, decl->var_decl.init, local_scope); 
           hashmap_put(local_scope->symbols, 
                       decl->var_decl.ident.name, 
                       &type);

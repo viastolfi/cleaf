@@ -31,14 +31,22 @@ $(BUILD)/%.o: $(SRC)/%.c
 	@mkdir -p $(BUILD)/frontend
 	$(CC) $(CFLAGS) -c $< -o $@
 
-TEST_SRC = $(TEST)/ast_test.c
-TEST_BIN = $(BUILD)/ast_test
+AST_TEST_SRC = $(TEST)/ast_test.c
+AST_TEST_BIN = $(BUILD)/ast_test
 
-test: $(TEST_BIN)
-	@echo "Running AST tests..."
-	@$(TEST_BIN) 2> test.log
+SEM_TEST_SRC = $(TEST)/semantic_test.c
+SEM_TEST_BIN = $(BUILD)/semantic_test
 
-$(TEST_BIN): $(TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/frontend/error.c $(SRC)/frontend/semantic.c
+test: $(AST_TEST_BIN) $(SEM_TEST_BIN)
+	@echo "Running tests..."
+	@$(AST_TEST_BIN) 2> test.log
+	@$(SEM_TEST_BIN) 2> test.log
+
+$(AST_TEST_BIN): $(AST_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/frontend/error.c
+	@mkdir -p $(BUILD)
+	@$(CC) $(CFLAGS) $^ -o $@ -lm
+
+$(SEM_TEST_BIN): $(SEM_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/frontend/error.c $(SRC)/frontend/semantic.c
 	@mkdir -p $(BUILD)
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
 

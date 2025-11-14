@@ -185,10 +185,10 @@ static void ct_assert_eq_core(long long x, long long y, const char* fmt, const c
     CT_PRINT("(%s:%d) %s", file, line, message);
     CT_PRINT(COLOR_HINT "\n[HINT] " COLOR_RESET);
     CT_PRINT(COLOR_BOLD COLOR_SUM "expected : " COLOR_RESET BOLD_OFF);
-    CT_PRINT(fmt, x);
+    CT_PRINT(fmt, y);
     CT_PRINT("\n" COLOR_HINT "[HINT] " COLOR_RESET);
     CT_PRINT(COLOR_BOLD COLOR_SUM "result   : " COLOR_RESET BOLD_OFF);
-    CT_PRINT(fmt, y);
+    CT_PRINT(fmt, x);
     CT_PRINT("\n");
   }
 }
@@ -207,9 +207,9 @@ static void ct_assert_eq_string(const char* x, const char* y, const char* messag
     CT_PRINT("(%s:%d) ", file, line); 
     CT_PRINT("%s", message);
     CT_PRINT(COLOR_HINT "\n[HINT] " COLOR_RESET);
-    CT_PRINT(COLOR_BOLD COLOR_SUM "expected : " COLOR_RESET BOLD_OFF "\"%s\"\n", x);
+    CT_PRINT(COLOR_BOLD COLOR_SUM "expected : " COLOR_RESET BOLD_OFF "\"%s\"\n", y);
     CT_PRINT(COLOR_HINT "[HINT] " COLOR_RESET);
-    CT_PRINT(COLOR_BOLD COLOR_SUM "result   : " COLOR_RESET BOLD_OFF "\"%s\"\n", y);
+    CT_PRINT(COLOR_BOLD COLOR_SUM "result   : " COLOR_RESET BOLD_OFF "\"%s\"\n", x);
   }
 }
 

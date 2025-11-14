@@ -74,6 +74,7 @@ int main(int argc, char** argv)
   analyzer.error_count = 0;
 
   semantic_analyze(&analyzer);
+  semantic_free_function_definition(&analyzer);
 
   da_foreach(declaration_t*, it, &program) {
     free_declaration(*it);
