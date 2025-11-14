@@ -30,8 +30,21 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
     semantic_load_function_definition(analyzer);
     da_foreach(declaration_t*, it, analyzer->ast) 
       if ((*it)->type == DECLARATION_FUNC) {
+        scope_t* function_scope = scope_enter(NULL);
+
+        function_symbol_t* fs = (function_symbol_t*) hashmap_get(
+            analyzer->function_symbols,
+            (*it)->func.name);
+
+        for (size_t i = 0; i < fs->params_count; ++i) 
+          hashmap_put(function_scope->symbols,
+                      fs->params_name[i],
+                      &(fs->params_type[i]));
+
         analyzer->current_analyzed_function = (*it)->func.name; 
-        semantic_check_scope(analyzer, (*it)->func.body, NULL); 
+        semantic_check_scope(analyzer, (*it)->func.body, function_scope); 
+
+        scope_exit(function_scope);
       }
   }
 
