@@ -71,6 +71,7 @@ int main(int argc, char** argv)
   semantic_analyzer_t analyzer = {0};
   analyzer.error_ctx = &error_ctx;
   analyzer.ast = &program;
+  analyzer.error_count = 0;
 
   semantic_analyze(&analyzer);
 

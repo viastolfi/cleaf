@@ -11,6 +11,19 @@
 #include <string.h>
 #include <stdlib.h>
 
+typedef struct
+{
+  const char* message;
+  const char* position;
+} diagnostic_t;
+
+typedef struct 
+{
+  diagnostic_t* items;
+  size_t count;
+  size_t capacity;
+} diagnostics_t;
+
 typedef struct 
 {
   type_kind return_type;
@@ -23,6 +36,8 @@ typedef struct
 typedef struct 
 {
   error_context_t* error_ctx;
+  diagnostics_t semantic_errors;
+  int error_count;
 
   declaration_array* ast;
 
@@ -54,5 +69,10 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
                           scope_t* scope);
 void semantic_load_function_definition(semantic_analyzer_t* analyzer);
 void semantic_free_function_definition(semantic_analyzer_t* analyzer);
+
+void semantic_error_register(semantic_analyzer_t* analyzer,
+                             const char* pos, 
+                             const char* msg);
+void semantic_error_display(semantic_analyzer_t* analyzer);
 
 #endif // SEMANTIC_H

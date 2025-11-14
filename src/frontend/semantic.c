@@ -48,6 +48,7 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
       }
   }
 
+  semantic_error_display(analyzer); 
   semantic_free_function_definition(analyzer);
 }
 
@@ -57,12 +58,10 @@ int analyze_declaration(semantic_analyzer_t* analyzer,
 {
   if (decl->type == DECLARATION_VAR) {
     if (scope_resolve(scope, decl->var_decl.ident.name)) {
-      error_report_at_position(
-          analyzer->error_ctx, 
-          decl->var_decl.ident.source_pos - 1,
-          ERROR_SEVERITY_ERROR, 
-          "already defined variable redifinition");
-          return 0;
+      semantic_error_register(analyzer,
+                              decl->var_decl.ident.source_pos - 1,
+                              "already defined variable redifinition");
+      return 0;
     } else {
       return 1;
     }
@@ -134,10 +133,9 @@ int analyze_expression(semantic_analyzer_t* analyzer,
     if (lhs->type == EXPRESSION_VAR) {
       lhs_type = (type_kind*) hashmap_get(scope->symbols, lhs->var.name); 
       if (!lhs_type) {
-        error_report_at_position(analyzer->error_ctx,
-                                 lhs->source_pos - 1,
-                                 ERROR_SEVERITY_ERROR,
-                                 "use of undefined variable");
+        semantic_error_register(analyzer, 
+                                lhs->source_pos - 1,
+                                "use of undefined variable");
         result = 0;
       }
     }
@@ -145,10 +143,9 @@ int analyze_expression(semantic_analyzer_t* analyzer,
     if (rhs->type == EXPRESSION_VAR) {
       rhs_type = (type_kind*) hashmap_get(scope->symbols, lhs->var.name);
       if (!rhs_type) {
-        error_report_at_position(analyzer->error_ctx,
-                                 rhs->source_pos - 1,
-                                 ERROR_SEVERITY_ERROR,
-                                 "use of undefined variable"); 
+        semantic_error_register(analyzer,
+                                rhs->source_pos - 1,
+                                "use of undefined variable");
         result = 0;
       }
     }
@@ -176,17 +173,15 @@ void semantic_check_return_statement(semantic_analyzer_t* analyzer,
 
   if (e->type == EXPRESSION_INT_LIT) 
     if (fs->return_type != TYPE_INT) 
-      error_report_at_position(analyzer->error_ctx,
-                               e->source_pos,
-                               ERROR_SEVERITY_ERROR,
-                               "incompatible return type");
+      semantic_error_register(analyzer,
+                              e->source_pos,
+                              "incompatible return type");
 
   if (e->type == EXPRESSION_STRING_LIT)
     if (fs->return_type != TYPE_STRING)
-      error_report_at_position(analyzer->error_ctx,
-                               e->source_pos,
-                               ERROR_SEVERITY_ERROR,
-                               "incompatible return type");
+      semantic_error_register(analyzer,
+                              e->source_pos,
+                              "incompatible return type");
 }
 
 void semantic_check_for_statement(semantic_analyzer_t* analyzer,
@@ -279,8 +274,7 @@ void semantic_load_function_definition(semantic_analyzer_t* analyzer)
 
     if (hashmap_get(func_sym, (*it)->func.name)) {
       const char* pos = (*it)->source_pos + 1;
-      error_report_at_position(analyzer->error_ctx, pos, ERROR_SEVERITY_ERROR,
-          "already defined function redifinition");
+      semantic_error_register(analyzer, pos, "already defined function redifinition");
       continue;
     }
 
@@ -313,10 +307,9 @@ void semantic_load_function_definition(semantic_analyzer_t* analyzer)
         if (string_array_contains(value->params_name, 
                                   actual_count, 
                                   (*it)->func.params.items[i].name)) 
-          error_report_at_position(
-              analyzer->error_ctx, 
-              (*it)->func.params.items[i].source_pos - 1, 
-              ERROR_SEVERITY_ERROR,
+          semantic_error_register(
+              analyzer, 
+              (*it)->func.params.items[i].source_pos - 1,
               "already defined function parameters redifinition");
 
         value->params_name[i] = (*it)->func.params.items[i].name;
@@ -328,4 +321,22 @@ void semantic_load_function_definition(semantic_analyzer_t* analyzer)
   }
 
   analyzer->function_symbols = func_sym;
+}
+
+void semantic_error_display(semantic_analyzer_t* analyzer)
+{
+  da_foreach(diagnostic_t, it, &analyzer->semantic_errors) 
+    error_report_at_position(analyzer->error_ctx,
+                             it->position,
+                             ERROR_SEVERITY_ERROR,
+                             it->message);
+}
+
+void semantic_error_register(semantic_analyzer_t* analyzer, 
+                             const char* pos, 
+                             const char* msg) 
+{
+  diagnostic_t err = {.position = pos, .message = msg};
+  da_append(&analyzer->semantic_errors, err);
+  analyzer->error_count++;
 }
