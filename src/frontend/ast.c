@@ -387,6 +387,7 @@ expression_t* ast_parse_expr_binary(parser_t* p)
   memset(left, 0, sizeof(expression_t));
 
   token_t* left_tok = advance(p);
+  left->source_pos = left_tok->source_pos;
   switch (left_tok->type) {
     case LEXER_token_intlit:
       left->type = EXPRESSION_INT_LIT;
