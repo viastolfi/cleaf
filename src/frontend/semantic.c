@@ -29,11 +29,81 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
   if (analyzer->ast) {
     semantic_load_function_definition(analyzer);
     da_foreach(declaration_t*, it, analyzer->ast) 
-      if ((*it)->type == DECLARATION_FUNC) 
+      if ((*it)->type == DECLARATION_FUNC) {
+        analyzer->current_analyzed_function = (*it)->func.name; 
         semantic_check_scope(analyzer, (*it)->func.body, NULL); 
+      }
   }
 
   semantic_free_function_definition(analyzer);
+}
+
+int analyze_declaration(semantic_analyzer_t* analyzer,
+                        declaration_t* decl,
+                        scope_t* scope)
+{
+  if (decl->type == DECLARATION_VAR) {
+    if (scope_resolve(scope, decl->var_decl.ident.name)) {
+      error_report_at_position(
+          analyzer->error_ctx, 
+          decl->var_decl.ident.source_pos - 1,
+          ERROR_SEVERITY_ERROR, 
+          "already defined variable redifinition");
+          return 0;
+    } else {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
+void semantic_check_return_statement(semantic_analyzer_t* analyzer,
+                                     statement_t* stmt,
+                                     scope_t* scope)
+{
+  expression_t* e = stmt->ret.value;
+  function_symbol_t* fs = (function_symbol_t*) hashmap_get(
+      analyzer->function_symbols, 
+      analyzer->current_analyzed_function);
+
+  // some kind of guard, should be always false as parser is working
+  if (!e) return;
+
+  if (e->type == EXPRESSION_INT_LIT) 
+    if (fs->return_type != TYPE_INT) 
+      error_report_at_position(analyzer->error_ctx,
+                               e->source_pos,
+                               ERROR_SEVERITY_ERROR,
+                               "incompatible return type");
+
+  if (e->type == EXPRESSION_STRING_LIT)
+    if (fs->return_type != TYPE_STRING)
+      error_report_at_position(analyzer->error_ctx,
+                               e->source_pos,
+                               ERROR_SEVERITY_ERROR,
+                               "incompatible return type");
+}
+
+void semantic_check_for_statement(semantic_analyzer_t* analyzer,
+                                  statement_t* stmt,
+                                  scope_t* scope)
+{
+  scope_t* for_scope = scope_enter(scope);
+
+  if (stmt->for_stmt.decl_init) {
+    declaration_t* decl = stmt->for_stmt.decl_init;
+    if (analyze_declaration(analyzer, decl, for_scope))
+      hashmap_put(for_scope->symbols, 
+                  decl->var_decl.ident.name, 
+                  &decl->var_decl.ident.type);
+  }
+
+  // TODO: analyze condition and loop
+
+  semantic_check_scope(analyzer, stmt->for_stmt.body, for_scope);
+
+  scope_exit(for_scope);
 }
 
 void semantic_check_scope(semantic_analyzer_t* analyzer, 
@@ -53,13 +123,7 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
       if (stmt->decl_stmt.decl->type == DECLARATION_VAR) {
         declaration_t* decl = stmt->decl_stmt.decl; 
 
-        if (scope_resolve(local_scope, decl->var_decl.ident.name)) {
-          error_report_at_position(
-              analyzer->error_ctx, 
-              decl->var_decl.ident.source_pos - 1,
-              ERROR_SEVERITY_ERROR, 
-              "already defined variable redifinition");
-        } else {
+        if (analyze_declaration(analyzer, decl, local_scope)) {
           hashmap_put(local_scope->symbols, 
                       decl->var_decl.ident.name, 
                       &decl->var_decl.ident.type);
@@ -68,8 +132,23 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
     }
 
     if (stmt->type == STATEMENT_IF) {
-      semantic_check_scope(analyzer, stmt->if_stmt.then_branch, local_scope); 
+      if (stmt->if_stmt.then_branch)
+        semantic_check_scope(analyzer, stmt->if_stmt.then_branch, local_scope); 
+      if (stmt->if_stmt.else_branch)
+        semantic_check_scope(analyzer, stmt->if_stmt.else_branch, local_scope);
     } 
+
+    if (stmt->type == STATEMENT_WHILE) {
+      if (stmt->while_stmt.body) 
+        semantic_check_scope(analyzer, stmt->while_stmt.body, local_scope); 
+    }
+
+    if (stmt->type == STATEMENT_FOR) 
+      semantic_check_for_statement(analyzer, stmt, local_scope); 
+
+    if (stmt->type == STATEMENT_RETURN) {
+      semantic_check_return_statement(analyzer, stmt, local_scope); 
+    }
   }
 
   scope_exit(local_scope);
@@ -121,8 +200,13 @@ void semantic_load_function_definition(semantic_analyzer_t* analyzer)
       value->params_count = (*it)->func.params.count;
 
       for (size_t i = 0; i < (*it)->func.params.count; ++i) {
-        if (string_array_contains(value->params_name, actual_count, (*it)->func.params.items[i].name)) 
-          error_report_at_position(analyzer->error_ctx, (*it)->func.params.items[i].source_pos - 1, ERROR_SEVERITY_ERROR,
+        if (string_array_contains(value->params_name, 
+                                  actual_count, 
+                                  (*it)->func.params.items[i].name)) 
+          error_report_at_position(
+              analyzer->error_ctx, 
+              (*it)->func.params.items[i].source_pos - 1, 
+              ERROR_SEVERITY_ERROR,
               "already defined function parameters redifinition");
 
         value->params_name[i] = (*it)->func.params.items[i].name;

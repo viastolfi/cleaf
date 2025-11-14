@@ -35,6 +35,7 @@ fn main(int a, string b): int {
   // for statement
   for (var i = 0; i < 10; ++i) {
     var b = 3; 
+    var i = 9;
   }
 
   // function calling
