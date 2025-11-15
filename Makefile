@@ -18,7 +18,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -g
 
 .PRECIOUS: build/cleaf
-.PHONY: all clean test asan-test valgrind-test
+.PHONY: all clean test ast-test semantic-test asan-test valgrind-test
 
 all: $(BUILD)/cleaf
 
@@ -40,6 +40,14 @@ SEM_TEST_BIN = $(BUILD)/semantic_test
 test: $(AST_TEST_BIN) $(SEM_TEST_BIN)
 	@echo "Running tests..."
 	@$(AST_TEST_BIN) 2> test.log
+	@$(SEM_TEST_BIN) 2> test.log
+
+ast-test: $(AST_TEST_BIN)
+	@echo "Running AST tests..."
+	@$(AST_TEST_BIN) 2> test.log
+
+semantic-test: $(SEM_TEST_BIN)
+	@echo "Running semantic tests..."
 	@$(SEM_TEST_BIN) 2> test.log
 
 $(AST_TEST_BIN): $(AST_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/frontend/error.c

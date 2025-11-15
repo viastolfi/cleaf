@@ -16,7 +16,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build & run tests
+      - name: ast test
         run: |
-          make test
+          make ast-test
+
+      - name : semantic test
+        run : |
+          make semantic-test
 
