@@ -137,6 +137,16 @@ ct_test(semantic_analyze, var_undefined_use, "fn main() { int b = a + 1; }") {
   free_analyzer(&analyzer);
 }
 
+ct_test(semantic_analyze, binary_wrong_type, "fn main() { var a = 1 + \"test\"; }") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have one error for adding two different type variable");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, nested_binary_wrong_type, "fn main() { var a = 1 + 2 + \"test\"; }") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have one error for adding two different type variable");
+  free_analyzer(&analyzer);
+}
+
 ct_test(semantic_analyze, return_correct_type, "fn main(): int { return 5; }") {
   ct_assert_eq(analyzer.error_count, 0, "Should have no errors for correct return type");
   free_analyzer(&analyzer);

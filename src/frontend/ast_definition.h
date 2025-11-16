@@ -34,7 +34,8 @@ typedef enum
 {
   TYPE_INT,
   TYPE_STRING,
-  TYPE_UNTYPE
+  TYPE_UNTYPE,
+  TYPE_ERROR
 } type_kind;
 
 typedef enum 
