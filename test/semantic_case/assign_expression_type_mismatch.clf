@@ -1,0 +1,4 @@
+fn main() { 
+  int i; 
+  i = "test";
+} 

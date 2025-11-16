@@ -1,0 +1,4 @@
+fn main() { 
+  var i; 
+  i = 4; 
+}
