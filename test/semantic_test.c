@@ -212,3 +212,12 @@ ct_test(semantic_analyze, multiple_functions, "fn foo() {} fn bar() {}") {
   free_analyzer(&analyzer);
 }
 
+ct_test(semantic_analyze, assign_expression, "fn main() { var i; i = 4; }") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for variable assignement");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, assign_expression_type_mismatch, "fn main() { int i; i = \"test\"; }") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for type mismatch variable assignment");
+  free_analyzer(&analyzer);
+}

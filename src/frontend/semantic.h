@@ -51,7 +51,7 @@ int string_array_contains(char** source, size_t source_len, const char* name);
 int analyze_declaration(semantic_analyzer_t* analyzer,
                         declaration_t* decl,
                         scope_t* scope);
-type_kind analyze_expression(semantic_analyzer_t* analyzer,
+type_kind semantic_check_expression(semantic_analyzer_t* analyzer,
                        expression_t* expr,
                        scope_t* scope);
 void semantic_analyze(semantic_analyzer_t* analyzer);
