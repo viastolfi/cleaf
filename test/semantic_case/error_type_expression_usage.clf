@@ -1,0 +1,4 @@
+fn main() { 
+  int i = "test"; 
+  var b = i; 
+}
