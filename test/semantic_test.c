@@ -147,6 +147,11 @@ ct_test(semantic_analyze, nested_binary_wrong_type, "fn main() { var a = 1 + 2 +
   free_analyzer(&analyzer);
 }
 
+ct_test(semantic_analyze, error_type_expression_usage, "fn main() { int i = \"test\"; var b = i; }") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have one error for wrong var type initialization and usage of this var later");
+  free_analyzer(&analyzer);
+}
+
 ct_test(semantic_analyze, return_correct_type, "fn main(): int { return 5; }") {
   ct_assert_eq(analyzer.error_count, 0, "Should have no errors for correct return type");
   free_analyzer(&analyzer);

@@ -77,64 +77,41 @@ type_kind analyze_expression(semantic_analyzer_t* analyzer,
     return TYPE_INT;
   if (expr->type == EXPRESSION_STRING_LIT)
     return TYPE_STRING;
-  if (expr->type == EXPRESSION_BINARY) {
-    // some kind of guard, may need to handle it better even if should not happend
-    if (!expr->binary.left || !expr->binary.right)
-      return TYPE_ERROR;
-
-    expression_t* lhs = expr->binary.left;
-    expression_t* rhs = expr->binary.right;
-
-    type_kind lhs_type = TYPE_UNTYPE;
-    type_kind rhs_type = TYPE_UNTYPE;
-    if (lhs->type == EXPRESSION_VAR) {
-      type_kind* k = (type_kind*) hashmap_get(scope->symbols, 
-                                              lhs->var.name);
-      if (!k) {
-        semantic_error_register(analyzer, 
-                                lhs->source_pos - 1,
-                                "use of undefined variable");
-        return TYPE_ERROR;
-      }
-      lhs_type = *k; 
-    } else if (lhs->type == EXPRESSION_INT_LIT) {
-      lhs_type = TYPE_INT;
-    } else if (lhs->type == EXPRESSION_STRING_LIT) {
-      lhs_type = TYPE_STRING;
-    } else {
-      lhs_type = analyze_expression(analyzer, lhs, scope); 
-    }
-
-    if (rhs->type == EXPRESSION_VAR) {
-      type_kind* k = (type_kind*) hashmap_get(scope->symbols, 
-                                              lhs->var.name);
-      if (!k) {
-        semantic_error_register(analyzer,
-                                rhs->source_pos - 1,
-                                "use of undefined variable");
-        return TYPE_ERROR;
-      }
-      rhs_type = *k;
-    } else if (rhs->type == EXPRESSION_INT_LIT) {
-      rhs_type = TYPE_INT;
-    } else if (rhs->type == EXPRESSION_STRING_LIT) {
-      rhs_type = TYPE_STRING;
-    } else {
-      rhs_type = analyze_expression(analyzer, rhs, scope); 
-    }
-
-    if (lhs_type == TYPE_ERROR && rhs_type != TYPE_ERROR) {
-      return rhs_type; 
-    } else if (lhs_type != TYPE_ERROR && rhs_type == TYPE_ERROR) {
-      return lhs_type; 
-    } else if (lhs_type == rhs_type) {
-      return lhs_type;
-    } else {
+  if (expr->type == EXPRESSION_VAR) {
+    type_kind* k = (type_kind*) hashmap_get(scope->symbols, 
+        expr->var.name);
+    if (!k) {
       semantic_error_register(analyzer, 
-          rhs->source_pos - 1,
-          "wrong type convertion");
+          expr->source_pos - 1,
+          "use of undefined variable");
       return TYPE_ERROR;
     }
+    return *k; 
+  }
+
+    if (expr->type == EXPRESSION_BINARY) {
+      // some kind of guard, may need to handle it better even if should not happend
+      if (!expr->binary.left || !expr->binary.right)
+        return TYPE_ERROR;
+
+      expression_t* lhs = expr->binary.left;
+      expression_t* rhs = expr->binary.right;
+
+      type_kind lhs_type = analyze_expression(analyzer, lhs, scope);
+      type_kind rhs_type = analyze_expression(analyzer, rhs, scope);
+
+      if (lhs_type == TYPE_ERROR && rhs_type != TYPE_ERROR) {
+        return rhs_type; 
+      } else if (lhs_type != TYPE_ERROR && rhs_type == TYPE_ERROR) {
+        return lhs_type; 
+      } else if (lhs_type == rhs_type) {
+        return lhs_type;
+      } else {
+        semantic_error_register(analyzer, 
+            rhs->source_pos - 1,
+            "wrong type convertion");
+        return TYPE_ERROR;
+      }
   }
 
   return TYPE_ERROR;
@@ -208,26 +185,15 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
           type_kind actual_type = analyze_expression(analyzer,
               decl->var_decl.init,
               local_scope);
-          if (expected_type != actual_type && 
-              expected_type != TYPE_UNTYPE) {
-            if (actual_type != TYPE_ERROR)
+          if (expected_type != actual_type && expected_type != TYPE_UNTYPE) {
+            if (actual_type != TYPE_ERROR) {
               semantic_error_register(analyzer, decl->source_pos - 1, "type mismatch");
-            /*
-             * TODO:
-             * Store the error typed var into a different hashmap
-             * So there is no error raised like 'unknow var'
-             */
-            continue;
-          } else if (expected_type == TYPE_UNTYPE) {
-            if (actual_type == TYPE_ERROR) 
-              continue;
-            else 
-              decl->var_decl.ident.type = actual_type;
-          } 
-           
+              actual_type = TYPE_ERROR;
+            }
+          }
           hashmap_put(local_scope->symbols, 
-                      decl->var_decl.ident.name, 
-                      &actual_type);
+                    decl->var_decl.ident.name, 
+                    &actual_type);
         }
       }
     }
