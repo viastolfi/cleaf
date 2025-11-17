@@ -617,6 +617,7 @@ expression_t* ast_parse_expr_unary(parser_t* p)
     operand->type = EXPRESSION_VAR;
 
     token_t* var_tok = advance(p);
+    operand->source_pos = var_tok->source_pos;
     if (!var_tok->string_value) {
       error_report_at_token(p->error_ctx, var_tok, ERROR_SEVERITY_ERROR,
         "expected var before unary expression");

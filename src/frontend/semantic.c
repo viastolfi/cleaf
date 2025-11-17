@@ -138,6 +138,12 @@ type_kind semantic_check_expression(semantic_analyzer_t* analyzer,
     }
   }
 
+  if (expr->type == EXPRESSION_UNARY) 
+    if (expr->unary.operand)
+      return semantic_check_expression(analyzer,
+          expr->unary.operand,
+          scope);
+
   return TYPE_ERROR;
 }
 
@@ -184,7 +190,15 @@ void semantic_check_for_statement(semantic_analyzer_t* analyzer,
     }
   }
 
-  // TODO: analyze condition and loop
+  if (stmt->for_stmt.condition)
+    semantic_check_expression(analyzer,
+        stmt->for_stmt.condition,
+        for_scope);
+
+  if (stmt->for_stmt.loop)
+    semantic_check_expression(analyzer,
+        stmt->for_stmt.loop,
+        for_scope);
 
   semantic_check_scope(analyzer, stmt->for_stmt.body, for_scope);
 

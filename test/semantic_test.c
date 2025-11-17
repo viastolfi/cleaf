@@ -240,3 +240,13 @@ ct_test(semantic_analyze, assign_expression_type_mismatch, "test/semantic_case/a
   ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for type mismatch variable assignment");
   free_analyzer(&analyzer);
 }
+
+ct_test(semantic_analyze, for_bad_condition, "test/semantic_case/for_bad_condition.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for undef var in for condition");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, for_bad_loop, "test/semantic_case/for_bad_loop.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for undef var in for loop");
+  free_analyzer(&analyzer);
+}
