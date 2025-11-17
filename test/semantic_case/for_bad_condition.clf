@@ -1,0 +1,3 @@
+fn main() {
+  for (var i = 3; a < i; ++i) {}
+}
