@@ -49,8 +49,8 @@ int main(int argc, char** argv)
       error_report_general(ERROR_SEVERITY_ERROR, "lexer parse error");
       break;
     }
-    //lexer_print_token(&lex);
-    //printf("    ");
+    lexer_print_token(&lex);
+    printf("\n");
     token_t t = lexer_copy_token(&lex);
     da_append(&parser, t);
   }

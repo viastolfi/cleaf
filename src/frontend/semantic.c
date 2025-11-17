@@ -14,7 +14,8 @@ void semantic_free_function_definition(semantic_analyzer_t* analyzer)
   if (analyzer->function_symbols) {
     for (size_t i = 0; i < 211; ++i) {
       if (analyzer->function_symbols->buckets[i]) {
-        function_symbol_t* v = (function_symbol_t*) analyzer->function_symbols->buckets[i]->value;
+        function_symbol_t* v = 
+          (function_symbol_t*) analyzer->function_symbols->buckets[i]->value;
         free(v->params_name);
         free(v->params_type);
       } 
@@ -139,10 +140,31 @@ type_kind semantic_check_expression(semantic_analyzer_t* analyzer,
   }
 
   if (expr->type == EXPRESSION_UNARY) 
-    if (expr->unary.operand)
-      return semantic_check_expression(analyzer,
+    if (expr->unary.operand) {
+      type_kind t = semantic_check_expression(analyzer,
           expr->unary.operand,
           scope);
+      if (t == TYPE_ERROR)
+        return t;
+      if (t != TYPE_INT) {
+        semantic_error_register(analyzer,
+           expr->unary.operand->source_pos - 1,
+           "expression is not assignable"); 
+      } else if (expr->unary.operand->type == EXPRESSION_CALL && 
+                 expr->unary.op != UNARY_POST_INC &&
+                 expr->unary.op != UNARY_POST_DEC) {
+        semantic_error_register(analyzer,
+            expr->unary.operand->source_pos - 1,
+            "cannot modify rvalue");
+      } else if (expr->unary.operand->type != EXPRESSION_VAR &&
+                 expr->unary.op != UNARY_NEGATE) {
+        semantic_error_register(analyzer,
+           expr->unary.operand->source_pos - 1,
+           "expression is not assignable"); 
+      }
+      
+      return t;
+    }
 
   return TYPE_ERROR;
 }

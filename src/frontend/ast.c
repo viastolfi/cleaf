@@ -607,29 +607,22 @@ expression_t* ast_parse_expr_unary(parser_t* p)
     }
     e->unary.operand = operand;
   } else {
-    expression_t* operand = (expression_t*) malloc(sizeof(expression_t));
+    expression_t* operand = NULL;
+    if (check(p, LEXER_token_id)) {
+      operand = ast_parse_expr_var(p);
+    } else if (check(p, LEXER_token_intlit)) {
+      operand = ast_parse_expr_int_lit(p);
+    } else if (check(p, LEXER_token_dqstring)) {
+      operand = ast_parse_expr_string_lit(p); 
+    }
+    
     if (!operand) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+      error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+                           "expected identifier or literal before postfix operator");
       free_expression(e);
       return NULL;
     }
-    // since normally unary operand or only available for vars
-    operand->type = EXPRESSION_VAR;
-
-    token_t* var_tok = advance(p);
-    operand->source_pos = var_tok->source_pos;
-    if (!var_tok->string_value) {
-      error_report_at_token(p->error_ctx, var_tok, ERROR_SEVERITY_ERROR,
-        "expected var before unary expression");
-      free_expression(e);
-      return NULL;
-    }
-    operand->var.name = strdup(var_tok->string_value);
-    if (!operand->var.name) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      free_expression(e);
-      return NULL; 
-    }
+   
     e->unary.operand = operand;
 
     token_t* op_tok = advance(p);
