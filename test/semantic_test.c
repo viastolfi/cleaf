@@ -250,3 +250,29 @@ ct_test(semantic_analyze, for_bad_loop, "test/semantic_case/for_bad_loop.clf") {
   ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for undef var in for loop");
   free_analyzer(&analyzer);
 }
+
+ct_test(semantic_analyze, unary_expression, "test/semantic_case/unary.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for basic unary expression");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, unary_expression_error, "test/semantic_case/unary_expression_error.clf") {
+  ct_assert_eq(analyzer.error_count, 4, "Should have 4 errors for basic unary expression errors");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, unary_string, "test/semantic_case/unary_string.clf") {
+  ct_assert_eq(analyzer.error_count, 5, "Should have 5 errors for using unary expr on string");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, unary_var_string, "test/semantic_case/unary_var_string.clf") {
+  ct_assert_eq(analyzer.error_count, 5, "Should have 5 errors for using unary expr on string typed var");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, unary_undef_var, "test/semantic_case/unary_undef_var.clf") {
+  ct_assert_eq(analyzer.error_count, 5, "Should have 5 errors for using unary expr on undefined var");
+  free_analyzer(&analyzer);
+}
+

@@ -1,54 +1,13 @@
-// function declaration with params and return typed value
-fn main(int a, string b): int {
-  // variable declaration
-  int i = 4;
-  string w = "test";
-  var d;
+fn main(): int {
+  var a = 0;
 
-  // binary expression
-  4 + 6;
-  1 - 2;
-  9 / 8;
-  4 * 2;
-
-  // unary expression
-  i++;
-  ++i;
-  -i;
-  --i;
-  i--;
-  !i;
-
-  // if else statement
-  if (a == 4) {
-    a = 3;  
-  } else {
-    a = 4; 
+  for(var i = 0; i < 10; ++i) {
+    a = add(a, i); 
   }
 
-  // while statement
-  var i = 0;
-  while (i == 0) {
-    ++i;
-  }
-
-  // for statement
-  for (var i = 0; i < 10; ++i) {
-    var b = 3; 
-    var i = 9;
-  }
-
-  // function calling
-  test(a, 5, "test");
-
-  // return statement 
-  return 0;
+  return a;
 }
 
-fn test(int a, int a, string b) {
-  int a = 2;
-}
-
-fn test(int a) {
-  int a = 3;
+fn add(int a, int b): int {
+  return a + b;
 }
