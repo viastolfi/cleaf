@@ -310,3 +310,8 @@ ct_test(semantic_case, function_call_no_arg_in_callee, "test/semantic_case/funct
   ct_assert_eq(analyzer.error_count, 1, "Should have one error for calling function needing 1 param with 0");
   free_analyzer(&analyzer);
 }
+
+ct_test(semantic_case, function_call_wrong_type, "test/semantic_case/function_call_wrong_type.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have one error for calling function with bad type");
+  free_analyzer(&analyzer);
+}

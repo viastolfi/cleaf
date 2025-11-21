@@ -200,11 +200,17 @@ type_kind semantic_check_expression(semantic_analyzer_t* analyzer,
     }
 
     for (int i = 0; i < fs->params_count; ++i) {
-      if (semantic_check_expression(expr->call.args[i]) == TYPE_UNTYPE)
+      if (semantic_check_expression(analyzer,
+            expr->call.args[i],
+            scope) == TYPE_UNTYPE)
         continue;
 
-      if (semantic_check_expression(expr->call.args[i]) != fs->params_type[i]) {
-        error_report_at_position(  
+      if (semantic_check_expression(analyzer,
+            expr->call.args[i],
+            scope) != fs->params_type[i]) {
+        semantic_error_register(analyzer,
+            expr->call.args[i]->source_pos - 1,
+            "wrong type convertion");
       }
     }
 
