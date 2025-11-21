@@ -174,14 +174,14 @@ type_kind semantic_check_expression(semantic_analyzer_t* analyzer,
       semantic_error_register(analyzer,
           expr->source_pos - 1,
           "undefined function call");
-      return TYPE_UNTYPE;
+      return TYPE_ERROR;
     }
 
     if (fs->params_count < expr->call.arg_count) {
       semantic_error_register(analyzer,
           expr->call.args[expr->call.arg_count - 1]->source_pos - 1,
           "too many arguments to function call");
-        return TYPE_UNTYPE;
+        return TYPE_ERROR;
     }
 
     if (fs->params_count > expr->call.arg_count) {
@@ -196,7 +196,7 @@ type_kind semantic_check_expression(semantic_analyzer_t* analyzer,
           "too few arguments to function call");
       
       }
-      return TYPE_UNTYPE;
+      return TYPE_ERROR;
     }
 
     for (int i = 0; i < fs->params_count; ++i) {
@@ -211,9 +211,11 @@ type_kind semantic_check_expression(semantic_analyzer_t* analyzer,
         semantic_error_register(analyzer,
             expr->call.args[i]->source_pos - 1,
             "wrong type convertion");
+        return TYPE_ERROR;
       }
     }
 
+    return fs->return_type;
   }
 
   return TYPE_ERROR;
@@ -231,17 +233,16 @@ void semantic_check_return_statement(semantic_analyzer_t* analyzer,
   // some kind of guard, should be always false as parser is working
   if (!e) return;
 
-  if (e->type == EXPRESSION_INT_LIT) 
-    if (fs->return_type != TYPE_INT) 
-      semantic_error_register(analyzer,
-                              e->source_pos,
-                              "incompatible return type");
+  type_kind rt = semantic_check_expression(analyzer, e, scope);
 
-  if (e->type == EXPRESSION_STRING_LIT)
-    if (fs->return_type != TYPE_STRING)
-      semantic_error_register(analyzer,
-                              e->source_pos,
-                              "incompatible return type");
+  if (rt == TYPE_ERROR) return;
+
+  if (rt != fs->return_type && fs->return_type != TYPE_UNTYPE) {
+    semantic_error_register(analyzer,
+       e->source_pos,
+       "wrong type conversion"); 
+    return;
+  }
 }
 
 void semantic_check_for_statement(semantic_analyzer_t* analyzer,

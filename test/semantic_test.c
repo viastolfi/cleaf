@@ -315,3 +315,13 @@ ct_test(semantic_case, function_call_wrong_type, "test/semantic_case/function_ca
   ct_assert_eq(analyzer.error_count, 1, "Should have one error for calling function with bad type");
   free_analyzer(&analyzer);
 }
+
+ct_test(semantic_case, function_call_use_return, "test/semantic_case/function_call_use_return.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no error for using return type from a function call");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, function_call_use_return_error, "test/semantic_case/function_call_use_return_error.clf") {
+  ct_assert_eq(analyzer.error_count, 2, "Should have 2 errors on different test case with function call return type");
+  free_analyzer(&analyzer);
+}
