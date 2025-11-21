@@ -166,6 +166,50 @@ type_kind semantic_check_expression(semantic_analyzer_t* analyzer,
       return t;
     }
 
+  if (expr->type == EXPRESSION_CALL) {
+    function_symbol_t* fs = (function_symbol_t*) hashmap_get(
+        analyzer->function_symbols,
+        expr->call.callee);
+    if (!fs) {
+      semantic_error_register(analyzer,
+          expr->source_pos - 1,
+          "undefined function call");
+      return TYPE_UNTYPE;
+    }
+
+    if (fs->params_count < expr->call.arg_count) {
+      semantic_error_register(analyzer,
+          expr->call.args[expr->call.arg_count - 1]->source_pos - 1,
+          "too many arguments to function call");
+        return TYPE_UNTYPE;
+    }
+
+    if (fs->params_count > expr->call.arg_count) {
+      if (expr->call.arg_count == 0) {
+        semantic_error_register(analyzer,
+            expr->source_pos + 1,
+            "too few arguments to function call");
+      
+      } else {
+        semantic_error_register(analyzer,
+          expr->call.args[expr->call.arg_count - 1]->source_pos - 1,
+          "too few arguments to function call");
+      
+      }
+      return TYPE_UNTYPE;
+    }
+
+    for (int i = 0; i < fs->params_count; ++i) {
+      if (semantic_check_expression(expr->call.args[i]) == TYPE_UNTYPE)
+        continue;
+
+      if (semantic_check_expression(expr->call.args[i]) != fs->params_type[i]) {
+        error_report_at_position(  
+      }
+    }
+
+  }
+
   return TYPE_ERROR;
 }
 

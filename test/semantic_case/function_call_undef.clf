@@ -1,0 +1,4 @@
+fn main(): int {
+  var a = foo();
+  return a;
+}

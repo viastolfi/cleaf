@@ -203,6 +203,8 @@ bool check_is_type(parser_t* p)
     return true;
   if (strcmp(peek(p)->string_value, "string") == 0)
     return true;
+  if (strcmp(peek(p)->string_value, "var") == 0)
+    return true;
 
   return false;
 }
@@ -531,35 +533,43 @@ expression_t*  ast_parse_expr_call(parser_t* p)
   }
 
   e->call.arg_count = (size_t) ceil((double) l / 2);
-  e->call.args = (expression_t**) calloc(e->call.arg_count, sizeof(expression_t));
+  if (e->call.arg_count > 0) {
+    e->call.args = (expression_t**) calloc(e->call.arg_count, sizeof(expression_t));
 
-  for (size_t i = 0; i < e->call.arg_count; ++i) {
-    expression_t* arg = parse_expression(p);  
-    if (!arg) {
-      error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
-          "unexpected NULL argument");
-      free_expression(e);
-      return NULL;
-    }
-    e->call.args[i] = arg;
+    for (size_t i = 0; i < e->call.arg_count; ++i) {
+      expression_t* arg = parse_expression(p);  
+      if (!arg) {
+        error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+            "unexpected NULL argument");
+        free_expression(e);
+        return NULL;
+      }
+      e->call.args[i] = arg;
 
-    if (!check(p, ')') && i == e->call.arg_count - 1) {
-      error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
-          "expected ')' after argument declaration");
-      free_expression(e);
-      return NULL;
+      if (!check(p, ')') && i == e->call.arg_count - 1) {
+        error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+            "expected ')' after argument declaration");
+        free_expression(e);
+        return NULL;
+      } 
+
+      // if it's not the last, then it should be ','
+      if (!check(p, ',') && i != e->call.arg_count - 1) {
+        error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR, 
+            "expected ',' after argument declaration");
+        free_expression(e);
+        return NULL;
+      }
+
+      advance(p);
     } 
-
-    // if it's not the last, then it should be ','
-    if (!check(p, ',') && i != e->call.arg_count - 1) {
-      error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR, 
-          "expected ',' after argument declaration");
-      free_expression(e);
-      return NULL;
-    }
-
-    advance(p);
+  } else {
+    e->call.args = NULL;
+  
+    // consume ')'
+    advance(p); 
   }
+  
 
   return e;
 }
@@ -866,6 +876,8 @@ declaration_t* ast_parse_var_decl(parser_t* p)
     d->var_decl.ident.type = TYPE_INT;
   } else if (strcmp(type_tok->string_value, "string") == 0) {
     d->var_decl.ident.type = TYPE_STRING;
+  } else if (strcmp(type_tok->string_value, "var") == 0) {
+    d->var_decl.ident.type = TYPE_UNTYPE; 
   } else {
     // For now, let's mark this as an error,
     // In a more advanced compiler this should be marked as TYPE_CUSTOM

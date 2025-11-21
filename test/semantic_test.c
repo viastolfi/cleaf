@@ -276,3 +276,37 @@ ct_test(semantic_analyze, unary_undef_var, "test/semantic_case/unary_undef_var.c
   free_analyzer(&analyzer);
 }
 
+ct_test(semantic_analyze, function_call, "test/semantic_case/function_call.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for basic function call");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, function_call_undef, "test/semantic_case/function_call_undef.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have one error for undef function calling");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, function_call_in_statement, "test/semantic_case/function_call_in_statement.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no error for using return value from function call in statement");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, function_call_with_argument, "test/semantic_case/function_call_with_argument.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no error for calling function with right arguments");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, function_call_with_too_much_args, "test/semantic_case/function_call_with_too_much_args.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for calling function with too much params");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, function_call_with_too_few_args, "test/semantic_case/function_call_with_too_few_args.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for calling function with too few params");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, function_call_no_arg_in_callee, "test/semantic_case/function_call_no_arg_in_callee.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have one error for calling function needing 1 param with 0");
+  free_analyzer(&analyzer);
+}

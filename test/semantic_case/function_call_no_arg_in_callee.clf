@@ -1,0 +1,7 @@
+fn main() {
+  foo();
+}
+
+fn foo(var a) {
+  var b = a;
+}
