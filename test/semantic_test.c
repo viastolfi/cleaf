@@ -10,7 +10,7 @@
 #include "../src/frontend/ast_definition.h"
 #include "../src/frontend/ast.h"
 #include "../src/frontend/semantic.h"
-#include "../src/frontend/error.h"
+#include "../src/thirdparty/error.h"
 
 before_each(semantic_analyzer_t, analyzer, char* file_path)
 {
