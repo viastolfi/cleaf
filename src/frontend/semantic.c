@@ -42,7 +42,7 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
         for (size_t i = 0; i < fs->params_count; ++i) 
           hashmap_put(function_scope->symbols,
                       fs->params_name[i],
-                      &(fs->params_type[i]));
+                      (void*) (uintptr_t) fs->params_type[i] + 1);
 
         analyzer->current_analyzed_function = (*it)->func.name; 
         semantic_check_scope(analyzer, (*it)->func.body, function_scope); 
@@ -79,14 +79,14 @@ type_kind semantic_check_expression(semantic_analyzer_t* analyzer,
   if (expr->type == EXPRESSION_STRING_LIT)
     return TYPE_STRING;
   if (expr->type == EXPRESSION_VAR) {
-    type_kind* k = (type_kind*) scope_resolve(scope, expr->var.name);
+    uintptr_t k = (uintptr_t) scope_resolve(scope, expr->var.name);
     if (!k) {
       semantic_error_register(analyzer, 
           expr->source_pos - 1,
           "use of undefined variable");
       return TYPE_ERROR;
     }
-    return *k; 
+    return (type_kind) k - 1; 
   }
 
   if (expr->type == EXPRESSION_BINARY) {
@@ -109,7 +109,7 @@ type_kind semantic_check_expression(semantic_analyzer_t* analyzer,
     } else {
       semantic_error_register(analyzer, 
           rhs->source_pos - 1,
-          "wrong type convertion");
+          "wrong type conversion");
       return TYPE_ERROR;
     }
   }
@@ -134,7 +134,7 @@ type_kind semantic_check_expression(semantic_analyzer_t* analyzer,
     else {
       semantic_error_register(analyzer, 
           rhs->source_pos - 1,
-          "wrong type convertion");
+          "wrong type conversion");
       return TYPE_ERROR;
     }
   }
@@ -210,7 +210,7 @@ type_kind semantic_check_expression(semantic_analyzer_t* analyzer,
             scope) != fs->params_type[i]) {
         semantic_error_register(analyzer,
             expr->call.args[i]->source_pos - 1,
-            "wrong type convertion");
+            "wrong type conversion");
         return TYPE_ERROR;
       }
     }
@@ -259,7 +259,7 @@ void semantic_check_for_statement(semantic_analyzer_t* analyzer,
           for_scope);
       hashmap_put(for_scope->symbols, 
                   decl->var_decl.ident.name, 
-                  &t);
+                  (void*)(uintptr_t)t + 1);
     }
   }
 
@@ -315,7 +315,7 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
 var_def_put:
           hashmap_put(local_scope->symbols, 
                     decl->var_decl.ident.name, 
-                    &actual_type);
+                    (void*)(uintptr_t)actual_type + 1);
         }
       }
     }
