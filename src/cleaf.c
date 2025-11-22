@@ -8,7 +8,7 @@
 #include "frontend/ast_definition.h"
 #include "frontend/ast.h"
 #include "frontend/ast_printer.h"
-#include "frontend/error.h"
+#include "thirdparty/error.h"
 #include "frontend/semantic.h"
 
 int main(int argc, char** argv) 

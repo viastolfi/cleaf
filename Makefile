@@ -5,13 +5,13 @@ TEST = test
 CS = \
         $(SRC)/cleaf.c \
         $(SRC)/frontend/ast.c \
-        $(SRC)/frontend/error.c \
+        $(SRC)/thirdparty/error.c \
 				$(SRC)/frontend/semantic.c \
 
 OBJ = \
         $(BUILD)/cleaf.o \
         $(BUILD)/frontend/ast.o \
-        $(BUILD)/frontend/error.o \
+        $(BUILD)/thirdparty/error.o \
 				$(BUILD)/frontend/semantic.o \
 
 CC = gcc
@@ -29,6 +29,7 @@ $(BUILD)/cleaf: $(OBJ)
 $(BUILD)/%.o: $(SRC)/%.c
 	@mkdir -p $(BUILD)
 	@mkdir -p $(BUILD)/frontend
+	@mkdir -p $(BUILD)/thirdparty
 	$(CC) $(CFLAGS) -c $< -o $@
 
 AST_TEST_SRC = $(TEST)/ast_test.c
@@ -50,11 +51,11 @@ semantic-test: $(SEM_TEST_BIN)
 	@echo "Running semantic tests..."
 	@$(SEM_TEST_BIN) 2> test.log
 
-$(AST_TEST_BIN): $(AST_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/frontend/error.c
+$(AST_TEST_BIN): $(AST_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c
 	@mkdir -p $(BUILD)
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
 
-$(SEM_TEST_BIN): $(SEM_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/frontend/error.c $(SRC)/frontend/semantic.c
+$(SEM_TEST_BIN): $(SEM_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c $(SRC)/frontend/semantic.c
 	@mkdir -p $(BUILD)
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
 

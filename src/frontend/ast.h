@@ -8,7 +8,7 @@
 
 #include "lexer.h"
 #include "ast_definition.h"
-#include "error.h"
+#include "../thirdparty/error.h"
 
 typedef struct 
 {
