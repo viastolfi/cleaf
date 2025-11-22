@@ -1,4 +1,10 @@
 fn main() { 
   var i; 
   i = 4; 
+
+  int a;
+  a = 3;
+
+  string t;
+  t = "test";
 }

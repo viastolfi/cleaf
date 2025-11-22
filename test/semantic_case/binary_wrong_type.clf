@@ -1,3 +1,9 @@
 fn main() { 
   var a = 1 + "test"; 
+  var b = "test" + 1;
+  int c = 4;
+  var d = c + "test";
+  string e = "test";
+  var f = e + 4;
+  var g = c + e;
 }

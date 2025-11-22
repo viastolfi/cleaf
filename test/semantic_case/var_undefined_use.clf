@@ -1,3 +1,5 @@
 fn main() { 
   int b = a + 1; 
+  var c = a;
+  string d = a;
 }

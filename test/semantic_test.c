@@ -132,7 +132,7 @@ ct_test(semantic_analyze, fn_duplicate_definition, "test/semantic_case/fn_duplic
 }
 
 ct_test(semantic_analyze, fn_duplicate_params, "test/semantic_case/fn_duplicate_params.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for duplicate parameter names");
+  ct_assert_eq(analyzer.error_count, 4, "Should have 4 errors for duplicate parameter names");
   free_analyzer(&analyzer);
 }
 
@@ -147,17 +147,17 @@ ct_test(semantic_analyze, var_decl_untyped, "test/semantic_case/var_decl_untyped
 }
 
 ct_test(semantic_analyze, var_redefinition, "test/semantic_case/var_redefinition.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for variable redefinition");
+  ct_assert_eq(analyzer.error_count, 6, "Should have 6 errors for variable redefinition");
   free_analyzer(&analyzer);
 }
 
 ct_test(semantic_analyze, var_undefined_use, "test/semantic_case/var_undefined_use.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for using undefined variable");
+  ct_assert_eq(analyzer.error_count, 3, "Should have 3 errors for using undefined variable");
   free_analyzer(&analyzer);
 }
 
 ct_test(semantic_analyze, binary_wrong_type, "test/semantic_case/binary_wrong_type.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have one error for adding two different type variable");
+  ct_assert_eq(analyzer.error_count, 5, "Should have 5 errors for adding two different type variable");
   free_analyzer(&analyzer);
 }
 
