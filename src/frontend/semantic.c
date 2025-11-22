@@ -199,7 +199,7 @@ type_kind semantic_check_expression(semantic_analyzer_t* analyzer,
       return TYPE_ERROR;
     }
 
-    for (int i = 0; i < fs->params_count; ++i) {
+    for (size_t i = 0; i < fs->params_count; ++i) {
       if (semantic_check_expression(analyzer,
             expr->call.args[i],
             scope) == TYPE_UNTYPE)
