@@ -1,0 +1,10 @@
+fn main(): int {
+  var a = foo();
+  int b = foo();
+
+  return foo();
+}
+
+fn foo(): int {
+  return 0;
+}

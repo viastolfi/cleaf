@@ -1,4 +1,9 @@
 fn main() { 
   int a = 5; 
   int a = 10; 
+  var a = 3;
+  var a;
+  string a = "test";
+  int a;
+  string a;
 }

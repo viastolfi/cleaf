@@ -8,9 +8,6 @@
 
 #define HASH_SIZE 211
 
-// use if we want to store NULL value but still get true on if (hashmap_get)
-static char sentinel;
-
 typedef struct hashmap_entry_t
 {
   char* key;
@@ -54,7 +51,7 @@ inline static void* hashmap_get(hashmap_t* map, const char* key)
 
   for (; e; e = e->next) {
     if (strcmp(key, e->key) == 0)
-      return e->value ? e->value : (void*) &sentinel;
+      return e->value; 
   }
 
   return NULL;
@@ -68,7 +65,7 @@ inline static void hashmap_free(hashmap_t* map, int pointer_value)
     hashmap_entry_t* entry = map->buckets[i];
     while (entry) {
       free(entry->key);
-      if (pointer_value && entry->value && entry->value != (void*)&sentinel) {
+      if (pointer_value && entry->value) {
         free(entry->value);
       }
       hashmap_entry_t* e = entry->next;

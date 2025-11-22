@@ -1,3 +1,4 @@
 fn main() {
   int a = 5;
+  string t = "test";
 }

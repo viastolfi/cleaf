@@ -1,0 +1,7 @@
+fn main() {
+  foo("test");
+}
+
+fn foo(int a) {
+  var b = a;
+}

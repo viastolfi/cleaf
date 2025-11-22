@@ -1,0 +1,12 @@
+fn main(): int {
+  var a = foo();
+  string b = foo();
+  int c = foo();
+
+  return foo();
+}
+
+
+fn foo(): string {
+  return "test";
+}
