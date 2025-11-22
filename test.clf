@@ -1,12 +1,30 @@
 fn main(): int {
-  var a = foo();
-  string b = foo();
-  int c = foo();
+  var a = bar(0);
+  int b = bar(0);
 
-  return foo();
+  string c = foo();
+
+  var d = a + b;
+
+  for (var i = 0; i < a + 10; ++i) {
+    if (b == 0) {
+      d++; 
+    } 
+  }
+
+  while (d > 0) {
+    d = d - b + 1; 
+  }
+
+  return 0;
 }
 
 
 fn foo(): string {
-  return "test";
+  var b = "test";
+  return b;
+}
+
+fn bar(int a): int {
+  return a;
 }
