@@ -7,12 +7,14 @@ CS = \
         $(SRC)/frontend/ast.c \
         $(SRC)/thirdparty/error.c \
 				$(SRC)/frontend/semantic.c \
+				$(SRC)/middleend/hir.c \
 
 OBJ = \
         $(BUILD)/cleaf.o \
         $(BUILD)/frontend/ast.o \
         $(BUILD)/thirdparty/error.o \
 				$(BUILD)/frontend/semantic.o \
+				$(BUILD)/middleend/hir.o \
 
 CC = gcc
 CFLAGS = -Wall -Wextra -g
@@ -30,6 +32,7 @@ $(BUILD)/%.o: $(SRC)/%.c
 	@mkdir -p $(BUILD)
 	@mkdir -p $(BUILD)/frontend
 	@mkdir -p $(BUILD)/thirdparty
+	@mkdir -p $(BUILD)/middleend
 	$(CC) $(CFLAGS) -c $< -o $@
 
 AST_TEST_SRC = $(TEST)/ast_test.c

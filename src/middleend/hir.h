@@ -4,6 +4,7 @@
 #define DA_LIB_IMPLEMENTATION
 #include "../thirdparty/da.h"
 #include "../thirdparty/error.h"
+#include "../frontend/ast_definition.h"
 
 typedef enum {
   HIT_INT_CONST,
@@ -34,7 +35,7 @@ typedef enum {
   HIR_PRE_DEC,
   HIR_POST_INC,
   HIR_POST_DEC
-} hir_unary_op
+} hir_unary_op;
 
 typedef enum {
   HIR_STMT_EXPR,
@@ -48,7 +49,7 @@ typedef enum {
 typedef struct hir_expr_t hir_expr_t;
 typedef struct hir_stmt_t hir_stmt_t;
 
-typdef struct 
+typedef struct 
 {
   hir_expr_t** items;
   size_t count;
@@ -59,7 +60,7 @@ typedef struct
 {
   char* name;
   type_kind return_type;
-  typed_indentifier_t* params;
+  typed_identifier_t* params;
   size_t param_count;
 
   hir_block_t* body;
@@ -96,7 +97,7 @@ struct hir_stmt_t
       char* iter_init;
       hir_expr_t* init; 
       hir_expr_t* condition;
-      hit_expr_t* increment;
+      hir_expr_t* increment;
       hir_block_t* body;
     } for_stmt;
   };
@@ -131,5 +132,12 @@ struct hir_expr_t
     } call;
   };
 };
+
+typedef struct 
+{
+  hir_funcion_t** items;
+  size_t count;
+  size_t capacity;
+} hir_function_array;
 
 #endif // HIT_H
