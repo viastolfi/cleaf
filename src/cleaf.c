@@ -11,6 +11,8 @@
 #include "thirdparty/error.h"
 #include "frontend/semantic.h"
 
+#include "middleend/hir.h"
+
 int main(int argc, char** argv) 
 {
   if (argc < 2) {
@@ -75,6 +77,12 @@ int main(int argc, char** argv)
 
   semantic_analyze(&analyzer);
   semantic_free_function_definition(&analyzer);
+
+  hir_function_array hir_program = {0};
+  da_foreach(declaration_t*, it, &program) {
+    // hir_parse_function 
+    // da_append to hir_program
+  }
 
   da_foreach(declaration_t*, it, &program) {
     free_declaration(*it);
