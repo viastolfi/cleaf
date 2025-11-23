@@ -1,3 +1,137 @@
 #include "hir.h"
 
+void HIR_free_instruction(HIR_instruction_t* instr) 
+{
+  //if (instr->string_value)
+   //free(instr->string_value);
 
+  //TODO: free call
+
+  free(instr);
+}
+
+void HIR_free_function(HIR_function_t* func) 
+{
+  if (func->name)
+    free(func->name);
+
+  if (func->params) 
+    free(func->params);
+
+  if (func->code) {
+    da_foreach(HIR_instruction_t*, it, func->code) 
+      HIR_free_instruction(*it); 
+    free(func->code->items);
+    free(func->code);
+  }
+
+  free(func);
+}
+
+int HIR_lower_expression(HIR_parser_t* hir,
+    expression_t* expr,
+    HIR_function_t* func)
+{
+  if (expr->type == EXPRESSION_INT_LIT) {
+    HIR_instruction_t* instr = calloc(1, sizeof(HIR_instruction_t));  
+    if (!instr) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return -1;
+    }
+    instr->kind = HIR_INT_CONST;
+    instr->dest = ++(func->next_temp_id);
+    instr->int_value = expr->int_lit.value;
+    da_append(func->code, instr);
+    return 0;
+  }
+
+  return 1;
+}
+
+int HIR_lower_statement(HIR_parser_t* hir, 
+    statement_t* stmt,
+    HIR_function_t* func)
+{
+  if (stmt->type == STATEMENT_RETURN) {
+    HIR_lower_expression(hir, stmt->ret.value, func); 
+    HIR_instruction_t* instr = calloc(1, sizeof(HIR_instruction_t));
+    if (!instr) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+      return -1;
+    }
+    instr->kind = HIR_RETURN;
+    instr->var = func->next_temp_id; 
+    da_append(func->code, instr);
+    return 0;
+  }
+
+  return 1;
+}
+
+int HIR_lower_function(HIR_parser_t* hir, 
+    declaration_t* function) 
+{
+  HIR_function_t* func = calloc(1, sizeof(HIR_function_t));
+  if (!func) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return -1;
+  } 
+
+  func->name = strdup(function->func.name);
+  if (!func->name) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return -1;
+  } 
+
+  func->return_type = function->func.return_type;
+
+  func->params = calloc(function->func.params.count, 
+      sizeof(typed_identifier_t));
+  if (!func->params) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return -1;
+  }
+  func->param_count = function->func.params.count; 
+  for (size_t i = 0; i < func->param_count; ++i) 
+    func->params[i] = function->func.params.items[i];
+
+  func->next_temp_id = 0;
+
+  func->code = calloc(1, sizeof(HIR_instruction_block));
+  if (!func->code) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return -1;
+  }
+
+  da_foreach(statement_t*, it, function->func.body) {
+    int lowering_result = HIR_lower_statement(hir, *it, func);
+    if (lowering_result != 0) {
+      // TODO: see if we have to propage error here or not
+      return -1;
+    }
+  } 
+
+  da_append(hir->hir_program, func);
+
+  return 0;
+}
+
+void HIR_display_function(HIR_function_t* function) 
+{
+  printf("Function %s\n", function->name);
+  
+  for (size_t i = 0; i < function->code->count; ++i) {
+    HIR_instruction_t* instr = function->code->items[i];
+    printf("%zu: ", i);
+
+    if (instr->kind == HIR_INT_CONST) {
+      printf("t%d = INT_CONST %d\n", instr->dest, instr->int_value);
+      continue;
+    }
+
+    if (instr->kind == HIR_RETURN) {
+      printf("RETURN t%d\n", instr->var);
+      continue;
+    }
+  }
+}

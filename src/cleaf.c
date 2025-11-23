@@ -49,7 +49,7 @@ int main(int argc, char** argv)
   while (lexer_get_token(&lex)) {
     if (lex.token == LEXER_token_parse_error) {
       error_report_general(ERROR_SEVERITY_ERROR, "lexer parse error");
-      break;
+      return 1;
     }
     //lexer_print_token(&lex);
     //printf("\n");
@@ -63,8 +63,8 @@ int main(int argc, char** argv)
   while ((size_t) parser.pos < parser.count) {
     declaration_t* decl = parse_declaration(&parser); 
     if (decl == NULL) {
-      printf("END / ERROR PARSING \n");
-      break;
+      error_report_general(ERROR_SEVERITY_ERROR, "ast parse error");
+      return 1;
     }
     // print_declaration(decl, 1);
     da_append(&program, decl);
@@ -78,16 +78,44 @@ int main(int argc, char** argv)
   semantic_analyze(&analyzer);
   semantic_free_function_definition(&analyzer);
 
-  hir_function_array hir_program = {0};
+  if (analyzer.error_count > 0) {
+    error_report_general(ERROR_SEVERITY_NOTE, "%d errors during semantic analyzing, skip next phase", analyzer.error_count);
+    return 1;
+  }
+
+  HIR_function_array* hir_program = calloc(1, sizeof(HIR_function_array));
+  if (!hir_program) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return 1;
+  }
+
+  HIR_parser_t hir_parser = {0};
+  hir_parser.error_ctx = &error_ctx;
+  hir_parser.error_count = 0;
+  hir_parser.hir_program = hir_program;
   da_foreach(declaration_t*, it, &program) {
-    // hir_parse_function 
-    // da_append to hir_program
+    int lowering_result = HIR_lower_function(&hir_parser, *it);
+    if (lowering_result != 0) {
+      error_report_general(ERROR_SEVERITY_ERROR,
+          "hir parsing error"); 
+      return 1;
+    }
+  }
+
+  da_foreach(HIR_function_t*, it, hir_parser.hir_program) {
+    HIR_display_function(*it); 
   }
 
   da_foreach(declaration_t*, it, &program) {
     free_declaration(*it);
   }
   da_free(&program);
+
+  da_foreach(HIR_function_t*, it, hir_program) {
+    HIR_free_function(*it); 
+  }
+  da_free(hir_program);
+  free(hir_program);
 
   for (size_t i = 0; i < parser.count; i++) {
     if (parser.items[i].string_value) {
