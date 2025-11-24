@@ -116,22 +116,30 @@ int HIR_lower_function(HIR_parser_t* hir,
   return 0;
 }
 
-void HIR_display_function(HIR_function_t* function) 
+char* HIR_generate_string_program(HIR_function_t* function) 
 {
-  printf("Function %s\n", function->name);
-  
+  string_builder_t sb = {0};
+  sb_append_fmt(&sb, "Function %s\n", function->name);
   for (size_t i = 0; i < function->code->count; ++i) {
     HIR_instruction_t* instr = function->code->items[i];
-    printf("%zu: ", i);
+    sb_append_fmt(&sb, "%zu: ", i);
 
     if (instr->kind == HIR_INT_CONST) {
-      printf("t%d = INT_CONST %d\n", instr->dest, instr->int_value);
+      sb_append_fmt(&sb, "t%d = INT_CONST %d\n", instr->dest, instr->int_value);
       continue;
     }
 
     if (instr->kind == HIR_RETURN) {
-      printf("RETURN t%d\n", instr->var);
+      sb_append_fmt(&sb, "RETURN t%d\n", instr->var);
       continue;
     }
   }
+
+  return sb.items;
+}
+
+void HIR_display_function(HIR_function_t* function) 
+{
+ char* string_program = HIR_generate_string_program(function); 
+ puts(string_program);
 }

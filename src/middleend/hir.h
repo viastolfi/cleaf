@@ -7,6 +7,7 @@
 #include "../thirdparty/da.h"
 #include "../thirdparty/error.h"
 #include "../frontend/ast_definition.h"
+#include "../thirdparty/string_builder.h"
 
 typedef enum 
 {
@@ -97,4 +98,5 @@ int HIR_lower_expression(HIR_parser_t* hir,
 void HIR_display_function(HIR_function_t* function);
 void HIR_free_function(HIR_function_t* func);
 void HIR_free_instruction(HIR_instruction_t* instr);
+char* HIR_generate_string_program(HIR_function_t* function);
 #endif // HIR_H
