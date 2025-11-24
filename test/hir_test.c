@@ -125,3 +125,7 @@ before_each(int, result, char* file_path, char* expected_path)
 ct_test(hir_test, return_stmt, "test/hir_case/return_stmt.clf", "test/hir_case/return_stmt.res") {
   ct_assert_eq(result, 0, "hir parsing give right output");
 }
+
+ct_test(hir_test, simple_binary, "test/hir_case/simple_binary.clf", "test/hir_case/simple_binary.res") {
+  ct_assert_eq(result, 0, "hir parsing give right output");
+}

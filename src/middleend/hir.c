@@ -45,6 +45,30 @@ int HIR_lower_expression(HIR_parser_t* hir,
     return 0;
   }
 
+  if (expr->type == EXPRESSION_BINARY) {
+    HIR_instruction_t* instr = calloc(1, sizeof(HIR_instruction_t));  
+    if (!instr) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return -1;
+    }
+    instr->kind = HIR_BINARY;
+    switch(expr->binary.op) {
+      case BINARY_PLUS:
+       instr->op = HIR_BINARY_ADD;
+       break;
+      default:
+       return 1;
+    }
+
+    HIR_lower_expression(hir, expr->binary.left, func); 
+    HIR_lower_expression(hir, expr->binary.right, func);
+    instr->a = func->next_temp_id - 1;
+    instr->b = func->next_temp_id;
+    instr->dest = ++(func->next_temp_id);
+    da_append(func->code, instr);
+    return 0;
+  }
+
   return 1;
 }
 
@@ -52,6 +76,10 @@ int HIR_lower_statement(HIR_parser_t* hir,
     statement_t* stmt,
     HIR_function_t* func)
 {
+  if (stmt->type == STATEMENT_EXPR) {
+    HIR_lower_expression(hir, stmt->expr_stmt.expr, func); 
+    return 0;
+  }
   if (stmt->type == STATEMENT_RETURN) {
     HIR_lower_expression(hir, stmt->ret.value, func); 
     HIR_instruction_t* instr = calloc(1, sizeof(HIR_instruction_t));
@@ -131,6 +159,11 @@ char* HIR_generate_string_program(HIR_function_t* function)
 
     if (instr->kind == HIR_RETURN) {
       sb_append_fmt(&sb, "RETURN t%d\n", instr->var);
+      continue;
+    }
+
+    if (instr->kind == HIR_BINARY) {
+      sb_append_fmt(&sb, "t%d = ADD t%d t%d\n", instr->dest, instr->a, instr->b); 
       continue;
     }
   }
