@@ -75,10 +75,10 @@ extern "C" {
 static int total = 0;
 static int success = 0;
 
-#define before_each(TYPE, VALUE, ENTRY) \
+#define before_each(TYPE, VALUE, ...) \
   typedef TYPE T; \
   static T VALUE; \
-  static void before_each_function(ENTRY) 
+  static void before_each_function(__VA_ARGS__)
 
 
 typedef void (*ct_func)(void);
@@ -119,7 +119,7 @@ static void add_test(ct_test* t) {
   static void register_##SUITE##_##NAME(void) { add_test(&ct_test_##SUITE##_##NAME); } \
   static void SUITE##_##NAME##_impl(void) 
 #else
-#define ct_test(SUITE, NAME, ENTRY) \
+#define ct_test(SUITE, NAME, ...) \
   static void SUITE##_##NAME##_impl(void); \
   static void before_##SUITE##_##NAME(void); \
   static ct_test ct_test_##SUITE##_##NAME = { \
@@ -131,7 +131,7 @@ static void add_test(ct_test* t) {
   }; \
   __attribute__((constructor)) \
   static void register_##SUITE##_##NAME(void) { add_test(&ct_test_##SUITE##_##NAME); } \
-  static void before_##SUITE##_##NAME(void) { before_each_function(ENTRY); } \
+  static void before_##SUITE##_##NAME(void) { before_each_function(__VA_ARGS__); } \
   static void SUITE##_##NAME##_impl(void)
 #endif // BEFORE_EACH
 
