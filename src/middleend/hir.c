@@ -60,9 +60,9 @@ int HIR_lower_expression(HIR_parser_t* hir,
        return 1;
     }
 
+    instr->a = func->next_temp_id + 1;
     HIR_lower_expression(hir, expr->binary.left, func); 
     HIR_lower_expression(hir, expr->binary.right, func);
-    instr->a = func->next_temp_id - 1;
     instr->b = func->next_temp_id;
     instr->dest = ++(func->next_temp_id);
     da_append(func->code, instr);

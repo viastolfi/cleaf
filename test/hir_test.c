@@ -108,7 +108,7 @@ before_each(int, result, char* file_path, char* expected_path)
   char* textr = (char*) malloc(1 << 20);
   int lenr = fr ? (int) fread(textr, 1, 1<<20, fr) : -1;
 
-  if (len < 0) {
+  if (lenr < 0) {
     fprintf(stderr, "error while reading %s\n", expected_path);
     free(textr);
     fclose(fr);
@@ -127,5 +127,9 @@ ct_test(hir_test, return_stmt, "test/hir_case/return_stmt.clf", "test/hir_case/r
 }
 
 ct_test(hir_test, simple_binary, "test/hir_case/simple_binary.clf", "test/hir_case/simple_binary.res") {
+  ct_assert_eq(result, 0, "hir parsing give right output");
+}
+
+ct_test(hir_test, nested_binary, "test/hir_case/nested_binary.clf", "test/hir_case/nested_binary.res") {
   ct_assert_eq(result, 0, "hir parsing give right output");
 }
