@@ -29,6 +29,11 @@ typedef enum
   HIR_CALL
 } HIR_instruction_kind;
 
+typedef enum 
+{
+  HIR_BINARY_ADD
+} HIR_binary_kind;
+
 typedef int HIR_temp_id;
 
 typedef struct 
@@ -43,6 +48,8 @@ typedef struct
     char* string_value; 
 
     HIR_temp_id var;
+
+    HIR_binary_kind op;
 
     struct {
       char* callee;
