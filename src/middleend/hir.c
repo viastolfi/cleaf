@@ -28,6 +28,39 @@ void HIR_free_function(HIR_function_t* func)
   free(func);
 }
 
+int HIR_lower_binary_expression(expression_t* expr,
+    HIR_parser_t* hir,
+    HIR_instruction_t* instr,
+    HIR_function_t* func)
+{
+  switch(expr->binary.op) {
+    case BINARY_PLUS:
+      instr->op = HIR_BINARY_ADD;
+      break;
+    case BINARY_MINUS:
+      instr->op = HIR_BINARY_MINUS;
+      break;
+    case BINARY_MUL:
+      instr->op = HIR_BINARY_MUL;
+      break;
+    default:
+      return 1;
+    }
+
+    // prioritized binary expression
+    if (instr->op == HIR_BINARY_MUL) {
+       
+    } else {
+      instr->a = func->next_temp_id + 1;
+      HIR_lower_expression(hir, expr->binary.left, func); 
+      HIR_lower_expression(hir, expr->binary.right, func);
+      instr->b = func->next_temp_id;
+      instr->dest = ++(func->next_temp_id);
+    }
+
+    return 0;
+}
+
 int HIR_lower_expression(HIR_parser_t* hir,
     expression_t* expr,
     HIR_function_t* func)
@@ -51,20 +84,14 @@ int HIR_lower_expression(HIR_parser_t* hir,
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
       return -1;
     }
-    instr->kind = HIR_BINARY;
-    switch(expr->binary.op) {
-      case BINARY_PLUS:
-       instr->op = HIR_BINARY_ADD;
-       break;
-      default:
-       return 1;
+    if (HIR_lower_binary_expression(expr, hir, instr, func) != 0) {
+      error_report_at_position(hir->error_ctx,
+          expr->source_pos,
+          ERROR_SEVERITY_ERROR,
+          "error while lowering binary expression");
+      return 1;
     }
-
-    instr->a = func->next_temp_id + 1;
-    HIR_lower_expression(hir, expr->binary.left, func); 
-    HIR_lower_expression(hir, expr->binary.right, func);
-    instr->b = func->next_temp_id;
-    instr->dest = ++(func->next_temp_id);
+    instr->kind = HIR_BINARY;
     da_append(func->code, instr);
     return 0;
   }
@@ -88,7 +115,7 @@ int HIR_lower_statement(HIR_parser_t* hir,
       return -1;
     }
     instr->kind = HIR_RETURN;
-    instr->var = func->next_temp_id; 
+    instr->dest = func->next_temp_id; 
     da_append(func->code, instr);
     return 0;
   }
@@ -158,13 +185,25 @@ char* HIR_generate_string_program(HIR_function_t* function)
     }
 
     if (instr->kind == HIR_RETURN) {
-      sb_append_fmt(&sb, "RETURN t%d\n", instr->var);
+      sb_append_fmt(&sb, "RETURN t%d\n", instr->dest);
       continue;
     }
 
     if (instr->kind == HIR_BINARY) {
-      sb_append_fmt(&sb, "t%d = ADD t%d t%d\n", instr->dest, instr->a, instr->b); 
-      continue;
+      switch (instr->op) {
+        case HIR_BINARY_ADD: 
+          sb_append_fmt(&sb, "t%d = ADD t%d t%d\n", instr->dest, instr->a, instr->b); 
+        continue;
+        case HIR_BINARY_MINUS:
+          sb_append_fmt(&sb, "t%d = MIN t%d t%d\n", instr->dest, instr->a, instr->b);          
+          continue;
+        case HIR_BINARY_MUL:
+          sb_append_fmt(&sb, "t%d = MUL t%d t%d\n", instr->dest, instr->a, instr->b);          
+          continue;
+        default:
+          sb_append_fmt(&sb, "unknow binary op\n");
+          continue;
+      }
     }
   }
 
