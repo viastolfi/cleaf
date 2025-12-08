@@ -2,6 +2,6 @@ fn main() {
   foo();
 }
 
-fn foo(var a) {
+fn foo(int a) {
   var b = a;
 }
