@@ -54,6 +54,12 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
   semantic_error_display(analyzer); 
 }
 
+int semantic_check_name_not_reserved(semantic_analyzer_t* analyzer,
+                                     const char* name)
+{
+  return 0;
+}
+
 int analyze_declaration(semantic_analyzer_t* analyzer,
                         declaration_t* decl,
                         scope_t* scope)
@@ -62,6 +68,8 @@ int analyze_declaration(semantic_analyzer_t* analyzer,
     semantic_error_register(analyzer,
         decl->var_decl.ident.source_pos - 1,
         "already defined variable redifinition");
+    return 0;
+  } else if (semantic_check_name_not_reserved(analyzer, decl->var_decl.ident.name)) {
     return 0;
   } else {
     return 1;
