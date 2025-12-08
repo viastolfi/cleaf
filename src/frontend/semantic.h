@@ -72,5 +72,7 @@ void semantic_error_register(semantic_analyzer_t* analyzer,
                              const char* pos, 
                              const char* msg);
 void semantic_error_display(semantic_analyzer_t* analyzer);
+int semantic_check_name_not_reserved(semantic_analyzer_t* analyzer, 
+                                     const char* name);
 
 #endif // SEMANTIC_H
