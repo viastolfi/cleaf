@@ -203,8 +203,8 @@ bool check_is_type(parser_t* p)
     return true;
   if (strcmp(peek(p)->string_value, "string") == 0)
     return true;
-  //if (strcmp(peek(p)->string_value, "var") == 0)
-    //return true;
+  if (strcmp(peek(p)->string_value, "var") == 0)
+    return true;
 
   return false;
 }
