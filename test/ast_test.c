@@ -330,3 +330,9 @@ ct_test(ast, for_statement, "for (var i = 0; i < 10; ++i) { b = 3; }")
   free_statement(s);
   da_free(&parser);
 }
+
+ct_test(ast, var_function_param, "fn main(var a): int { return a; }")
+{
+  declaration_t* decl = parse_declaration(&parser);
+  ct_assert_null(decl, "Decl should be NULL");
+}

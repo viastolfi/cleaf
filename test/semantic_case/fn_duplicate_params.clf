@@ -2,6 +2,6 @@ fn main(int a, string a) {}
 
 fn foo(int a, int a) {}
 
-fn bar(var a, var a) {}
+fn bar(string a, string a) {}
 
-fn quz(int a, var a) {}
+fn quz(int a, string a) {}
