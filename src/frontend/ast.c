@@ -203,8 +203,8 @@ bool check_is_type(parser_t* p)
     return true;
   if (strcmp(peek(p)->string_value, "string") == 0)
     return true;
-  if (strcmp(peek(p)->string_value, "var") == 0)
-    return true;
+  //if (strcmp(peek(p)->string_value, "var") == 0)
+    //return true;
 
   return false;
 }
@@ -751,6 +751,15 @@ declaration_t* ast_parse_function(parser_t* p)
       if (p->error_ctx) {
         error_report_at_token(p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
                              "parameter type has no value");
+      }
+      free_declaration(decl);
+      return NULL;
+    }
+
+    if (strcmp(type_tok->string_value, "var") == 0) {
+      if (p->error_ctx) {
+        error_report_at_token(p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
+                              "`var` cannot be use for functions parameters. Use an explicit type instead");
       }
       free_declaration(decl);
       return NULL;

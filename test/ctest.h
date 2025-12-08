@@ -173,6 +173,25 @@ static void add_test(ct_test* t) {
     } \
   } while(0)
 
+#define ct_assert_null(expr, message) \
+  do { \
+    total++; \
+    if ((void*) expr) { \
+      CT_PRINT(COLOR_FAIL "[FAIL] " COLOR_RESET); \
+      CT_PRINT("(%s:%d) ", __FILE__, __LINE__); \
+      CT_PRINT("%s\n", message); \
+      CT_PRINT(COLOR_HINT "[HINT] " COLOR_RESET); \
+      CT_PRINT(COLOR_SUM COLOR_BOLD "expected :" COLOR_RESET " NULL\n"); \
+      CT_PRINT(COLOR_HINT "[HINT] " COLOR_RESET); \
+      CT_PRINT(COLOR_SUM COLOR_BOLD "result   :" COLOR_RESET " not NULL\n"); \
+    } else { \
+      CT_PRINT(COLOR_SUCCESS "[PASS] " COLOR_RESET); \
+      CT_PRINT("(%s:%d) ", __FILE__, __LINE__); \
+      CT_PRINT("%s\n", message); \
+      success++; \
+    } \
+  } while(0)
+
 static void ct_assert_eq_core(long long x, long long y, const char* fmt, const char* message, const char* file, int line)
 {
   total++;
