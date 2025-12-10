@@ -39,6 +39,8 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
             analyzer->function_symbols,
             (*it)->func.name);
 
+        if (!fs) continue;
+
         for (size_t i = 0; i < fs->params_count; ++i) 
           hashmap_put(function_scope->symbols,
                       fs->params_name[i],
@@ -388,7 +390,7 @@ void semantic_load_function_definition(semantic_analyzer_t* analyzer)
 
     if (hashmap_get(func_sym, (*it)->func.name)) {
       const char* pos = (*it)->source_pos + 1;
-      semantic_error_register(analyzer, pos, "already defined function redifinition");
+      semantic_error_register(analyzer, pos, "already defined function redefinition");
       continue;
     }
 
