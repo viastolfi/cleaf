@@ -1,0 +1,6 @@
+fn main() {
+  int a = 5;
+  string b = "test";
+  var c = a + b;
+  var d = b - 10;
+}

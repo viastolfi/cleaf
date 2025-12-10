@@ -1,0 +1,36 @@
+fn main(): int {
+  var a = bar(0);
+  int b = bar(0);
+
+  string c = foo();
+
+  var d = a + b;
+
+  for (var i = 0; i < a + 10; ++i) {
+    if (b == 0) {
+      d++;
+    }
+  }
+
+  while (d > 0) {
+    d = d - b + 1;
+  }
+
+  if (d == 0) {
+    d = 4;
+  } else {
+    d = 0;
+  }
+
+  return 0;
+}
+
+
+fn foo(): string {
+  var b = "test";
+  return b;
+}
+
+fn bar(int a): int {
+  return a;
+}
