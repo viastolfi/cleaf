@@ -12,6 +12,26 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+// WARNING: keep this sorted (this is a bit poor but whatever)
+static const char* reserved_keywords[] = {
+    "break",
+    "continue",
+    "else",
+    "false",
+    "fn",
+    "for",
+    "if",
+    "int",
+    "return",
+    "string",
+    "true",
+    "var",
+    "while",
+};
+
+static const size_t reserved_keyword_count =
+    sizeof(reserved_keywords) / sizeof(reserved_keywords[0]);
+
 typedef struct
 {
   const char* message;
@@ -72,5 +92,6 @@ void semantic_error_register(semantic_analyzer_t* analyzer,
                              const char* pos, 
                              const char* msg);
 void semantic_error_display(semantic_analyzer_t* analyzer);
+int semantic_check_name_not_reserved(const char* name);
 
 #endif // SEMANTIC_H

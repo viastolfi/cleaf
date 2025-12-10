@@ -39,6 +39,8 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
             analyzer->function_symbols,
             (*it)->func.name);
 
+        if (!fs) continue;
+
         for (size_t i = 0; i < fs->params_count; ++i) 
           hashmap_put(function_scope->symbols,
                       fs->params_name[i],
@@ -54,6 +56,22 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
   semantic_error_display(analyzer); 
 }
 
+int semantic_check_name_not_reserved(const char* name)
+{
+  int left = 0, right = reserved_keyword_count - 1;
+
+  while (left <= right) {
+    int mid = (left + right) / 2;
+    int cmp = strcmp(name, reserved_keywords[mid]);
+
+    if (cmp == 0) return 1;
+    if (cmp < 0) right = mid - 1;
+    else left = mid + 1;
+  }
+
+  return 0;
+}
+
 int analyze_declaration(semantic_analyzer_t* analyzer,
                         declaration_t* decl,
                         scope_t* scope)
@@ -62,6 +80,11 @@ int analyze_declaration(semantic_analyzer_t* analyzer,
     semantic_error_register(analyzer,
         decl->var_decl.ident.source_pos - 1,
         "already defined variable redifinition");
+    return 0;
+  } else if (semantic_check_name_not_reserved(decl->var_decl.ident.name)) {
+    semantic_error_register(analyzer,
+        decl->var_decl.ident.source_pos - 1,
+        "can't named a variable using a reserved keyword");
     return 0;
   } else {
     return 1;
@@ -358,9 +381,16 @@ void semantic_load_function_definition(semantic_analyzer_t* analyzer)
     if ((*it)->type!= DECLARATION_FUNC)
       continue;
 
+    if (semantic_check_name_not_reserved((*it)->func.name)) {
+      semantic_error_register(analyzer,
+          (*it)->source_pos + 1,
+          "can't named a function using a reserved keyword");
+      continue;
+    }
+
     if (hashmap_get(func_sym, (*it)->func.name)) {
       const char* pos = (*it)->source_pos + 1;
-      semantic_error_register(analyzer, pos, "already defined function redifinition");
+      semantic_error_register(analyzer, pos, "already defined function redefinition");
       continue;
     }
 
