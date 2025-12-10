@@ -1416,7 +1416,8 @@ statement_t* parse_statement(parser_t* p)
     return ast_parse_decl_stmt(p);
   } 
 
-  // for now, we can maybe assume that this is the always wanted fallback
-  // TODO: keep an eye on this
-  return ast_parse_expr_stmt(p);
+  if (p->pos < p->count) 
+    return ast_parse_expr_stmt(p);
+
+  return NULL;
 }
