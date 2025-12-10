@@ -1,0 +1,25 @@
+fn test(int a, int a): string {
+  var b = undefined_var + 5;
+  int c = "string" + 10;
+  var c = 20;
+  return 42;
+}
+
+fn test(): int {
+  return "duplicate function";
+}
+
+fn main() {
+  int x = missing_func(1, 2);
+  var y = test(5
+  string z = x + "text";
+  
+  for (var i = 0; undef_var < 10; ++i) {
+    int i = 0;
+    var result = i + "string";
+  }
+  
+  if (another_missing {
+    x = y;
+  
+}

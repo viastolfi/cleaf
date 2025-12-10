@@ -1,0 +1,4 @@
+fn main() {
+  var result = undefined_function();
+  another_missing(5, 10);
+}
