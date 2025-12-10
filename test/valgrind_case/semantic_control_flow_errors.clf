@@ -1,0 +1,14 @@
+fn main() {
+  int a = 5;
+  for (var i = 0; undefined_cond < 10; ++i) {
+    a++;
+  }
+  
+  while (missing_var > 0) {
+    a--;
+  }
+  
+  if (another_undef) {
+    a = 0;
+  }
+}
