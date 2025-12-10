@@ -1,0 +1,11 @@
+fn var() {}
+
+fn int() {}
+
+fn if() {}
+
+fn return() {}
+
+fn false() {}
+
+fn fn() {}
