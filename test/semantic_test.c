@@ -325,3 +325,13 @@ ct_test(semantic_case, function_call_use_return_error, "test/semantic_case/funct
   ct_assert_eq(analyzer.error_count, 2, "Should have 2 errors on different test case with function call return type");
   free_analyzer(&analyzer);
 }
+
+ct_test(semantic_case, function_declaration_reserved_keywords, "test/semantic_case/function_declaration_reserved_keywords.clf") {
+  ct_assert_eq(analyzer.error_count, 6, "Should have 6 errors for different test case on function declaration with reserve keywords");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, var_decl_reserved_keywords, "test/semantic_case/var_decl_reserved_keywords.clf") {
+  ct_assert_eq(analyzer.error_count, 6, "Should have 6 errors for different test case on var decl with reserved keywords");
+  free_analyzer(&analyzer);
+}

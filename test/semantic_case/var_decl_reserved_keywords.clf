@@ -1,0 +1,10 @@
+fn main(): int {
+  var var;
+  var if;
+  var int;
+  var false;
+  var return;
+  var fn;
+
+  return 0;
+}
