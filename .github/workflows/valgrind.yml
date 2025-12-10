@@ -20,10 +20,5 @@ jobs:
         run: make all
 
       - name: Run tests under Valgrind
-        run: |
-          valgrind --leak-check=full \
-                   --show-leak-kinds=all \
-                   --track-origins=yes \
-                   --error-exitcode=1 \
-                   ./build/cleaf test.clf
+        run: make valgrind-test
 
