@@ -1,0 +1,7 @@
+fn test(): string {
+  return 42;
+}
+
+fn main(): int {
+  return "not an int";
+}
