@@ -1416,7 +1416,7 @@ statement_t* parse_statement(parser_t* p)
     return ast_parse_decl_stmt(p);
   } 
 
-  if (p->pos < p->count) 
+  if ((size_t) p->pos < p->count) 
     return ast_parse_expr_stmt(p);
 
   return NULL;
