@@ -43,6 +43,7 @@ declaration_t* ast_parse_function(parser_t* p);
 declaration_t* ast_parse_var_decl(parser_t* p);
 declaration_t* ast_parse_untype_var_decl(parser_t* p);
 declaration_t* parse_declaration(parser_t* p);
+
 statement_t*   ast_parse_return_stmt(parser_t* p);
 statement_t*   ast_parse_decl_stmt(parser_t* p);
 statement_t*   ast_parse_expr_stmt(parser_t* p);
@@ -50,12 +51,16 @@ statement_t*   ast_parse_if_stmt(parser_t* p);
 statement_t*   ast_parse_while_stmt(parser_t* p);
 statement_t*   ast_parse_for_stmt(parser_t* p);
 statement_t*   parse_statement(parser_t* p);
+
 expression_t*  parse_expression(parser_t* p);
+expression_t*  parse_primary(parser_t* p);
 expression_t*  ast_parse_expr_int_lit(parser_t* p);
 expression_t*  ast_parse_expr_string_lit(parser_t* p);
 expression_t*  ast_parse_expr_var(parser_t* p);
 expression_t*  ast_parse_expr_assign(parser_t* p);
-expression_t*  ast_parse_expr_binary(parser_t* p);
+expression_t*  ast_parse_expr_binary(parser_t* p, 
+                                     int bp);
+expression_t*  ast_parse_expr_comparison_binary(parser_t* p);
 expression_t*  ast_parse_expr_call(parser_t* p);
 expression_t*  ast_parse_expr_unary(parser_t* p);
 
