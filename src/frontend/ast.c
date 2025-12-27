@@ -368,135 +368,64 @@ expression_t* ast_parse_expr_assign(parser_t* p)
   return e;
 }
 
-expression_t* ast_parse_expr_binary(parser_t* p) 
+expression_t* ast_parse_expr_comparison_binary(parser_t* p)
 {
-  expression_t* e = (expression_t*) malloc(sizeof(expression_t)); 
-  if (!e) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return NULL;
-  }
-  memset(e, 0, sizeof(expression_t));
-
-  e->type = EXPRESSION_BINARY;
-  e->source_pos = peek(p)->source_pos;
-
-  expression_t* left = (expression_t*) malloc(sizeof(expression_t));
-  if (!left) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    free_expression(e);
-    return NULL;
-  }
-  memset(left, 0, sizeof(expression_t));
-
-  token_t* left_tok = advance(p);
-  left->source_pos = left_tok->source_pos;
-  switch (left_tok->type) {
-    case LEXER_token_intlit:
-      left->type = EXPRESSION_INT_LIT;
-      left->int_lit.value = left_tok->int_value;
-      break;
-    case LEXER_token_dqstring:
-      left->type = EXPRESSION_STRING_LIT;
-      if (!left_tok->string_value) {
-        if (p->error_ctx) {
-          error_report_at_token(p->error_ctx, left_tok, ERROR_SEVERITY_ERROR,
-                               "string literal has no value");
-        }
-        free_expression(e);
-        free_expression(left);
-        return NULL;
-      }
-      left->string_lit.value = strdup(left_tok->string_value);
-      if (!left->string_lit.value) {
-        error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-        free_expression(e);
-        free_expression(left);
-        return NULL;
-      }
-      break;
-    case LEXER_token_id:
-      left->type = EXPRESSION_VAR;
-      if (!left_tok->string_value) {
-        if (p->error_ctx) {
-          error_report_at_token(p->error_ctx, left_tok, ERROR_SEVERITY_ERROR,
-                               "identifier has no value");
-        }
-        free_expression(e);
-        free_expression(left);
-        return NULL;
-      }
-      left->var.name = strdup(left_tok->string_value);
-      if (!left->var.name) {
-        error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-        free_expression(e);
-        free_expression(left);
-        return NULL;
-      }  
-      break;
-    default:
-      // unexpected 
-      if (p->error_ctx) {
-        error_report_at_token(p->error_ctx, left_tok, ERROR_SEVERITY_ERROR,
-                             "unexpected token in binary expression");
-      }
-      free_expression(e);
-      free_expression(left);
-      return NULL;
-  }
-
-  e->binary.left = left;
-
-  token_t* op_tok = advance(p);
-  switch (op_tok->type) {
-    case '+':
-     e->binary.op = BINARY_PLUS;
-     break; 
-    case '-':
-     e->binary.op = BINARY_MINUS;
-     break;
-    case '*':
-     e->binary.op = BINARY_MUL;
-     break;
-    case '/':
-     e->binary.op = BINARY_DIV;
-     break;
-    case '>':
-     e->binary.op = BINARY_GT;
-     break;
-    case LEXER_token_gteq:
-     e->binary.op = BINARY_GTE;
-     break;
-    case '<':
-     e->binary.op = BINARY_LT;
-     break;
-    case LEXER_token_lseq:
-     e->binary.op = BINARY_LTE;
-     break;
-    case LEXER_token_eq:
-     e->binary.op = BINARY_EQ;
-     break;
-    case LEXER_token_neq:
-     e->binary.op = BINARY_NEQ;
-     break;
-    default:
-     error_report_at_token(p->error_ctx, op_tok, ERROR_SEVERITY_ERROR,
-         "unexpected binary operation token");
-  }
-
-  e->binary.right = parse_expression(p);
-  if (!e->binary.right) {
-    if (p->error_ctx) {
-      error_report_at_token(p->error_ctx, op_tok, ERROR_SEVERITY_ERROR,
-                           "expected expression after binary operator");
-    }
-    free_expression(e);
-    return NULL;
-  }
-
-  return e;
+  return NULL;
 }
 
-expression_t*  ast_parse_expr_call(parser_t* p) 
+expression_t* ast_parse_expr_binary(parser_t* p, int min_bp) 
+{
+  token_t* tok;
+  expression_t* expr = parse_primary(p);
+  if (!expr) {
+    // TODO: add some sort of error_report_stack_trace later on
+    return NULL;
+  }
+
+  while ((tok = peek(p))->type != ';') {
+    int lbp = (tok->type == '+' || tok->type == '-') ? 10 : 20; 
+    int rbp = (tok->type == '+' || tok->type == '-') ? 11 : 21;
+
+    if (lbp < min_bp) break;
+
+    expression_t* e = (expression_t*) calloc(1, sizeof(expression_t));
+    if (!e) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      free_expression(expr);
+      return NULL;
+    }
+
+    advance(p);
+
+    e->type = EXPRESSION_BINARY;
+    e->source_pos = tok->source_pos;
+
+    switch (tok->type) {
+      case '*':
+        e->binary.op = BINARY_MUL; 
+        break;
+      case '/':
+        e->binary.op = BINARY_DIV;
+        break;
+      case '+':
+        e->binary.op = BINARY_PLUS;
+        break;
+      case '-':
+        e->binary.op = BINARY_MINUS;
+        break;
+    }
+
+    expression_t* right = ast_parse_expr_binary(p, rbp);
+
+    e->binary.left = expr;
+    e->binary.right = right;
+    expr = e; 
+  }
+ 
+  return expr;
+}
+
+expression_t* ast_parse_expr_call(parser_t* p) 
 {
   expression_t* e = (expression_t*) malloc(sizeof(expression_t));
   if (!e) {
@@ -651,6 +580,24 @@ expression_t* ast_parse_expr_unary(parser_t* p)
   return e;
 }
 
+expression_t* parse_primary(parser_t* p) 
+{
+  if (check(p, LEXER_token_id) && check_next(p, '(', 1)) {
+    return ast_parse_expr_call(p);
+  }
+
+  if (check(p, LEXER_token_id)) 
+    return ast_parse_expr_var(p);
+
+  if (check(p, LEXER_token_dqstring)) 
+    return ast_parse_expr_string_lit(p);
+  
+  if (check(p, LEXER_token_intlit))
+      return ast_parse_expr_int_lit(p);
+
+  return NULL;
+}
+
 expression_t* parse_expression(parser_t* p) 
 {
   if (check_next(p, '=', 1)) 
@@ -667,14 +614,16 @@ expression_t* parse_expression(parser_t* p)
   if (check_next(p, '+', 1) ||
       check_next(p, '-', 1) ||
       check_next(p, '*', 1) ||
-      check_next(p, '/', 1) ||
+      check_next(p, '/', 1))
+    return ast_parse_expr_binary(p, 0);
+
+  if (check_next(p, '>', 1) ||
       check_next(p, '<', 1) ||
-      check_next(p, '>', 1) ||
-      check_next(p, LEXER_token_eq, 1) ||
-      check_next(p, LEXER_token_neq, 1) ||
       check_next(p, LEXER_token_gteq, 1) ||
-      check_next(p, LEXER_token_lseq, 1))
-    return ast_parse_expr_binary(p);
+      check_next(p, LEXER_token_lseq, 1) ||
+      check_next(p, LEXER_token_eq, 1)   ||
+      check_next(p, LEXER_token_neq, 1))
+    return ast_parse_expr_comparison_binary(p);
 
   if (check(p, LEXER_token_id) && check_next(p, '(', 1)) {
     return ast_parse_expr_call(p);
