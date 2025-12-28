@@ -368,11 +368,6 @@ expression_t* ast_parse_expr_assign(parser_t* p)
   return e;
 }
 
-expression_t* ast_parse_expr_comparison_binary(parser_t* p)
-{
-  return NULL;
-}
-
 expression_t* ast_parse_expr_binary(parser_t* p, int min_bp) 
 {
   token_t* tok;
@@ -382,9 +377,28 @@ expression_t* ast_parse_expr_binary(parser_t* p, int min_bp)
     return NULL;
   }
 
-  while ((tok = peek(p))->type != ';') {
-    int lbp = (tok->type == '+' || tok->type == '-') ? 10 : 20; 
-    int rbp = (tok->type == '+' || tok->type == '-') ? 11 : 21;
+  while ((tok = peek(p))->type != ';' &&
+         (tok = peek(p))->type != ')') {
+    int lbp, rbp;
+    switch (tok->type) {
+      case '+': case '-':
+        lbp = 10; rbp = 11;
+        break; 
+      case '*': case '/':
+        lbp = 20; rbp = 21;
+        break;
+      case '>': 
+      case '<': 
+      case LEXER_token_gteq: 
+      case LEXER_token_lseq:
+        lbp = 5; rbp = 6;
+        break;
+      case LEXER_token_eq:
+      case LEXER_token_neq:
+        lbp = 4;
+        rbp = 5;
+        break;
+    }
 
     if (lbp < min_bp) break;
 
@@ -412,6 +426,24 @@ expression_t* ast_parse_expr_binary(parser_t* p, int min_bp)
         break;
       case '-':
         e->binary.op = BINARY_MINUS;
+        break;
+      case '>':
+        e->binary.op = BINARY_GT;
+        break;
+      case '<':
+        e->binary.op = BINARY_LT;
+        break;
+      case LEXER_token_gteq:
+        e->binary.op = BINARY_GTE;
+        break;
+      case LEXER_token_lseq:
+        e->binary.op = BINARY_LTE;
+        break;
+      case LEXER_token_eq:
+        e->binary.op = BINARY_EQ;
+        break;
+      case LEXER_token_neq:
+        e->binary.op = BINARY_NEQ;
         break;
     }
 
@@ -614,16 +646,14 @@ expression_t* parse_expression(parser_t* p)
   if (check_next(p, '+', 1) ||
       check_next(p, '-', 1) ||
       check_next(p, '*', 1) ||
-      check_next(p, '/', 1))
-    return ast_parse_expr_binary(p, 0);
-
-  if (check_next(p, '>', 1) ||
+      check_next(p, '/', 1) ||
       check_next(p, '<', 1) ||
+      check_next(p, '>', 1) ||
       check_next(p, LEXER_token_gteq, 1) ||
       check_next(p, LEXER_token_lseq, 1) ||
       check_next(p, LEXER_token_eq, 1)   ||
       check_next(p, LEXER_token_neq, 1))
-    return ast_parse_expr_comparison_binary(p);
+    return ast_parse_expr_binary(p, 0);
 
   if (check(p, LEXER_token_id) && check_next(p, '(', 1)) {
     return ast_parse_expr_call(p);
