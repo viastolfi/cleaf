@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #include <stdarg.h>
-#include "lexer.h"
+#include "../frontend/lexer.h"
 
 typedef enum {
     ERROR_SEVERITY_ERROR,
