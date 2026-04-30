@@ -24,3 +24,7 @@ jobs:
         run : |
           make semantic-test
 
+      - name : hir test
+        run : |
+          make hir-test
+
