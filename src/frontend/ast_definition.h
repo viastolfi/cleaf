@@ -38,6 +38,12 @@ typedef enum
   TYPE_ERROR
 } type_kind;
 
+typedef enum
+{
+  FOR_INIT_DECL,
+  FOR_INIT_EXPR
+} for_init_kind;
+
 typedef enum 
 {
   UNARY_NEGATE,
@@ -143,6 +149,7 @@ struct statement_t
       statement_block_t* body;
     } while_stmt;
     struct {
+      for_init_kind init_kind;
       union {
         declaration_t* decl_init; 
         expression_t* expr_init;

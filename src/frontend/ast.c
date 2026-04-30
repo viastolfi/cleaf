@@ -95,13 +95,12 @@ void free_statement(statement_t* s)
   }
 
   if (s->type == STATEMENT_FOR) {
-    if (s->for_stmt.decl_init) {
-      declaration_t* d = s->for_stmt.decl_init;
-      if (d->type == DECLARATION_VAR || d->type == DECLARATION_FUNC) {
+    if (s->for_stmt.init_kind == FOR_INIT_DECL) {
+      if (s->for_stmt.decl_init)
         free_declaration(s->for_stmt.decl_init);
-      } else {
+    } else {
+      if (s->for_stmt.expr_init)
         free_expression(s->for_stmt.expr_init);
-      }
     }
     if (s->for_stmt.condition)
       free_expression(s->for_stmt.condition);
@@ -681,6 +680,7 @@ declaration_t* ast_parse_function(parser_t* p)
   memset(decl, 0, sizeof(declaration_t));
 
   decl->type = DECLARATION_FUNC;
+  decl->func.return_type = TYPE_UNTYPE;
   decl->source_pos = peek(p)->source_pos;
 
   // consume 'fn'
@@ -1293,6 +1293,7 @@ statement_t* ast_parse_for_stmt(parser_t* p)
       free_statement(s);
       return NULL;
     }
+    s->for_stmt.init_kind = FOR_INIT_DECL;
     s->for_stmt.decl_init = init;
   } else {
     expression_t* init = parse_expression(p);
@@ -1302,6 +1303,7 @@ statement_t* ast_parse_for_stmt(parser_t* p)
       free_statement(s);
       return NULL;
     }
+    s->for_stmt.init_kind = FOR_INIT_EXPR;
     s->for_stmt.expr_init = init;
 
     if (!expect(p, ';', "expected ';' between for expressions")) {

@@ -11,6 +11,8 @@
 #include "thirdparty/error.h"
 #include "frontend/semantic.h"
 
+#include "frontend/ast_printer.h"
+
 #include "middleend/hir.h"
 
 int main(int argc, char** argv) 
@@ -51,8 +53,10 @@ int main(int argc, char** argv)
       error_report_general(ERROR_SEVERITY_ERROR, "lexer parse error");
       return 1;
     }
+#if 0
     lexer_print_token(&lex);
     printf("\n");
+#endif
     token_t t = lexer_copy_token(&lex);
     da_append(&parser, t);
   }
@@ -66,9 +70,12 @@ int main(int argc, char** argv)
       error_report_general(ERROR_SEVERITY_ERROR, "ast parse error");
       return 1;
     }
-    // print_declaration(decl, 1);
     da_append(&program, decl);
   }
+
+#if 1
+  ast_print_program(&program);
+#endif
 
   semantic_analyzer_t analyzer = {0};
   analyzer.error_ctx = &error_ctx;

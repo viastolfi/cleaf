@@ -8,6 +8,7 @@ CS = \
         $(SRC)/thirdparty/error.c \
 				$(SRC)/frontend/semantic.c \
 				$(SRC)/middleend/hir.c \
+				$(SRC)/frontend/ast_printer.c \
 
 OBJ = \
         $(BUILD)/cleaf.o \
@@ -15,6 +16,7 @@ OBJ = \
         $(BUILD)/thirdparty/error.o \
 				$(BUILD)/frontend/semantic.o \
 				$(BUILD)/middleend/hir.o \
+				$(BUILD)/frontend/ast_printer.o \
 
 CC = gcc
 CFLAGS = -Wall -Wextra -g
