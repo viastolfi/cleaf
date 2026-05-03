@@ -28,6 +28,34 @@ void HIR_free_function(HIR_function_t* func)
   free(func);
 }
 
+int HIR_lower_declaration(
+    HIR_parser_t* hir,
+    declaration_t* decl,
+    HIR_function_t* func)
+{
+  (void)hir;
+  if (decl->type != DECLARATION_VAR) {
+    error_report_general(ERROR_SEVERITY_ERROR, "awaiting var declaration, getting somethign else");
+    return -1;
+  }
+
+  HIR_instruction_t* instr = calloc(1, sizeof(HIR_instruction_t));
+  if (!instr) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return -1;  
+  }
+
+  instr->kind = HIR_STORE_VAR;
+  instr->var = strdup(decl->var_decl.ident.name);
+  if (!instr->var) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return -1;
+  }
+
+  da_append(func->code, instr);
+  return 0;
+}
+
 int HIR_lower_binary_expression(expression_t* expr,
     HIR_parser_t* hir,
     HIR_instruction_t* instr,
@@ -101,11 +129,14 @@ int HIR_lower_statement(HIR_parser_t* hir,
     HIR_function_t* func)
 {
   if (stmt->type == STATEMENT_EXPR) {
-    HIR_lower_expression(hir, stmt->expr_stmt.expr, func); 
-    return 0;
+    return HIR_lower_expression(hir, stmt->expr_stmt.expr, func); 
   }
   if (stmt->type == STATEMENT_RETURN) {
-    HIR_lower_expression(hir, stmt->ret.value, func); 
+    int res = HIR_lower_expression(hir, stmt->ret.value, func); 
+    if (res != 0) {
+      // Do we have to propagate error ?
+      return -1; 
+    }
     HIR_instruction_t* instr = calloc(1, sizeof(HIR_instruction_t));
     if (!instr) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
@@ -115,6 +146,9 @@ int HIR_lower_statement(HIR_parser_t* hir,
     instr->dest = func->next_temp_id; 
     da_append(func->code, instr);
     return 0;
+  }
+  if (stmt->type == STATEMENT_DECL) {
+    return HIR_lower_declaration(hir, stmt->decl_stmt.decl, func);
   }
 
   return 1;
@@ -201,6 +235,10 @@ char* HIR_generate_string_program(HIR_function_t* function)
           sb_append_fmt(&sb, "unknow binary op\n");
           continue;
       }
+    }
+
+    if (instr->kind == HIR_STORE_VAR) {
+      sb_append_fmt(&sb, "STR slot(%s), 0\n", instr->var);
     }
   }
 

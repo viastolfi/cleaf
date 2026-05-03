@@ -26,4 +26,8 @@ int HIR_lower_binary_expression(expression_t* expr,
     HIR_parser_t* hir,
     HIR_instruction_t* instr,
     HIR_function_t* func);
+int HIR_lower_declaration(
+    HIR_parser_t* hir,
+    declaration_t* decl,
+    HIR_function_t* func);
 #endif // HIR_H
