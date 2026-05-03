@@ -45,20 +45,17 @@ int HIR_lower_binary_expression(expression_t* expr,
       break;
     default:
       return 1;
-    }
+  }
 
-    // prioritized binary expression
-    if (instr->op == HIR_BINARY_MUL) {
-       
-    } else {
-      instr->a = func->next_temp_id + 1;
-      HIR_lower_expression(hir, expr->binary.left, func); 
-      HIR_lower_expression(hir, expr->binary.right, func);
-      instr->b = func->next_temp_id;
-      instr->dest = ++(func->next_temp_id);
-    }
-
-    return 0;
+  if (!HIR_lower_expression(hir, expr->binary.left, func)) {
+    instr->a = func->next_temp_id;
+    instr->b = func->next_temp_id + 1;
+  
+    HIR_lower_expression(hir, expr->binary.right, func);
+    instr->dest = ++(func->next_temp_id);
+  }
+  
+  return 0;
 }
 
 int HIR_lower_expression(HIR_parser_t* hir,
