@@ -46,11 +46,11 @@ SEM_TEST_BIN = $(BUILD)/semantic_test
 HIR_TEST_SRC = $(TEST)/hir_test.c
 HIR_TEST_BIN = $(BUILD)/hir_test
 
-test: $(AST_TEST_BIN) $(SEM_TEST_BIN)
+test: $(AST_TEST_BIN) $(SEM_TEST_BIN) $(HIR_TEST_BIN)
 	@echo "Running tests..."
-	@$(AST_TEST_BIN) 2> test.log
-	@$(SEM_TEST_BIN) 2> test.log
-	@$(HIR_TEST_BIN) 2> test.log
+	@$(AST_TEST_BIN)
+	@$(SEM_TEST_BIN)
+	@$(HIR_TEST_BIN)
 
 ast-test: $(AST_TEST_BIN)
 	@echo "Running AST tests..."
