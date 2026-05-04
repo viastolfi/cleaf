@@ -83,13 +83,15 @@ int HIR_lower_binary_expression(expression_t* expr,
       return 1;
   }
 
-  if (!HIR_lower_expression(hir, expr->binary.left, func)) {
-    instr->a = func->next_temp_id;
-    instr->b = func->next_temp_id + 1;
-  
-    HIR_lower_expression(hir, expr->binary.right, func);
-    instr->dest = ++(func->next_temp_id);
-  }
+  if (HIR_lower_expression(hir, expr->binary.left, func) != 0)
+    return -1;
+  instr->a = func->next_temp_id;
+
+  if (HIR_lower_expression(hir, expr->binary.right, func) != 0)
+    return -1;
+  instr->b = func->next_temp_id;
+
+  instr->dest = ++(func->next_temp_id);
   
   return 0;
 }
