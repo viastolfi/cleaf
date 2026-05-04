@@ -145,3 +145,7 @@ ct_test(hir_test, initialized_var_decl, "test/hir_case/initialized_var_decl.clf"
 ct_test(hir_test, expression_init_var_decl, "test/hir_case/expression_init_var_decl.clf", "test/hir_case/expression_init_var_decl.res") {
   ct_assert_eq(result, 0, "hir parsing give right output");
 }
+
+ct_test(hir_test, var_loading, "test/hir_case/var_loading.clf", "test/hir_case/var_loading.res") {
+  ct_assert_eq(result, 0, "hir parsing give right output");
+} 

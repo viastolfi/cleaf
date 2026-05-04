@@ -2,11 +2,28 @@
 
 void HIR_free_instruction(HIR_instruction_t* instr) 
 {
-  //if (instr->string_value)
-   //free(instr->string_value);
-
-  //TODO: free call
-
+  switch (instr->kind) {
+    case HIR_STRING_CONST:
+      if (instr->string_value)
+        free(instr->string_value);
+      break;
+    case HIR_STORE_VAR:
+      if (instr->var.name)
+        free(instr->var.name);
+      break;
+    case HIR_CALL:
+      if (instr->call.callee)
+        free(instr->call.callee);
+      if (instr->call.args)
+        free(instr->call.args);
+      break;
+    case HIR_LOAD_VAR:
+      if (instr->var.name)
+        free(instr->var.name);
+      break;
+    default:
+      break;
+  }
   free(instr);
 }
 
@@ -46,18 +63,18 @@ int HIR_lower_declaration(
   }
 
   instr->kind = HIR_STORE_VAR;
-  instr->var_decl.name = strdup(decl->var_decl.ident.name);
-  if (!instr->var_decl.name) {
+  instr->var.name = strdup(decl->var_decl.ident.name);
+  if (!instr->var.name) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return -1;
   }
 
   if (decl->var_decl.init) {
     HIR_lower_expression(hir, decl->var_decl.init, func);   
-    instr->var_decl.is_init = 1;
+    instr->var.is_init = 1;
     instr->a = func->next_temp_id;
   } else {
-    instr->var_decl.is_init = 0; 
+    instr->var.is_init = 0; 
   }
 
   da_append(func->code, instr);
@@ -113,6 +130,25 @@ int HIR_lower_expression(HIR_parser_t* hir,
     return 0;
   }
 
+  if (expr->type == EXPRESSION_VAR) {
+    HIR_instruction_t* instr = calloc(1, sizeof(HIR_instruction_t));  
+    if (!instr) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return -1;
+    }
+
+    instr->kind = HIR_LOAD_VAR;
+    instr->dest = ++(func->next_temp_id);
+    instr->var.name = strdup(expr->var.name);
+    if (!instr->var.name) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return -1;
+    }
+
+    da_append(func->code, instr);
+    return 0;
+  }
+
   if (expr->type == EXPRESSION_BINARY) {
     HIR_instruction_t* instr = calloc(1, sizeof(HIR_instruction_t));  
     if (!instr) {
@@ -127,6 +163,36 @@ int HIR_lower_expression(HIR_parser_t* hir,
       return 1;
     }
     instr->kind = HIR_BINARY;
+    da_append(func->code, instr);
+    return 0;
+  }
+
+  // TODO: make sure no error can still occurs here even after semantic analysis
+  if (expr->type == EXPRESSION_ASSIGN) {
+    int res = HIR_lower_expression(hir, expr->assign.rhs, func);
+
+    if (res != 0) {
+      //TODO: do we have to propagate error ?
+      return 1;
+    }
+
+    HIR_instruction_t* instr = calloc(1, sizeof(HIR_instruction_t));
+    if (!instr) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return -1;
+    }
+
+    instr->kind = HIR_STORE_VAR;
+    instr->a = func->next_temp_id;
+    // This works only if lhs in assign is a var
+    // TODO: make sure this won't break as the compiler evolve
+    instr->var.name = strdup(expr->assign.lhs->var.name);
+    instr->var.is_init = 1;
+    if (!instr->var.name) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return 1;
+    }
+
     da_append(func->code, instr);
     return 0;
   }
@@ -248,10 +314,14 @@ char* HIR_generate_string_program(HIR_function_t* function)
     }
 
     if (instr->kind == HIR_STORE_VAR) {
-      if (instr->var_decl.is_init)
-        sb_append_fmt(&sb, "STR slot(%s), t%d\n", instr->var_decl.name, instr->a);
+      if (instr->var.is_init)
+        sb_append_fmt(&sb, "STR slot(%s), t%d\n", instr->var.name, instr->a);
       else
-        sb_append_fmt(&sb, "STR slot(%s), 0\n", instr->var_decl.name);
+        sb_append_fmt(&sb, "STR slot(%s), 0\n", instr->var.name);
+    }
+
+    if (instr->kind == HIR_LOAD_VAR) {
+      sb_append_fmt(&sb, "LOAD t%d, slot(%s)\n", instr->dest, instr->var.name); 
     }
   }
 

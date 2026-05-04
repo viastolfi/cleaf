@@ -46,7 +46,7 @@ typedef struct
     struct {
       char* name;
       int is_init;
-    } var_decl;
+    } var;
 
     HIR_binary_kind op;
 
