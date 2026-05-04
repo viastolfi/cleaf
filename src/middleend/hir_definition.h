@@ -43,7 +43,10 @@ typedef struct
     int int_value;
     char* string_value; 
 
-    char* var;
+    struct {
+      char* name;
+      int is_init;
+    } var_decl;
 
     HIR_binary_kind op;
 

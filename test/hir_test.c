@@ -134,6 +134,10 @@ ct_test(hir_test, nested_binary, "test/hir_case/nested_binary.clf", "test/hir_ca
   ct_assert_eq(result, 0, "hir parsing give right output");
 }
 
-ct_test(hit_test, basic_var_decl, "test/hir_case/basic_var_decl.clf", "test/hir_case/basic_var_decl.res") {
+ct_test(hir_test, basic_var_decl, "test/hir_case/basic_var_decl.clf", "test/hir_case/basic_var_decl.res") {
+  ct_assert_eq(result, 0, "hir parsing give right output");
+}
+
+ct_test(hir_test, initialized_var_decl, "test/hir_case/initialized_var_decl.clf", "test/hir_case/initialized_var_decl.res") {
   ct_assert_eq(result, 0, "hir parsing give right output");
 }

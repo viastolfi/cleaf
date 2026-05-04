@@ -46,10 +46,18 @@ int HIR_lower_declaration(
   }
 
   instr->kind = HIR_STORE_VAR;
-  instr->var = strdup(decl->var_decl.ident.name);
-  if (!instr->var) {
+  instr->var_decl.name = strdup(decl->var_decl.ident.name);
+  if (!instr->var_decl.name) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return -1;
+  }
+
+  if (decl->var_decl.init) {
+    HIR_lower_expression(hir, decl->var_decl.init, func);   
+    instr->var_decl.is_init = 1;
+    instr->a = func->next_temp_id;
+  } else {
+    instr->var_decl.is_init = 0; 
   }
 
   da_append(func->code, instr);
@@ -238,7 +246,10 @@ char* HIR_generate_string_program(HIR_function_t* function)
     }
 
     if (instr->kind == HIR_STORE_VAR) {
-      sb_append_fmt(&sb, "STR slot(%s), 0\n", instr->var);
+      if (instr->var_decl.is_init)
+        sb_append_fmt(&sb, "STR slot(%s), t%d\n", instr->var_decl.name, instr->a);
+      else
+        sb_append_fmt(&sb, "STR slot(%s), 0\n", instr->var_decl.name);
     }
   }
 
