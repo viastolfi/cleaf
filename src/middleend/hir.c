@@ -1,7 +1,6 @@
 #include "hir.h"
-
-void HIR_free_instruction(HIR_instruction_t* instr) 
-{
+  
+void HIR_free_instruction(HIR_instruction_t* instr) {
   switch (instr->kind) {
     case HIR_STRING_CONST:
       if (instr->string_value)
@@ -81,6 +80,135 @@ int HIR_lower_declaration(
   return 0;
 }
 
+int HIR_lower_unary_expression(HIR_parser_t* hir,
+    expression_t* expr,
+    HIR_function_t* func)
+{
+  (void)hir;
+  if (expr->unary.op == UNARY_POST_INC ||
+      expr->unary.op == UNARY_POST_DEC) {
+    HIR_instruction_t* load = calloc(1, sizeof(HIR_instruction_t)); 
+    if (!load) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return 1;
+    }
+
+    load->kind = HIR_LOAD_VAR;
+    load->var.name = strdup(expr->unary.operand->var.name);
+    load->dest = ++(func->next_temp_id);
+    if (!load->var.name) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return 1;
+    }
+
+    da_append(func->code, load);  
+
+    HIR_instruction_t* mov = calloc(1, sizeof(HIR_instruction_t));
+    if (!mov) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
+      return 1;
+    }
+
+    mov->kind = HIR_MOV;
+    mov->dest = func->next_temp_id + 1;
+    mov->a = func->next_temp_id;
+    da_append(func->code, mov);
+
+    HIR_instruction_t* op = calloc(1, sizeof(HIR_instruction_t));
+    if (!op) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
+      return 1;
+    }
+    
+    switch (expr->unary.op) {
+      case UNARY_POST_INC: 
+        op->kind = HIR_INC;
+        break;
+      case UNARY_POST_DEC:
+        op->kind = HIR_DEC;
+        break;
+      default: break;
+    }
+    op->dest = func->next_temp_id + 1;
+    da_append(func->code, op);
+
+    HIR_instruction_t* str = calloc(1, sizeof(HIR_instruction_t));
+    if (!str) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return 1;
+    }
+
+    str->kind = HIR_STORE_VAR;
+    str->a = func->next_temp_id + 1; 
+    str->var.name = strdup(expr->unary.operand->var.name);
+    str->var.is_init = 1;
+    if (!str->var.name) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
+      return 1;
+    }
+
+    da_append(func->code, str);
+    return 0;
+  }
+
+  if (expr->unary.op == UNARY_PRE_INC ||
+      expr->unary.op == UNARY_PRE_DEC) {
+    HIR_instruction_t* load = calloc(1, sizeof(HIR_instruction_t)); 
+    if (!load) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+      return 1;   
+    }
+
+    load->kind = HIR_LOAD_VAR;
+    load->dest = ++(func->next_temp_id);
+    load->var.name = strdup(expr->unary.operand->var.name);
+    if (!load->var.name) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return 1;
+    }
+    da_append(func->code, load);
+
+    HIR_instruction_t* op = calloc(1, sizeof(HIR_instruction_t));
+    if (!op) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return 1;
+    }
+
+    switch (expr->unary.op) {
+      case UNARY_PRE_INC:
+        op->kind = HIR_INC;
+        break;
+      case UNARY_PRE_DEC:
+        op->kind = HIR_DEC;
+        break;
+      default:
+        break;  
+    }
+    op->dest = func->next_temp_id;
+    da_append(func->code, op);
+
+    HIR_instruction_t* str = calloc(1, sizeof(HIR_instruction_t));
+    if (!str) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return 1;
+    }
+
+    str->kind = HIR_STORE_VAR;
+    str->a = func->next_temp_id;
+    str->var.name = strdup(expr->unary.operand->var.name);
+    if (!str->var.name) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+      return 1; 
+    }
+    str->var.is_init = 1;
+
+    da_append(func->code, str);
+    return 0;
+  }
+
+  return 1;
+}
+
 int HIR_lower_binary_expression(expression_t* expr,
     HIR_parser_t* hir,
     HIR_instruction_t* instr,
@@ -88,13 +216,13 @@ int HIR_lower_binary_expression(expression_t* expr,
 {
   switch(expr->binary.op) {
     case BINARY_PLUS:
-      instr->op = HIR_BINARY_ADD;
+      instr->binary_op = HIR_BINARY_ADD;
       break;
     case BINARY_MINUS:
-      instr->op = HIR_BINARY_MINUS;
+      instr->binary_op = HIR_BINARY_MINUS;
       break;
     case BINARY_MUL:
-      instr->op = HIR_BINARY_MUL;
+      instr->binary_op = HIR_BINARY_MUL;
       break;
     default:
       return 1;
@@ -197,6 +325,10 @@ int HIR_lower_expression(HIR_parser_t* hir,
     return 0;
   }
 
+  if (expr->type == EXPRESSION_UNARY) {
+    HIR_lower_unary_expression(hir, expr, func);
+  }
+
   return 1;
 }
 
@@ -297,7 +429,7 @@ char* HIR_generate_string_program(HIR_function_t* function)
     }
 
     if (instr->kind == HIR_BINARY) {
-      switch (instr->op) {
+      switch (instr->binary_op) {
         case HIR_BINARY_ADD: 
           sb_append_fmt(&sb, "t%d = ADD t%d t%d\n", instr->dest, instr->a, instr->b); 
         continue;
@@ -322,6 +454,18 @@ char* HIR_generate_string_program(HIR_function_t* function)
 
     if (instr->kind == HIR_LOAD_VAR) {
       sb_append_fmt(&sb, "LOAD t%d, slot(%s)\n", instr->dest, instr->var.name); 
+    }
+
+    if (instr->kind == HIR_MOV) {
+      sb_append_fmt(&sb, "MOV t%d t%d\n", instr->dest, instr->a);  
+    }
+
+    if (instr->kind == HIR_INC) {
+      sb_append_fmt(&sb, "INC t%d\n", instr->dest);  
+    }
+
+    if (instr->kind == HIR_DEC) {
+      sb_append_fmt(&sb, "DEC t%d\n", instr->dest);  
     }
   }
 

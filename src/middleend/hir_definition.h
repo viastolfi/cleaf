@@ -7,11 +7,15 @@ typedef enum
 {
   HIR_NOP,
 
+  HIR_MOV,
+
   HIR_INT_CONST,
   HIR_STRING_CONST,
 
   HIR_BINARY,
-  HIR_UNARY,
+
+  HIR_INC,
+  HIR_DEC,
 
   HIR_LOAD_VAR,
   HIR_STORE_VAR,
@@ -48,7 +52,7 @@ typedef struct
       int is_init;
     } var;
 
-    HIR_binary_kind op;
+    HIR_binary_kind binary_op;
 
     struct {
       char* callee;

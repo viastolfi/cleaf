@@ -91,7 +91,7 @@ before_each(int, result, char* file_path, char* expected_path)
       abort();
     }
   }
-
+  
   // assuming in text context, we have only one function
   char* res = HIR_generate_string_program(hir_parser.hir_program->items[0]); 
   da_foreach(declaration_t*, it, program) {
@@ -149,3 +149,7 @@ ct_test(hir_test, expression_init_var_decl, "test/hir_case/expression_init_var_d
 ct_test(hir_test, var_loading, "test/hir_case/var_loading.clf", "test/hir_case/var_loading.res") {
   ct_assert_eq(result, 0, "hir parsing give right output");
 } 
+
+ct_test(hir_test, unary_op, "test/hir_case/unary_op.clf", "test/hir_case/unary_op.res") {
+  ct_assert_eq(result, 0, "hir parsing give right output");
+}
