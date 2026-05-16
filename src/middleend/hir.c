@@ -206,6 +206,9 @@ int HIR_lower_unary_expression(HIR_parser_t* hir,
     return 0;
   }
 
+  error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED,
+      "NEGATE and NOT unary expression are not implemented by cleaf compiler yet");
+
   return 1;
 }
 

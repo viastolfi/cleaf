@@ -8,7 +8,8 @@
 typedef enum {
     ERROR_SEVERITY_ERROR,
     ERROR_SEVERITY_WARNING,
-    ERROR_SEVERITY_NOTE
+    ERROR_SEVERITY_NOTE,
+    ERROR_SEVERITY_NOT_IMPLEMENTED
 } error_severity_t;
 
 typedef struct {
