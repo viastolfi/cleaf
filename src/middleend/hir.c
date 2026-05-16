@@ -353,7 +353,10 @@ int HIR_lower_statement(HIR_parser_t* hir,
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
       return -1;
     }
-    instr->kind = HIR_RETURN;
+    if (strcmp(func->name, "main") == 0) 
+      instr->kind = HIR_EXIT;     
+    else 
+      instr->kind = HIR_RETURN;
     instr->dest = func->next_temp_id; 
     da_append(func->code, instr);
     return 0;
@@ -428,6 +431,11 @@ char* HIR_generate_string_program(HIR_function_t* function)
 
     if (instr->kind == HIR_RETURN) {
       sb_append_fmt(&sb, "RETURN t%d\n", instr->dest);
+      continue;
+    }
+
+    if (instr->kind == HIR_EXIT) {
+      sb_append_fmt(&sb, "EXIT t%d\n", instr->dest); 
       continue;
     }
 

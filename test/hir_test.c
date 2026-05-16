@@ -92,8 +92,13 @@ before_each(int, result, char* file_path, char* expected_path)
     }
   }
   
-  // assuming in text context, we have only one function
-  char* res = HIR_generate_string_program(hir_parser.hir_program->items[0]); 
+  char output[2048] = "\0";
+  da_foreach(HIR_function_t*, it, hir_parser.hir_program) {
+    char* res = HIR_generate_string_program(*it);
+    strcat(output, res);
+    free(res);
+  }
+
   da_foreach(declaration_t*, it, program) {
     free_declaration(*it);
   }
@@ -116,10 +121,9 @@ before_each(int, result, char* file_path, char* expected_path)
   }
   fclose(fr);
 
-  result = strcmp(textr, res); 
+  result = strcmp(textr, output); 
 
   free(textr);
-  free(res);
 }
 
 ct_test(hir_test, return_stmt, "test/hir_case/return_stmt.clf", "test/hir_case/return_stmt.res") {

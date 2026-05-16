@@ -23,6 +23,7 @@ typedef enum
   HIR_JUMP,
   HIR_JUMP_IF_FALSE,
   HIR_RETURN,
+  HIR_EXIT,
 
   HIR_CALL
 } HIR_instruction_kind;
