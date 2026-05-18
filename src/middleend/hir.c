@@ -21,6 +21,7 @@ void HIR_free_instruction(HIR_instruction_t* instr) {
         free(instr->var.name);
       break;
     case HIR_JMP_NOT_EQUAL:
+    case HIR_JMP:
       if (instr->chunk_name)
         free(instr->chunk_name);
       break;
@@ -346,6 +347,7 @@ int HIR_lower_expression(HIR_parser_t* hir,
   return 1;
 }
 
+// TODO: this needs a lot of memory management to avoid leaks
 int HIR_lower_if_statement(HIR_parser_t* hir,
     statement_t* stmt,
     HIR_function_t* func)
@@ -360,11 +362,26 @@ int HIR_lower_if_statement(HIR_parser_t* hir,
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
     return 1;
   }
-
   hir->gen_chunk(hir->chunk_ctx, chunk);
+
+  char* else_chunk = calloc(RAND_CHUNK_LEN + 2, sizeof(char));
+  if (!else_chunk) {
+    free(chunk);
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return 1;
+  }
+  // TODO: this is a bit ugly but whatever for now
+  if (stmt->if_stmt.else_branch) {
+    hir->gen_chunk(hir->chunk_ctx, else_chunk); 
+  }
+  else {
+    free(else_chunk);
+    else_chunk = NULL; 
+  }
 
   HIR_instruction_t* jump = calloc(1, sizeof(HIR_instruction_t));
   if (!jump) {
+    free(chunk); 
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
     return 1;
   }
@@ -377,7 +394,10 @@ int HIR_lower_if_statement(HIR_parser_t* hir,
     return 1;
   }
 
-  jump->chunk_name = strdup(chunk);
+  if (else_chunk) 
+    jump->chunk_name = strdup(else_chunk);
+  else
+    jump->chunk_name = strdup(chunk);
   da_append(func->code, jump);
 
   da_foreach(statement_t*, it, stmt->if_stmt.then_branch) {
@@ -386,7 +406,33 @@ int HIR_lower_if_statement(HIR_parser_t* hir,
       return 1;
   }
 
-  // TODO: go to else_branch
+  if (else_chunk) {
+    HIR_instruction_t* jump_else = calloc(1, sizeof(HIR_instruction_t)); 
+    if (!jump_else) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return 1;
+    }
+
+    jump_else->kind = HIR_JMP;
+    jump_else->chunk_name = strdup(chunk);
+    da_append(func->code, jump_else);
+
+    HIR_instruction_t* chunk_else_label = calloc(1, sizeof(HIR_instruction_t));
+    if (!chunk_else_label) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return 1;
+    }
+
+    chunk_else_label->kind = HIR_CHUNK;
+    chunk_else_label->chunk_name = else_chunk;
+    da_append(func->code, chunk_else_label);
+
+    da_foreach(statement_t*, it, stmt->if_stmt.else_branch) {
+      int err = HIR_lower_statement(hir, *it, func);
+      if (err)
+       return 1; 
+    }
+  }
 
   HIR_instruction_t* chunk_label = calloc(1, sizeof(HIR_instruction_t));
   if (!chunk_label) {
@@ -569,6 +615,11 @@ char* HIR_generate_string_program(HIR_function_t* function)
     if (instr->kind == HIR_CHUNK) {
       sb_append_fmt(&sb, "%s:\n", instr->chunk_name);
       continue; 
+    }
+
+    if (instr->kind == HIR_JMP) {
+      sb_append_fmt(&sb, "JMP %s\n", instr->chunk_name);  
+      continue;
     }
   }
 

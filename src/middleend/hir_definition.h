@@ -31,6 +31,7 @@ typedef enum
   HIR_LOAD_VAR,
   HIR_STORE_VAR,
 
+  HIR_JMP,
   HIR_JMP_EQUAL,
   HIR_JMP_NOT_EQUAL,
 
