@@ -12,6 +12,14 @@
 #include "../src/middleend/hir.h"
 #include "../src/thirdparty/error.h"
 
+typedef struct { int n; } chunk_counter_t;
+
+static void counter_chunk_gen(void* ctx, char* out)
+{
+  chunk_counter_t* c = (chunk_counter_t*)ctx;
+  snprintf(out, RAND_CHUNK_LEN + 2, ".c%d", c->n++);
+}
+
 before_each(int, result, char* file_path, char* expected_path)
 {
   FILE *f = fopen(file_path, "rb");
@@ -83,6 +91,9 @@ before_each(int, result, char* file_path, char* expected_path)
   hir_parser.error_ctx = error_ctx;
   hir_parser.error_count = 0;
   hir_parser.hir_program = hir_program;
+  chunk_counter_t chunk_counter = {0};
+  hir_parser.gen_chunk = counter_chunk_gen;
+  hir_parser.chunk_ctx = &chunk_counter;
   da_foreach(declaration_t*, it, program) {
     int lowering_result = HIR_lower_function(&hir_parser, *it);
     if (lowering_result != 0) {
@@ -155,5 +166,9 @@ ct_test(hir_test, var_loading, "test/hir_case/var_loading.clf", "test/hir_case/v
 } 
 
 ct_test(hir_test, unary_op, "test/hir_case/unary_op.clf", "test/hir_case/unary_op.res") {
+  ct_assert_eq(result, 0, "hir parsing give right output");
+}
+
+ct_test(hir_test, basic_if, "test/hir_case/basic_if.clf", "test/hir_case/basic_if.res") {
   ct_assert_eq(result, 0, "hir parsing give right output");
 }

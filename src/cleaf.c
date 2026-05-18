@@ -124,6 +124,9 @@ int main(int argc, char** argv)
   hir_parser.error_ctx = &error_ctx;
   hir_parser.error_count = 0;
   hir_parser.hir_program = hir_program;
+  rand_t rng;
+  rand_init(&rng);
+  HIR_PARSER_USE_RNG(hir_parser, &rng);
 
   da_foreach(declaration_t*, it, &program) {
     int lowering_result = HIR_lower_function(&hir_parser, *it);

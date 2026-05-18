@@ -20,6 +20,14 @@ void HIR_free_instruction(HIR_instruction_t* instr) {
       if (instr->var.name)
         free(instr->var.name);
       break;
+    case HIR_JMP_NOT_EQUAL:
+      if (instr->chunk_name)
+        free(instr->chunk_name);
+      break;
+    case HIR_CHUNK:
+      if (instr->chunk_name)
+        free(instr->chunk_name);
+      break;
     default:
       break;
   }
@@ -227,6 +235,9 @@ int HIR_lower_binary_expression(expression_t* expr,
     case BINARY_MUL:
       instr->binary_op = HIR_BINARY_MUL;
       break;
+    case BINARY_EQ:
+      instr->binary_op = HIR_BINARY_CMP;
+      break;
     default:
       return 1;
   }
@@ -335,6 +346,63 @@ int HIR_lower_expression(HIR_parser_t* hir,
   return 1;
 }
 
+int HIR_lower_if_statement(HIR_parser_t* hir,
+    statement_t* stmt,
+    HIR_function_t* func)
+{
+  int err = HIR_lower_expression(hir, stmt->if_stmt.condition, func);
+  // TODO: do we have to propagate error ?
+  if (err) 
+    return 1;
+
+  char* chunk = calloc(RAND_CHUNK_LEN + 2, sizeof(char));
+  if (!chunk) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
+    return 1;
+  }
+
+  hir->gen_chunk(hir->chunk_ctx, chunk);
+
+  HIR_instruction_t* jump = calloc(1, sizeof(HIR_instruction_t));
+  if (!jump) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return 1;
+  }
+  switch (stmt->if_stmt.condition->binary.op) {
+  case BINARY_EQ:
+    jump->kind = HIR_JMP_NOT_EQUAL;
+    break; 
+  default:
+    jump->kind = HIR_NOP; 
+    return 1;
+  }
+
+  jump->chunk_name = strdup(chunk);
+  da_append(func->code, jump);
+
+  da_foreach(statement_t*, it, stmt->if_stmt.then_branch) {
+    int err = HIR_lower_statement(hir, *it, func); 
+    if (err)
+      return 1;
+  }
+
+  // TODO: go to else_branch
+
+  HIR_instruction_t* chunk_label = calloc(1, sizeof(HIR_instruction_t));
+  if (!chunk_label) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
+    return 1;
+  }
+
+  chunk_label->kind = HIR_CHUNK;
+  chunk_label->chunk_name = strdup(chunk);
+
+  da_append(func->code, chunk_label);
+
+  free(chunk);
+  return 0;
+}
+
 int HIR_lower_statement(HIR_parser_t* hir, 
     statement_t* stmt,
     HIR_function_t* func)
@@ -363,6 +431,9 @@ int HIR_lower_statement(HIR_parser_t* hir,
   }
   if (stmt->type == STATEMENT_DECL) {
     return HIR_lower_declaration(hir, stmt->decl_stmt.decl, func);
+  }
+  if (stmt->type == STATEMENT_IF) {
+    return HIR_lower_if_statement(hir, stmt, func); 
   }
 
   return 1;
@@ -450,6 +521,9 @@ char* HIR_generate_string_program(HIR_function_t* function)
         case HIR_BINARY_MUL:
           sb_append_fmt(&sb, "t%d = MUL t%d t%d\n", instr->dest, instr->a, instr->b);          
           continue;
+        case HIR_BINARY_CMP:
+          sb_append_fmt(&sb, "CMP t%d, t%d\n", instr->a, instr->b);
+          continue;
         default:
           sb_append_fmt(&sb, "unknow binary op\n");
           continue;
@@ -457,26 +531,44 @@ char* HIR_generate_string_program(HIR_function_t* function)
     }
 
     if (instr->kind == HIR_STORE_VAR) {
-      if (instr->var.is_init)
+      if (instr->var.is_init) {
         sb_append_fmt(&sb, "STR slot(%s), t%d\n", instr->var.name, instr->a);
-      else
+        continue; 
+      }
+      else {
         sb_append_fmt(&sb, "STR slot(%s), 0\n", instr->var.name);
+        continue; 
+      }
     }
 
     if (instr->kind == HIR_LOAD_VAR) {
       sb_append_fmt(&sb, "LOAD t%d, slot(%s)\n", instr->dest, instr->var.name); 
+      continue;
     }
 
     if (instr->kind == HIR_MOV) {
       sb_append_fmt(&sb, "MOV t%d t%d\n", instr->dest, instr->a);  
+      continue;
     }
 
     if (instr->kind == HIR_INC) {
       sb_append_fmt(&sb, "INC t%d\n", instr->dest);  
+      continue;
     }
 
     if (instr->kind == HIR_DEC) {
       sb_append_fmt(&sb, "DEC t%d\n", instr->dest);  
+      continue;
+    }
+
+    if (instr->kind == HIR_JMP_NOT_EQUAL) {
+      sb_append_fmt(&sb, "JNE %s\n", instr->chunk_name); 
+      continue;
+    }
+
+    if (instr->kind == HIR_CHUNK) {
+      sb_append_fmt(&sb, "%s:\n", instr->chunk_name);
+      continue; 
     }
   }
 
