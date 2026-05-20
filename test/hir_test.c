@@ -185,3 +185,7 @@ ct_test(hir_test, all_comparison_if, "test/hir_case/all_comparison_if.clf", "tes
 ct_test(hir_test, while_stmt, "test/hir_case/while_stmt.clf", "test/hir_case/while_stmt.res") {
   ct_assert_eq(result, 0, "hir parsing give right output");
 }
+
+ct_test(hir_test, for_stmt, "test/hir_case/for_stmt.clf", "test/hir_case/for_stmt.res") {
+  ct_assert_eq(result, 0, "hir parsing give right output");
+}
