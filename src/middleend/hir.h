@@ -38,4 +38,8 @@ int HIR_lower_if_statement(
     HIR_parser_t* hir,
     statement_t* stmt,
     HIR_function_t* func);
+int HIR_lower_while_statement(
+    HIR_parser_t* hir,
+    statement_t* stmt,
+    HIR_function_t* func);
 #endif // HIR_H

@@ -131,6 +131,7 @@ before_each(int, result, char* file_path, char* expected_path)
     abort();
   }
   fclose(fr);
+  textr[lenr] = '\0';
 
   result = strcmp(textr, output); 
 
@@ -178,5 +179,9 @@ ct_test(hir_test, if_else, "test/hir_case/if_else.clf", "test/hir_case/if_else.r
 }
 
 ct_test(hir_test, all_comparison_if, "test/hir_case/all_comparison_if.clf", "test/hir_case/all_comparison_if.res") {
+  ct_assert_eq(result, 0, "hir parsing give right output");
+}
+
+ct_test(hir_test, while_stmt, "test/hir_case/while_stmt.clf", "test/hir_case/while_stmt.res") {
   ct_assert_eq(result, 0, "hir parsing give right output");
 }
