@@ -6,5 +6,5 @@ Function main
 4: STR slot(b), t2
 5: LOAD t3, slot(b)
 6: LOAD t4, slot(a)
-7: t5 = ADD t3 t4
-8: STR slot(c), t5
+7: ADD t4 t3
+8: STR slot(c), t4

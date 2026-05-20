@@ -251,8 +251,6 @@ int HIR_lower_binary_expression(expression_t* expr,
     return -1;
   instr->b = func->next_temp_id;
 
-  instr->dest = ++(func->next_temp_id);
-  
   return 0;
 }
 
@@ -559,16 +557,16 @@ char* HIR_generate_string_program(HIR_function_t* function)
     if (instr->kind == HIR_BINARY) {
       switch (instr->binary_op) {
         case HIR_BINARY_ADD: 
-          sb_append_fmt(&sb, "t%d = ADD t%d t%d\n", instr->dest, instr->a, instr->b); 
+          sb_append_fmt(&sb, "ADD t%d t%d\n", instr->b, instr->a); 
         continue;
         case HIR_BINARY_MINUS:
-          sb_append_fmt(&sb, "t%d = MIN t%d t%d\n", instr->dest, instr->a, instr->b);          
+          sb_append_fmt(&sb, "MIN t%d t%d\n", instr->b, instr->a);          
           continue;
         case HIR_BINARY_MUL:
-          sb_append_fmt(&sb, "t%d = MUL t%d t%d\n", instr->dest, instr->a, instr->b);          
+          sb_append_fmt(&sb, "MUL t%d t%d\n", instr->b, instr->a);          
           continue;
         case HIR_BINARY_CMP:
-          sb_append_fmt(&sb, "CMP t%d, t%d\n", instr->a, instr->b);
+          sb_append_fmt(&sb, "CMP t%d t%d\n", instr->b, instr->a);
           continue;
         default:
           sb_append_fmt(&sb, "unknow binary op\n");
