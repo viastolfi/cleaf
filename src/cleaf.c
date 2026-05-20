@@ -15,6 +15,39 @@
 #include "frontend/semantic.h"
 #include "middleend/hir.h"
 
+typedef struct {
+  char* text;
+  parser_t parser;
+  declaration_array program;
+  HIR_function_array* hir_program;
+} compiler_resources_t;
+
+static void compiler_resources_free(compiler_resources_t* res)
+{
+  if (res->hir_program) {
+    da_foreach(HIR_function_t*, it, res->hir_program) {
+      HIR_free_function(*it);
+    }
+    da_free(res->hir_program);
+    free(res->hir_program);
+    res->hir_program = NULL;
+  }
+
+  da_foreach(declaration_t*, it, &res->program) {
+    free_declaration(*it);
+  }
+  da_free(&res->program);
+
+  for (size_t i = 0; i < res->parser.count; i++) {
+    if (res->parser.items[i].string_value)
+      free(res->parser.items[i].string_value);
+  }
+  da_free(&res->parser);
+
+  free(res->text);
+  res->text = NULL;
+}
+
 int main(int argc, char** argv) 
 {
   const char* filename = NULL;
@@ -50,57 +83,59 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  char *text = (char *) malloc(1 << 20);
-  int len = (int) fread(text, 1, 1 << 20, f);
+  compiler_resources_t res = {0};
+  res.text = (char *) malloc(1 << 20);
+  int len = (int) fread(res.text, 1, 1 << 20, f);
   fclose(f);
   if (len < 0) {
     error_report_general(ERROR_SEVERITY_ERROR, "failed to read file '%s'", filename);
-    free(text);
+    compiler_resources_free(&res);
     return 1;
   }
 
   error_context_t error_ctx;
-  error_init(&error_ctx, filename, text, len);
+  error_init(&error_ctx, filename, res.text, len);
 
   lexer_t lex;
-  parser_t parser = {0};
-  parser.error_ctx = &error_ctx;
+  res.parser.error_ctx = &error_ctx;
 
-  lexer_init_lexer(&lex, text, text + len, (char*) malloc(4096), 4096);
+  lexer_init_lexer(&lex, res.text, res.text + len, (char*) malloc(4096), 4096);
 
   while (lexer_get_token(&lex)) {
     if (lex.token == LEXER_token_parse_error) {
       error_report_general(ERROR_SEVERITY_ERROR, "lexer parse error");
+      free(lex.string_storage);
+      compiler_resources_free(&res);
       return 1;
     }
     token_t t = lexer_copy_token(&lex);
-    da_append(&parser, t);
+    da_append(&res.parser, t);
   }
   free(lex.string_storage);
 
-  log_phase("lexing", "%zu tokens", parser.count);
+  log_phase("lexing", "%zu tokens", res.parser.count);
 
-  declaration_array program = {0};
-  while ((size_t) parser.pos < parser.count) {
-    declaration_t* decl = parse_declaration(&parser);
+  while ((size_t) res.parser.pos < res.parser.count) {
+    declaration_t* decl = parse_declaration(&res.parser);
     if (decl == NULL) {
       error_report_general(ERROR_SEVERITY_ERROR, "ast parse error");
+      compiler_resources_free(&res);
       return 1;
     }
-    da_append(&program, decl);
+    da_append(&res.program, decl);
   }
 
-  log_phase("parsing", "%zu declaration(s)", program.count);
+  log_phase("parsing", "%zu declaration(s)", res.program.count);
 
   if (log_is_dump()) {
     log_section_begin("AST");
-    ast_print_program(&program);
+    ast_print_program(&res.program);
     log_section_end();
   }
 
   semantic_analyzer_t analyzer = {0};
   analyzer.error_ctx = &error_ctx;
-  analyzer.ast = &program;
+  analyzer.ast = &res.program;
   analyzer.error_count = 0;
 
   semantic_analyze(&analyzer);
@@ -110,33 +145,36 @@ int main(int argc, char** argv)
     log_phase("semantic", "%d error(s)", analyzer.error_count);
     error_report_general(ERROR_SEVERITY_NOTE,
         "%d error(s) during semantic analysis, aborting", analyzer.error_count);
+    compiler_resources_free(&res);
     return 1;
   }
   log_phase("semantic", "ok");
 
-  HIR_function_array* hir_program = calloc(1, sizeof(HIR_function_array));
-  if (!hir_program) {
+  res.hir_program = calloc(1, sizeof(HIR_function_array));
+  if (!res.hir_program) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    compiler_resources_free(&res);
     return 1;
   }
 
   HIR_parser_t hir_parser = {0};
   hir_parser.error_ctx = &error_ctx;
   hir_parser.error_count = 0;
-  hir_parser.hir_program = hir_program;
+  hir_parser.hir_program = res.hir_program;
   rand_t rng;
   rand_init(&rng);
   HIR_PARSER_USE_RNG(hir_parser, &rng);
 
-  da_foreach(declaration_t*, it, &program) {
+  da_foreach(declaration_t*, it, &res.program) {
     int lowering_result = HIR_lower_function(&hir_parser, *it);
     if (lowering_result != 0) {
       error_report_general(ERROR_SEVERITY_ERROR, "HIR lowering error");
+      compiler_resources_free(&res);
       return 1;
     }
   }
 
-  log_phase("HIR lowering", "%zu function(s)", hir_program->count);
+  log_phase("HIR lowering", "%zu function(s)", res.hir_program->count);
 
   if (log_is_dump()) {
     log_section_begin("HIR");
@@ -146,22 +184,6 @@ int main(int argc, char** argv)
     log_section_end();
   }
 
-  da_foreach(declaration_t*, it, &program) {
-    free_declaration(*it);
-  }
-  da_free(&program);
-
-  da_foreach(HIR_function_t*, it, hir_program) {
-    HIR_free_function(*it);
-  }
-  da_free(hir_program);
-  free(hir_program);
-
-  for (size_t i = 0; i < parser.count; i++) {
-    if (parser.items[i].string_value)
-      free(parser.items[i].string_value);
-  }
-  da_free(&parser);
-  free(text);
+  compiler_resources_free(&res);
   return 0;
 }

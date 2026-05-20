@@ -16,6 +16,11 @@ void HIR_free_instruction(HIR_instruction_t* instr) {
       break;
     case HIR_JMP_NOT_EQUAL:
     case HIR_JMP:
+    case HIR_JMP_EQUAL:
+    case HIR_JMP_GREATER_THAN_EQUAL:
+    case HIR_JMP_GREATER_THAN:
+    case HIR_JMP_LOWER_THAN_EQUAL:
+    case HIR_JMP_LOWER_THAN:
       if (instr->chunk_name)
         free(instr->chunk_name);
       break;
