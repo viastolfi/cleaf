@@ -10,12 +10,6 @@ void HIR_free_instruction(HIR_instruction_t* instr) {
       if (instr->var.name)
         free(instr->var.name);
       break;
-    case HIR_CALL:
-      if (instr->call.callee)
-        free(instr->call.callee);
-      if (instr->call.args)
-        free(instr->call.args);
-      break;
     case HIR_LOAD_VAR:
       if (instr->var.name)
         free(instr->var.name);
@@ -29,6 +23,10 @@ void HIR_free_instruction(HIR_instruction_t* instr) {
       if (instr->chunk_name)
         free(instr->chunk_name);
       break;
+    case HIR_CALL:
+      if (instr->func_name)
+        free(instr->func_name);
+      break;
     default:
       break;
   }
@@ -39,10 +37,7 @@ void HIR_free_function(HIR_function_t* func)
 {
   if (func->name)
     free(func->name);
-
-  if (func->params) 
-    free(func->params);
-
+    
   if (func->code) {
     da_foreach(HIR_instruction_t*, it, func->code) 
       HIR_free_instruction(*it); 
@@ -221,6 +216,53 @@ int HIR_lower_unary_expression(HIR_parser_t* hir,
   return 1;
 }
 
+int HIR_lower_call_expression(HIR_parser_t* hir,
+    expression_t* expr,
+    HIR_function_t* func)
+{
+  for (int i = 0; i < (int) expr->call.arg_count; ++i) {
+    HIR_instruction_t* set_arg = calloc(1, sizeof(HIR_instruction_t)); 
+    if (!set_arg) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return 1;
+    }
+    set_arg->kind = HIR_MOV;
+    set_arg->dest = -i - 1;
+
+    if (HIR_lower_expression(hir, expr->call.args[i], func) != 0)
+      return 1;
+
+    set_arg->a = func->next_temp_id;
+    
+    da_append(func->code, set_arg);
+  } 
+
+  HIR_instruction_t* call = calloc(1, sizeof(HIR_instruction_t));
+  if (!call) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return 1;
+  }
+  call->kind = HIR_CALL;
+  call->func_name = strdup(expr->call.callee);
+  if (!call->func_name) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return 1;
+  }
+  da_append(func->code, call);
+
+  HIR_instruction_t* result = calloc(1, sizeof(HIR_instruction_t));
+  if (!result) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return 1;
+  }
+  result->kind = HIR_MOV;
+  result->dest = ++(func->next_temp_id);
+  result->a = -1;
+  da_append(func->code, result);
+
+  return 0;
+}
+
 int HIR_lower_binary_expression(expression_t* expr,
     HIR_parser_t* hir,
     HIR_instruction_t* instr,
@@ -345,6 +387,10 @@ int HIR_lower_expression(HIR_parser_t* hir,
 
   if (expr->type == EXPRESSION_UNARY) {
     return HIR_lower_unary_expression(hir, expr, func);
+  }
+
+  if (expr->type == EXPRESSION_CALL) {
+    return HIR_lower_call_expression(hir, expr, func); 
   }
 
   return 1;
@@ -651,11 +697,24 @@ int HIR_lower_statement(HIR_parser_t* hir,
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
       return -1;
     }
-    if (strcmp(func->name, "main") == 0) 
+    if (strcmp(func->name, "main") == 0) {
       instr->kind = HIR_EXIT;     
-    else 
+      instr->dest = func->next_temp_id; 
+    }
+    else {
+      // TODO: what append if we return void ?
+      HIR_instruction_t* return_var = calloc(1, sizeof(HIR_instruction_t));
+      if (!return_var) {
+        error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+        return 1;
+      }
+      return_var->kind = HIR_MOV;
+      return_var->dest = -1;
+      return_var->a = func->next_temp_id;
+      da_append(func->code, return_var);
+
       instr->kind = HIR_RETURN;
-    instr->dest = func->next_temp_id; 
+    }
     da_append(func->code, instr);
     return 0;
   }
@@ -693,24 +752,40 @@ int HIR_lower_function(HIR_parser_t* hir,
     return -1;
   } 
 
-  func->return_type = function->func.return_type;
-
-  func->params = calloc(function->func.params.count, 
-      sizeof(typed_identifier_t));
-  if (!func->params) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return -1;
-  }
-  func->param_count = function->func.params.count; 
-  for (size_t i = 0; i < func->param_count; ++i) 
-    func->params[i] = function->func.params.items[i];
-
   func->next_temp_id = 0;
 
   func->code = calloc(1, sizeof(HIR_instruction_block));
   if (!func->code) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
     return -1;
+  }
+
+  // TODO: behavior is different for _start but whatever for now
+  for (int i = 0; i < (int) function->func.params.count; ++i) {
+    HIR_instruction_t* mov = calloc(1, sizeof(HIR_instruction_t)); 
+    if (!mov) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+      return -1; 
+    }
+    mov->kind = HIR_MOV;
+    mov->dest = func->next_temp_id;
+    mov->a = -i - 1;
+    da_append(func->code, mov);
+
+    HIR_instruction_t* str = calloc(1, sizeof(HIR_instruction_t));
+    if (!str) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return -1;
+    }
+    str->kind = HIR_STORE_VAR;
+    str->var.name = strdup(function->func.params.items[i].name);
+    if (!str->var.name) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return -1;
+    }
+    str->var.is_init = 1;
+    str->a = func->next_temp_id++;
+    da_append(func->code, str);
   }
 
   da_foreach(statement_t*, it, function->func.body) {
@@ -740,7 +815,7 @@ char* HIR_generate_string_program(HIR_function_t* function)
     }
 
     if (instr->kind == HIR_RETURN) {
-      sb_append_fmt(&sb, "RETURN t%d\n", instr->dest);
+      sb_append_fmt(&sb, "RETURN\n");
       continue;
     }
 
@@ -837,6 +912,11 @@ char* HIR_generate_string_program(HIR_function_t* function)
 
     if (instr->kind == HIR_JMP) {
       sb_append_fmt(&sb, "JMP %s\n", instr->chunk_name);  
+      continue;
+    }
+
+    if (instr->kind == HIR_CALL) {
+      sb_append_fmt(&sb, "CALL %s\n", instr->func_name); 
       continue;
     }
   }

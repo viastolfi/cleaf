@@ -189,3 +189,7 @@ ct_test(hir_test, while_stmt, "test/hir_case/while_stmt.clf", "test/hir_case/whi
 ct_test(hir_test, for_stmt, "test/hir_case/for_stmt.clf", "test/hir_case/for_stmt.res") {
   ct_assert_eq(result, 0, "hir parsing give right output");
 }
+
+ct_test(hir_test, call, "test/hir_case/call.clf", "test/hir_case/call.res") {
+  ct_assert_eq(result, 0, "hir parsing give right output");
+}

@@ -74,12 +74,7 @@ typedef struct
     HIR_binary_kind binary_op;
 
     char* chunk_name;
-
-    struct {
-      char* callee;
-      HIR_temp_id* args;
-      size_t arg_count; 
-    } call;
+    char* func_name;
   };
 } HIR_instruction_t;
 
@@ -94,9 +89,6 @@ typedef struct
 {
   char* name;
   type_kind return_type;
-
-  typed_identifier_t* params;
-  size_t param_count;
 
   HIR_instruction_block* code;
 
