@@ -274,7 +274,7 @@ void semantic_check_for_statement(semantic_analyzer_t* analyzer,
 {
   scope_t* for_scope = scope_enter(scope);
 
-  if (stmt->for_stmt.decl_init) {
+  if (stmt->for_stmt.init_kind == FOR_INIT_DECL && stmt->for_stmt.decl_init) {
     declaration_t* decl = stmt->for_stmt.decl_init;
     if (analyze_declaration(analyzer, decl, for_scope)) {
       type_kind t = semantic_check_expression(analyzer, 
@@ -284,6 +284,8 @@ void semantic_check_for_statement(semantic_analyzer_t* analyzer,
                   decl->var_decl.ident.name, 
                   (void*)(uintptr_t)t + 1);
     }
+  } else if (stmt->for_stmt.init_kind == FOR_INIT_EXPR && stmt->for_stmt.expr_init) {
+    semantic_check_expression(analyzer, stmt->for_stmt.expr_init, for_scope);
   }
 
   if (stmt->for_stmt.condition)

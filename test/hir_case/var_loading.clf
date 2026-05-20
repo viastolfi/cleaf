@@ -1,0 +1,6 @@
+fn main() {
+  var a;
+  a = 12;
+  var b = a;
+  var c = b + a;
+}

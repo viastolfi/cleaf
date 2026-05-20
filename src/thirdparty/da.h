@@ -127,6 +127,14 @@ extern "C" {
         }                                                 \
     }while(0)
 
+#define da_reserve(da, newcap) \
+  do { \
+    while ((da)->capacity < (newcap)) { \
+      (da)->capacity = (da)->capacity ? (da)->capacity * 2 : DA_INIT_CAP; \
+    } \
+    (da)->items = DA_REALLOC((da)->items, (da)->capacity * sizeof(*(da)->items)); \
+    DA_ASSERT((da)->items != NULL); \
+  } while (0)
 
 #define da_free(da)                \
     do {                           \

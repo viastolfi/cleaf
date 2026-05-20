@@ -4,7 +4,7 @@
 #define DA_LIB_IMPLEMENTATION
 #include "../thirdparty/da.h"
 #include "ast_definition.h"
-#include "error.h"
+#include "../thirdparty/error.h"
 #include "../thirdparty/hashmap.h"
 #include "scope.h"    
 

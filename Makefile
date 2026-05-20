@@ -5,20 +5,25 @@ TEST = test
 CS = \
         $(SRC)/cleaf.c \
         $(SRC)/frontend/ast.c \
-        $(SRC)/frontend/error.c \
+        $(SRC)/thirdparty/error.c \
 				$(SRC)/frontend/semantic.c \
+				$(SRC)/middleend/hir.c \
+				$(SRC)/frontend/ast_printer.c \
 
 OBJ = \
         $(BUILD)/cleaf.o \
         $(BUILD)/frontend/ast.o \
-        $(BUILD)/frontend/error.o \
+        $(BUILD)/thirdparty/error.o \
 				$(BUILD)/frontend/semantic.o \
+				$(BUILD)/middleend/hir.o \
+				$(BUILD)/frontend/ast_printer.o \
 
 CC = gcc
 CFLAGS = -Wall -Wextra -g
+VALGRIND = valgrind --error-exitcode=42 --leak-check=full --show-leak-kinds=all
 
 .PRECIOUS: build/cleaf
-.PHONY: all clean test ast-test semantic-test asan-test valgrind-test
+.PHONY: all clean test ast-test semantic-test asan-test valgrind-test hir-test
 
 all: $(BUILD)/cleaf
 
@@ -29,6 +34,8 @@ $(BUILD)/cleaf: $(OBJ)
 $(BUILD)/%.o: $(SRC)/%.c
 	@mkdir -p $(BUILD)
 	@mkdir -p $(BUILD)/frontend
+	@mkdir -p $(BUILD)/thirdparty
+	@mkdir -p $(BUILD)/middleend
 	$(CC) $(CFLAGS) -c $< -o $@
 
 AST_TEST_SRC = $(TEST)/ast_test.c
@@ -37,10 +44,14 @@ AST_TEST_BIN = $(BUILD)/ast_test
 SEM_TEST_SRC = $(TEST)/semantic_test.c
 SEM_TEST_BIN = $(BUILD)/semantic_test
 
-test: $(AST_TEST_BIN) $(SEM_TEST_BIN)
+HIR_TEST_SRC = $(TEST)/hir_test.c
+HIR_TEST_BIN = $(BUILD)/hir_test
+
+test: $(AST_TEST_BIN) $(SEM_TEST_BIN) $(HIR_TEST_BIN)
 	@echo "Running tests..."
-	@$(AST_TEST_BIN) 2> test.log
-	@$(SEM_TEST_BIN) 2> test.log
+	@$(AST_TEST_BIN)
+	@$(SEM_TEST_BIN)
+	@$(HIR_TEST_BIN)
 
 ast-test: $(AST_TEST_BIN)
 	@echo "Running AST tests..."
@@ -50,11 +61,19 @@ semantic-test: $(SEM_TEST_BIN)
 	@echo "Running semantic tests..."
 	@$(SEM_TEST_BIN) 2> test.log
 
-$(AST_TEST_BIN): $(AST_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/frontend/error.c
+hir-test: $(HIR_TEST_BIN)
+	@echo "Running hir tests..."
+	@$(HIR_TEST_BIN) 2> test.log
+
+$(AST_TEST_BIN): $(AST_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c
 	@mkdir -p $(BUILD)
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
 
-$(SEM_TEST_BIN): $(SEM_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/frontend/error.c $(SRC)/frontend/semantic.c
+$(SEM_TEST_BIN): $(SEM_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c $(SRC)/frontend/semantic.c
+	@mkdir -p $(BUILD)
+	@$(CC) $(CFLAGS) $^ -o $@ -lm
+
+$(HIR_TEST_BIN): $(HIR_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c $(SRC)/middleend/hir.c
 	@mkdir -p $(BUILD)
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
 
@@ -64,30 +83,30 @@ asan-test:
 valgrind-test:
 	@echo "Testing memory safety with valgrind..."
 	@echo "=== Testing normal execution ==="
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/full.clf
+	$(VALGRIND) ./build/cleaf test/valgrind_case/full.clf
 	@echo "=== Testing lexer errors ==="
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/lexer_error.clf
+	$(VALGRIND) ./build/cleaf test/valgrind_case/lexer_error.clf; [ $$? -ne 42 ]
 	@echo "=== Testing parser errors ==="
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/parser_missing_semicolon.clf
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/parser_unmatched_brace.clf
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/parser_missing_paren.clf
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/parser_incomplete_function.clf
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/parser_missing_function_name.clf
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/parser_missing_var_name.clf
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/parser_for_missing_increment.clf
+	$(VALGRIND) ./build/cleaf test/valgrind_case/parser_missing_semicolon.clf; [ $$? -ne 42 ]
+	$(VALGRIND) ./build/cleaf test/valgrind_case/parser_unmatched_brace.clf; [ $$? -ne 42 ]
+	$(VALGRIND) ./build/cleaf test/valgrind_case/parser_missing_paren.clf; [ $$? -ne 42 ]
+	$(VALGRIND) ./build/cleaf test/valgrind_case/parser_incomplete_function.clf; [ $$? -ne 42 ]
+	$(VALGRIND) ./build/cleaf test/valgrind_case/parser_missing_function_name.clf; [ $$? -ne 42 ]
+	$(VALGRIND) ./build/cleaf test/valgrind_case/parser_missing_var_name.clf; [ $$? -ne 42 ]
+	$(VALGRIND) ./build/cleaf test/valgrind_case/parser_for_missing_increment.clf; [ $$? -ne 42 ]
 	@echo "=== Testing semantic errors ==="
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/semantic_function_reserved.clf
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/semantic_undefined_vars.clf
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/semantic_type_mismatch.clf
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/semantic_var_redefinition.clf
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/semantic_undefined_function.clf
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/semantic_function_duplicate.clf
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/semantic_function_args_error.clf
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/semantic_return_type_error.clf
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/semantic_unary_type_error.clf
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/semantic_control_flow_errors.clf
+	$(VALGRIND) ./build/cleaf test/valgrind_case/semantic_function_reserved.clf; [ $$? -ne 42 ]
+	$(VALGRIND) ./build/cleaf test/valgrind_case/semantic_undefined_vars.clf; [ $$? -ne 42 ]
+	$(VALGRIND) ./build/cleaf test/valgrind_case/semantic_type_mismatch.clf; [ $$? -ne 42 ]
+	$(VALGRIND) ./build/cleaf test/valgrind_case/semantic_var_redefinition.clf; [ $$? -ne 42 ]
+	$(VALGRIND) ./build/cleaf test/valgrind_case/semantic_undefined_function.clf; [ $$? -ne 42 ]
+	$(VALGRIND) ./build/cleaf test/valgrind_case/semantic_function_duplicate.clf; [ $$? -ne 42 ]
+	$(VALGRIND) ./build/cleaf test/valgrind_case/semantic_function_args_error.clf; [ $$? -ne 42 ]
+	$(VALGRIND) ./build/cleaf test/valgrind_case/semantic_return_type_error.clf; [ $$? -ne 42 ]
+	$(VALGRIND) ./build/cleaf test/valgrind_case/semantic_unary_type_error.clf; [ $$? -ne 42 ]
+	$(VALGRIND) ./build/cleaf test/valgrind_case/semantic_control_flow_errors.clf; [ $$? -ne 42 ]
 	@echo "=== Testing combined errors ==="
-	valgrind --error-exitcode=1 --leak-check=full --show-leak-kinds=all ./build/cleaf test/valgrind_case/combined_multiple_errors.clf
+	$(VALGRIND) ./build/cleaf test/valgrind_case/combined_multiple_errors.clf; [ $$? -ne 42 ]
 	@echo "=== All valgrind tests passed ==="
 
 clean:

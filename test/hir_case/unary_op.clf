@@ -1,0 +1,7 @@
+fn main() {
+  var a = 5;
+  var b = a++;
+  var c = a--;
+  var d = ++a;
+  var e = --a; 
+}

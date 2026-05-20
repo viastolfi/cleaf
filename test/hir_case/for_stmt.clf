@@ -1,0 +1,7 @@
+fn main(): int {
+  for (var a = 0; a < 10; ++a) {
+    var b = a; 
+  }
+
+  return 0;
+}
