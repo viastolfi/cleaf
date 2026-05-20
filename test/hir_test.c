@@ -176,3 +176,7 @@ ct_test(hir_test, basic_if, "test/hir_case/basic_if.clf", "test/hir_case/basic_i
 ct_test(hir_test, if_else, "test/hir_case/if_else.clf", "test/hir_case/if_else.res") {
   ct_assert_eq(result, 0, "hir parsing give right output");
 }
+
+ct_test(hir_test, all_comparison_if, "test/hir_case/all_comparison_if.clf", "test/hir_case/all_comparison_if.res") {
+  ct_assert_eq(result, 0, "hir parsing give right output");
+}

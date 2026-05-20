@@ -237,6 +237,11 @@ int HIR_lower_binary_expression(expression_t* expr,
       instr->binary_op = HIR_BINARY_MUL;
       break;
     case BINARY_EQ:
+    case BINARY_NEQ:
+    case BINARY_GT:
+    case BINARY_GTE:
+    case BINARY_LT:
+    case BINARY_LTE:
       instr->binary_op = HIR_BINARY_CMP;
       break;
     default:
@@ -387,6 +392,21 @@ int HIR_lower_if_statement(HIR_parser_t* hir,
   case BINARY_EQ:
     jump->kind = HIR_JMP_NOT_EQUAL;
     break; 
+  case BINARY_NEQ:
+    jump->kind = HIR_JMP_EQUAL;
+    break;
+  case BINARY_GT:
+    jump->kind = HIR_JMP_GREATER_THAN_EQUAL;
+    break;
+  case BINARY_LT:
+    jump->kind = HIR_JMP_LOWER_THAN_EQUAL;
+    break;
+  case BINARY_GTE:
+    jump->kind = HIR_JMP_GREATER_THAN;
+    break;
+  case BINARY_LTE:
+    jump->kind = HIR_JMP_LOWER_THAN;
+    break;
   default:
     jump->kind = HIR_NOP; 
     return 1;
@@ -608,6 +628,31 @@ char* HIR_generate_string_program(HIR_function_t* function)
     if (instr->kind == HIR_JMP_NOT_EQUAL) {
       sb_append_fmt(&sb, "JNE %s\n", instr->chunk_name); 
       continue;
+    }
+
+    if (instr->kind == HIR_JMP_EQUAL) {
+      sb_append_fmt(&sb, "JE %s\n", instr->chunk_name); 
+      continue;
+    }
+
+    if (instr->kind == HIR_JMP_GREATER_THAN) {
+      sb_append_fmt(&sb, "JG %s\n", instr->chunk_name); 
+      continue;
+    }
+
+    if (instr->kind == HIR_JMP_GREATER_THAN_EQUAL) {
+      sb_append_fmt(&sb, "JGE %s\n", instr->chunk_name);
+      continue; 
+    }
+
+    if (instr->kind == HIR_JMP_LOWER_THAN_EQUAL) {
+      sb_append_fmt(&sb, "JLE %s\n", instr->chunk_name);
+      continue; 
+    }
+
+    if (instr->kind == HIR_JMP_LOWER_THAN) {
+      sb_append_fmt(&sb, "JL %s\n", instr->chunk_name);
+      continue; 
     }
 
     if (instr->kind == HIR_CHUNK) {
