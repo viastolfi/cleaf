@@ -53,6 +53,43 @@ void HIR_free_function(HIR_function_t* func)
   free(func);
 }
 
+HIR_instruction_t* HIR_create_jump_instruction(statement_t* stmt,
+    char* chunk)
+{
+  HIR_instruction_t* jump = calloc(1, sizeof(HIR_instruction_t));
+  if (!jump) {
+    return NULL;
+  }
+  jump->chunk_name = strdup(chunk);
+  // TODO: this could be factorise since its the same in the if stmt
+  switch (stmt->if_stmt.condition->binary.op) {
+  case BINARY_EQ:
+    jump->kind = HIR_JMP_NOT_EQUAL;
+    break; 
+  case BINARY_NEQ:
+    jump->kind = HIR_JMP_EQUAL;
+    break;
+  case BINARY_GT:
+    jump->kind = HIR_JMP_GREATER_THAN_EQUAL;
+    break;
+  case BINARY_LT:
+    jump->kind = HIR_JMP_LOWER_THAN_EQUAL;
+    break;
+  case BINARY_GTE:
+    jump->kind = HIR_JMP_GREATER_THAN;
+    break;
+  case BINARY_LTE:
+    jump->kind = HIR_JMP_LOWER_THAN;
+    break;
+  default:
+    jump->kind = HIR_NOP; 
+    return NULL;
+  }
+
+  return jump;  
+}
+
+
 int HIR_lower_declaration(
     HIR_parser_t* hir,
     declaration_t* decl,
@@ -382,36 +419,8 @@ int HIR_lower_while_statement(
   }
   hir->gen_chunk(hir->chunk_ctx, next_chunk);
 
-  HIR_instruction_t* jump = calloc(1, sizeof(HIR_instruction_t));
-  if (!jump) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return 1;
-  }
-  jump->chunk_name = strdup(next_chunk);
-  // TODO: this could be factorise since its the same in the if stmt
-  switch (stmt->if_stmt.condition->binary.op) {
-  case BINARY_EQ:
-    jump->kind = HIR_JMP_NOT_EQUAL;
-    break; 
-  case BINARY_NEQ:
-    jump->kind = HIR_JMP_EQUAL;
-    break;
-  case BINARY_GT:
-    jump->kind = HIR_JMP_GREATER_THAN_EQUAL;
-    break;
-  case BINARY_LT:
-    jump->kind = HIR_JMP_LOWER_THAN_EQUAL;
-    break;
-  case BINARY_GTE:
-    jump->kind = HIR_JMP_GREATER_THAN;
-    break;
-  case BINARY_LTE:
-    jump->kind = HIR_JMP_LOWER_THAN;
-    break;
-  default:
-    jump->kind = HIR_NOP; 
-    return 1;
-  }
+  HIR_instruction_t* jump = 
+    HIR_create_jump_instruction(stmt, next_chunk);
   da_append(func->code, jump);
 
   da_foreach(statement_t*, it, stmt->while_stmt.body) {
@@ -475,40 +484,17 @@ int HIR_lower_if_statement(HIR_parser_t* hir,
     else_chunk = NULL; 
   }
 
-  HIR_instruction_t* jump = calloc(1, sizeof(HIR_instruction_t));
-  if (!jump) {
-    free(chunk); 
+  HIR_instruction_t* jump;
+  if (else_chunk) 
+    jump = HIR_create_jump_instruction(stmt, else_chunk);
+  else
+    jump = HIR_create_jump_instruction(stmt, chunk);
+
+  if (!chunk) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
     return 1;
   }
-  switch (stmt->if_stmt.condition->binary.op) {
-  case BINARY_EQ:
-    jump->kind = HIR_JMP_NOT_EQUAL;
-    break; 
-  case BINARY_NEQ:
-    jump->kind = HIR_JMP_EQUAL;
-    break;
-  case BINARY_GT:
-    jump->kind = HIR_JMP_GREATER_THAN_EQUAL;
-    break;
-  case BINARY_LT:
-    jump->kind = HIR_JMP_LOWER_THAN_EQUAL;
-    break;
-  case BINARY_GTE:
-    jump->kind = HIR_JMP_GREATER_THAN;
-    break;
-  case BINARY_LTE:
-    jump->kind = HIR_JMP_LOWER_THAN;
-    break;
-  default:
-    jump->kind = HIR_NOP; 
-    return 1;
-  }
 
-  if (else_chunk) 
-    jump->chunk_name = strdup(else_chunk);
-  else
-    jump->chunk_name = strdup(chunk);
   da_append(func->code, jump);
 
   da_foreach(statement_t*, it, stmt->if_stmt.then_branch) {
