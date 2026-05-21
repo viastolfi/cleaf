@@ -44,6 +44,8 @@ typedef struct {
     void (*emit_stack_restore)(string_builder_t*, int size);
     void (*emit_process_exit)(string_builder_t*, const char* exit_code_reg);
     void (*emit_mov_from_stack)(string_builder_t*, const char* dst, int value);
+    void (*emit_sub)(string_builder_t*, const char* dst, const char* src);
+    void (*emit_mul)(string_builder_t*, const char* dst, const char* src);
 } target_t;
 
 #endif // TARGET_H

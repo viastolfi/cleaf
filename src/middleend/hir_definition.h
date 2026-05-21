@@ -49,7 +49,7 @@ typedef enum
 typedef enum 
 {
   HIR_BINARY_ADD,
-  HIR_BINARY_MINUS,
+  HIR_BINARY_SUB,
   HIR_BINARY_MUL,
   HIR_BINARY_CMP,
 } HIR_binary_kind;

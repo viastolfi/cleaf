@@ -278,11 +278,11 @@ int HIR_lower_binary_expression(expression_t* expr,
     HIR_function_t* func)
 {
   switch(expr->binary.op) {
-    case BINARY_PLUS:
+    case BINARY_ADD:
       instr->binary_op = HIR_BINARY_ADD;
       break;
-    case BINARY_MINUS:
-      instr->binary_op = HIR_BINARY_MINUS;
+    case BINARY_SUB:
+      instr->binary_op = HIR_BINARY_SUB;
       break;
     case BINARY_MUL:
       instr->binary_op = HIR_BINARY_MUL;
@@ -839,8 +839,8 @@ char* HIR_generate_string_program(HIR_function_t* function)
         case HIR_BINARY_ADD: 
           sb_append_fmt(&sb, "ADD t%d t%d\n", instr->b, instr->a); 
         continue;
-        case HIR_BINARY_MINUS:
-          sb_append_fmt(&sb, "MIN t%d t%d\n", instr->b, instr->a);          
+        case HIR_BINARY_SUB:
+          sb_append_fmt(&sb, "SUB t%d t%d\n", instr->b, instr->a);          
           continue;
         case HIR_BINARY_MUL:
           sb_append_fmt(&sb, "MUL t%d t%d\n", instr->b, instr->a);          

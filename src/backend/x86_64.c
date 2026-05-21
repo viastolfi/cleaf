@@ -59,6 +59,22 @@ static void x86_emit_ret(string_builder_t* sb) {
     sb_append_fmt(sb, "    ret\n");
 }
 
+static void x86_emit_sub(
+    string_builder_t* sb,
+    const char* dst,
+    const char* src)
+{
+  sb_append_fmt(sb, "    sub %s, %s\n", dst, src);
+}
+
+static void x86_emit_mul(
+    string_builder_t* sb,
+    const char* dst,
+    const char* src)
+{
+  sb_append_fmt(sb, "    imul %s, %s\n", dst, src);
+}
+
 static void x86_emit_sub_direct(
     string_builder_t* sb, 
     const char* dst, 
@@ -255,4 +271,6 @@ const target_t x86_64_target = {
     .emit_stack_restore = x86_emit_stack_restore,
     .emit_process_exit = x86_emit_process_exit,
     .emit_mov_from_stack = x86_emit_mov_from_stack,
+    .emit_sub = x86_emit_sub,
+    .emit_mul = x86_emit_mul,
 };

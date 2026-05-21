@@ -99,6 +99,14 @@ int CODEGEN_write_function(
         target->emit_add(sb, 
             CODEGEN_get_reg(target, (*it)->b),
             CODEGEN_get_reg(target, (*it)->a));
+      } else if ((*it)->binary_op == HIR_BINARY_SUB) {
+        target->emit_sub(sb,
+            CODEGEN_get_reg(target, (*it)->b),
+            CODEGEN_get_reg(target, (*it)->a));
+      } else if ((*it)->binary_op == HIR_BINARY_MUL) {
+        target->emit_mul(sb,
+            CODEGEN_get_reg(target, (*it)->b),
+            CODEGEN_get_reg(target, (*it)->a));
       } else {
         error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED,
             "binary op not yet implemented in codegen");
@@ -136,6 +144,8 @@ int CODEGEN_write_function(
 
   da_foreach(var_pair_t, it, &vars)
     free(it->name); 
+
+  da_free(&vars);
 
   return 0;
 }
