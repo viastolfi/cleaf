@@ -1,0 +1,28 @@
+fn main(): int {
+  var a = 0;
+  if (a == 0) {
+    return a; 
+  }
+
+  if (a != 0) {
+    return a; 
+  }
+
+  if (a > 12) {
+    return a; 
+  }
+
+  if (a >= 13) {
+    return a; 
+  }
+
+  if (a < 14) {
+    return a; 
+  }
+
+  if (a <= 14) {
+    return a; 
+  }
+
+  return a;
+}
