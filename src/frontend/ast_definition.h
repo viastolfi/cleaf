@@ -1,6 +1,8 @@
 #ifndef AST_DEFINITION_H
 #define AST_DEFINITION_H
 
+#include <stddef.h>
+
 // ----------------- Enums ------------------
 
 typedef enum 

@@ -86,6 +86,10 @@ int HIR_lower_declaration(
   }
 
   da_append(func->code, instr);
+
+  // TODO: this only works if we only store int
+  // Must change as we add more base types and custom types
+  func->stack_reserve_size += 8;
   return 0;
 }
 
@@ -758,6 +762,7 @@ int HIR_lower_function(HIR_parser_t* hir,
   } 
 
   func->next_temp_id = 0;
+  func->stack_reserve_size = 0;
 
   func->code = calloc(1, sizeof(HIR_instruction_block));
   if (!func->code) {

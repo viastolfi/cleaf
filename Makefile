@@ -9,6 +9,8 @@ CS = \
 				$(SRC)/frontend/semantic.c \
 				$(SRC)/middleend/hir.c \
 				$(SRC)/frontend/ast_printer.c \
+				$(SRC)/backend/x86_64.c \
+				$(SRC)/backend/codegen.c \
 
 OBJ = \
         $(BUILD)/cleaf.o \
@@ -17,6 +19,8 @@ OBJ = \
 				$(BUILD)/frontend/semantic.o \
 				$(BUILD)/middleend/hir.o \
 				$(BUILD)/frontend/ast_printer.o \
+				$(BUILD)/backend/x86_64.o \
+				$(BUILD)/backend/codegen.o \
 
 CC = gcc
 CFLAGS = -Wall -Wextra -g
@@ -36,6 +40,7 @@ $(BUILD)/%.o: $(SRC)/%.c
 	@mkdir -p $(BUILD)/frontend
 	@mkdir -p $(BUILD)/thirdparty
 	@mkdir -p $(BUILD)/middleend
+	@mkdir -p $(BUILD)/backend
 	$(CC) $(CFLAGS) -c $< -o $@
 
 AST_TEST_SRC = $(TEST)/ast_test.c

@@ -14,6 +14,8 @@
 #include "thirdparty/error.h"
 #include "frontend/semantic.h"
 #include "middleend/hir.h"
+#include "backend/codegen.h"
+#include "backend/x86_64_definition.h"
 
 typedef struct {
   char* text;
@@ -183,6 +185,15 @@ int main(int argc, char** argv)
     }
     log_section_end();
   }
+
+  string_builder_t asm_prog = {0};
+  da_foreach(HIR_function_t*, it, hir_parser.hir_program) {
+    int err = CODEGEN_write_function(&asm_prog, *it, &x86_64_target);
+    if (err)
+      return -1;
+  }
+
+  printf("%s\n", asm_prog.items);
 
   compiler_resources_free(&res);
   return 0;
