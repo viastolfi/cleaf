@@ -5,7 +5,6 @@
 
 #define DA_LIB_IMPLEMENTATION
 #include "../thirdparty/da.h"
-#include "../thirdparty/error.h"
 #include "../frontend/ast_definition.h"
 #include "../thirdparty/string_builder.h"
 #include "hir_definition.h"

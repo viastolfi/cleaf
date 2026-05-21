@@ -86,6 +86,10 @@ int HIR_lower_declaration(
   }
 
   da_append(func->code, instr);
+
+  // TODO: this only works if we only store int
+  // Must change as we add more base types and custom types
+  func->stack_reserve_size += 8;
   return 0;
 }
 
@@ -274,11 +278,11 @@ int HIR_lower_binary_expression(expression_t* expr,
     HIR_function_t* func)
 {
   switch(expr->binary.op) {
-    case BINARY_PLUS:
+    case BINARY_ADD:
       instr->binary_op = HIR_BINARY_ADD;
       break;
-    case BINARY_MINUS:
-      instr->binary_op = HIR_BINARY_MINUS;
+    case BINARY_SUB:
+      instr->binary_op = HIR_BINARY_SUB;
       break;
     case BINARY_MUL:
       instr->binary_op = HIR_BINARY_MUL;
@@ -450,22 +454,22 @@ int HIR_lower_for_statement(
   jump->chunk_name = strdup(main_chunk);
   switch (stmt->for_stmt.condition->binary.op) {
   case BINARY_EQ:
-    jump->kind = HIR_JMP_NOT_EQUAL;
-    break;
-  case BINARY_NEQ:
     jump->kind = HIR_JMP_EQUAL;
     break;
+  case BINARY_NEQ:
+    jump->kind = HIR_JMP_NOT_EQUAL;
+    break;
   case BINARY_GT:
-    jump->kind = HIR_JMP_GREATER_THAN_EQUAL;
-    break;
-  case BINARY_LT:
-    jump->kind = HIR_JMP_LOWER_THAN_EQUAL;
-    break;
-  case BINARY_GTE:
     jump->kind = HIR_JMP_GREATER_THAN;
     break;
-  case BINARY_LTE:
+  case BINARY_LT:
     jump->kind = HIR_JMP_LOWER_THAN;
+    break;
+  case BINARY_GTE:
+    jump->kind = HIR_JMP_GREATER_THAN_EQUAL;
+    break;
+  case BINARY_LTE:
+    jump->kind = HIR_JMP_LOWER_THAN_EQUAL;
     break;
   default:
     free(jump);
@@ -758,6 +762,7 @@ int HIR_lower_function(HIR_parser_t* hir,
   } 
 
   func->next_temp_id = 0;
+  func->stack_reserve_size = 0;
 
   func->code = calloc(1, sizeof(HIR_instruction_block));
   if (!func->code) {
@@ -834,8 +839,8 @@ char* HIR_generate_string_program(HIR_function_t* function)
         case HIR_BINARY_ADD: 
           sb_append_fmt(&sb, "ADD t%d t%d\n", instr->b, instr->a); 
         continue;
-        case HIR_BINARY_MINUS:
-          sb_append_fmt(&sb, "MIN t%d t%d\n", instr->b, instr->a);          
+        case HIR_BINARY_SUB:
+          sb_append_fmt(&sb, "SUB t%d t%d\n", instr->b, instr->a);          
           continue;
         case HIR_BINARY_MUL:
           sb_append_fmt(&sb, "MUL t%d t%d\n", instr->b, instr->a);          

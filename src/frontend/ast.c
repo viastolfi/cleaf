@@ -421,10 +421,10 @@ expression_t* ast_parse_expr_binary(parser_t* p, int min_bp)
         e->binary.op = BINARY_DIV;
         break;
       case '+':
-        e->binary.op = BINARY_PLUS;
+        e->binary.op = BINARY_ADD;
         break;
       case '-':
-        e->binary.op = BINARY_MINUS;
+        e->binary.op = BINARY_SUB;
         break;
       case '>':
         e->binary.op = BINARY_GT;

@@ -1,6 +1,8 @@
 #ifndef AST_DEFINITION_H
 #define AST_DEFINITION_H
 
+#include <stddef.h>
+
 // ----------------- Enums ------------------
 
 typedef enum 
@@ -56,8 +58,8 @@ typedef enum
 
 typedef enum 
 {
-  BINARY_PLUS,
-  BINARY_MINUS,
+  BINARY_ADD,
+  BINARY_SUB,
   BINARY_MUL,
   BINARY_DIV,
   BINARY_GT,

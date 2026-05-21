@@ -9,6 +9,8 @@ CS = \
 				$(SRC)/frontend/semantic.c \
 				$(SRC)/middleend/hir.c \
 				$(SRC)/frontend/ast_printer.c \
+				$(SRC)/backend/x86_64.c \
+				$(SRC)/backend/codegen.c \
 
 OBJ = \
         $(BUILD)/cleaf.o \
@@ -17,13 +19,15 @@ OBJ = \
 				$(BUILD)/frontend/semantic.o \
 				$(BUILD)/middleend/hir.o \
 				$(BUILD)/frontend/ast_printer.o \
+				$(BUILD)/backend/x86_64.o \
+				$(BUILD)/backend/codegen.o \
 
 CC = gcc
 CFLAGS = -Wall -Wextra -g
 VALGRIND = valgrind --error-exitcode=42 --leak-check=full --show-leak-kinds=all
 
 .PRECIOUS: build/cleaf
-.PHONY: all clean test ast-test semantic-test asan-test valgrind-test hir-test
+.PHONY: all clean test ast-test semantic-test asan-test valgrind-test hir-test codegen-test
 
 all: $(BUILD)/cleaf
 
@@ -36,6 +40,7 @@ $(BUILD)/%.o: $(SRC)/%.c
 	@mkdir -p $(BUILD)/frontend
 	@mkdir -p $(BUILD)/thirdparty
 	@mkdir -p $(BUILD)/middleend
+	@mkdir -p $(BUILD)/backend
 	$(CC) $(CFLAGS) -c $< -o $@
 
 AST_TEST_SRC = $(TEST)/ast_test.c
@@ -47,11 +52,15 @@ SEM_TEST_BIN = $(BUILD)/semantic_test
 HIR_TEST_SRC = $(TEST)/hir_test.c
 HIR_TEST_BIN = $(BUILD)/hir_test
 
-test: $(AST_TEST_BIN) $(SEM_TEST_BIN) $(HIR_TEST_BIN)
+CODEGEN_TEST_SRC = $(TEST)/codegen_test.c
+CODEGEN_TEST_BIN = $(BUILD)/codegen_test
+
+test: $(AST_TEST_BIN) $(SEM_TEST_BIN) $(HIR_TEST_BIN) $(CODEGEN_TEST_BIN)
 	@echo "Running tests..."
 	@$(AST_TEST_BIN)
 	@$(SEM_TEST_BIN)
 	@$(HIR_TEST_BIN)
+	@$(CODEGEN_TEST_BIN)
 
 ast-test: $(AST_TEST_BIN)
 	@echo "Running AST tests..."
@@ -65,6 +74,10 @@ hir-test: $(HIR_TEST_BIN)
 	@echo "Running hir tests..."
 	@$(HIR_TEST_BIN) 2> test.log
 
+codegen-test: $(CODEGEN_TEST_BIN)
+	@echo "Running codegen tests..."
+	@$(CODEGEN_TEST_BIN) 2> test.log
+
 $(AST_TEST_BIN): $(AST_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c
 	@mkdir -p $(BUILD)
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
@@ -74,6 +87,10 @@ $(SEM_TEST_BIN): $(SEM_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
 
 $(HIR_TEST_BIN): $(HIR_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c $(SRC)/middleend/hir.c
+	@mkdir -p $(BUILD)
+	@$(CC) $(CFLAGS) $^ -o $@ -lm
+
+$(CODEGEN_TEST_BIN): $(CODEGEN_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c $(SRC)/frontend/semantic.c $(SRC)/middleend/hir.c $(SRC)/backend/x86_64.c $(SRC)/backend/codegen.c
 	@mkdir -p $(BUILD)
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
 

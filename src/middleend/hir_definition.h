@@ -3,6 +3,7 @@
 
 #include "../frontend/ast_definition.h"
 #include "../thirdparty/rand.h"
+#include "../thirdparty/error.h"
 
 typedef void (*chunk_name_gen_t)(void* ctx, char* out);
 
@@ -48,7 +49,7 @@ typedef enum
 typedef enum 
 {
   HIR_BINARY_ADD,
-  HIR_BINARY_MINUS,
+  HIR_BINARY_SUB,
   HIR_BINARY_MUL,
   HIR_BINARY_CMP,
 } HIR_binary_kind;
@@ -88,11 +89,12 @@ typedef struct
 typedef struct 
 {
   char* name;
-  type_kind return_type;
 
   HIR_instruction_block* code;
 
   HIR_temp_id next_temp_id;
+
+  size_t stack_reserve_size;
 } HIR_function_t;
 
 typedef struct 
