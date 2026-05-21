@@ -53,6 +53,7 @@ static void compiler_resources_free(compiler_resources_t* res)
 int main(int argc, char** argv) 
 {
   const char* filename = NULL;
+  const char* output = NULL;
   log_verbosity_t verbosity = LOG_SILENT;
 
   for (int i = 1; i < argc; i++) {
@@ -60,11 +61,18 @@ int main(int argc, char** argv)
       verbosity = LOG_VERBOSE;
     else if (strcmp(argv[i], "-V") == 0)
       verbosity = LOG_DUMP;
+    else if (strcmp(argv[i], "-o") == 0) {
+      if (++i >= argc) {
+        error_report_general(ERROR_SEVERITY_ERROR, "missing argument for '-o'");
+        return 1;
+      }
+      output = argv[i];
+    }
     else if (argv[i][0] != '-')
       filename = argv[i];
     else {
       error_report_general(ERROR_SEVERITY_ERROR, "unknown flag '%s'", argv[i]);
-      fprintf(stderr, "usage: %s [-v|-V] <file.clf>\n", argv[0]);
+      fprintf(stderr, "usage: %s [-v|-V] [-o <output>] <file.clf>\n", argv[0]);
       return 1;
     }
   }
@@ -73,7 +81,7 @@ int main(int argc, char** argv)
 
   if (!filename) {
     error_report_general(ERROR_SEVERITY_ERROR, "no input file provided");
-    fprintf(stderr, "usage: %s [-v|-V] <file.clf>\n", argv[0]);
+    fprintf(stderr, "usage: %s [-v|-V] [-o <output>] <file.clf>\n", argv[0]);
     return 1;
   }
 
@@ -189,11 +197,69 @@ int main(int argc, char** argv)
   string_builder_t asm_prog = {0};
   da_foreach(HIR_function_t*, it, hir_parser.hir_program) {
     int err = CODEGEN_write_function(&asm_prog, *it, &x86_64_target);
-    if (err)
-      return -1;
+    if (err) {
+      da_free(&asm_prog);
+      compiler_resources_free(&res);
+      return 1;
+    }
   }
 
-  printf("%s\n", asm_prog.items);
+  log_phase("codegen", "ok");
+
+  if (log_is_dump()) {
+    log_section_begin("ASM");
+    printf("%s", asm_prog.items);
+    log_section_end();
+  }
+
+  // Use -o name if given, otherwise default to a.out
+  const char* output_name = output ? output : "a.out";
+
+  // Derive a safe basename for the temp .o (strip path from output_name)
+  const char* obj_base = strrchr(output_name, '/');
+  obj_base = obj_base ? obj_base + 1 : output_name;
+
+  // Step 1: write asm to a temp file, then assemble with nasm
+  char asm_path[512];
+  snprintf(asm_path, sizeof(asm_path), "/tmp/%s.asm", obj_base);
+  FILE* asm_file = fopen(asm_path, "w");
+  if (!asm_file) {
+    error_report_general(ERROR_SEVERITY_ERROR, "failed to write temp asm file");
+    da_free(&asm_prog);
+    compiler_resources_free(&res);
+    return 1;
+  }
+  fputs(asm_prog.items, asm_file);
+  fclose(asm_file);
+  da_free(&asm_prog);
+
+  char nasm_cmd[1024];
+  snprintf(nasm_cmd, sizeof(nasm_cmd),
+      "nasm -f elf64 -o /tmp/%s.o %s", obj_base, asm_path);
+  if (system(nasm_cmd) != 0) {
+    error_report_general(ERROR_SEVERITY_ERROR, "nasm failed");
+    compiler_resources_free(&res);
+    return 1;
+  }
+  remove(asm_path);
+
+  log_phase("nasm", "ok");
+
+  // Step 2: link
+  char ld_cmd[1024];
+  snprintf(ld_cmd, sizeof(ld_cmd), "ld -o %s /tmp/%s.o", output_name, obj_base);
+  if (system(ld_cmd) != 0) {
+    error_report_general(ERROR_SEVERITY_ERROR, "ld failed");
+    compiler_resources_free(&res);
+    return 1;
+  }
+
+  // Clean up temp object file
+  char rm_cmd[512];
+  snprintf(rm_cmd, sizeof(rm_cmd), "rm /tmp/%s.o", obj_base);
+  system(rm_cmd);
+
+  log_phase("linking", "'%s'", output_name);
 
   compiler_resources_free(&res);
   return 0;
