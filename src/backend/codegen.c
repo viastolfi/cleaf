@@ -10,13 +10,11 @@ static int CODEGEN_get_var_pos(var_array* vars, const char* name)
   return -1;
 }
 
-static void CODEGEN_restore_stack(
-    string_builder_t* sb,
-    const target_t* target,
-    int size)
+static const char* CODEGEN_get_reg(const target_t* target, int id)
 {
-  target->emit_add(sb, "rsp", size);
-  target->emit_pop(sb, "rbp");
+  if (id < 0)
+    return target->reserved_regs[-1 - id];
+  return target->regs[id % target->reg_count];
 }
 
 int CODEGEN_write_function(
@@ -36,12 +34,18 @@ int CODEGEN_write_function(
   }
 
   // stack prep
-  target->emit_push(sb, "rbp");
-  target->emit_mov(sb, "rbp", "rsp");
-  target->emit_sub_direct(sb, "rsp", func->stack_reserve_size);
+  target->emit_stack_setup(sb, func->stack_reserve_size);
 
   da_foreach(HIR_instruction_t*, it, func->code) {
     switch ((*it)->kind) {
+    case HIR_LOAD_VAR:
+      {
+        // since this append after semantic analyze this can't fail
+        int place = CODEGEN_get_var_pos(&vars, (*it)->var.name);
+        target->emit_mov_from_stack(sb, 
+            CODEGEN_get_reg(target, (*it)->dest), place);
+      }
+      break;
     case HIR_STORE_VAR:
       int place = CODEGEN_get_var_pos(&vars, (*it)->var.name);
       if (place == -1) {
@@ -52,18 +56,76 @@ int CODEGEN_write_function(
       }
       // TODO: handle uninitialized var
       if ((*it)->var.is_init) {
-        target->emit_mov_at_stack(sb, place, target->regs[(*it)->a]);
+        target->emit_mov_at_stack(sb, place, 
+            CODEGEN_get_reg(target, (*it)->a));
+      }
+      break;
+    case HIR_INC:
+      target->emit_inc(sb, CODEGEN_get_reg(target, (*it)->dest));
+      break;
+    case HIR_DEC:
+      target->emit_dec(sb, CODEGEN_get_reg(target, (*it)->dest));
+      break;
+    case HIR_CHUNK:
+      target->chunk_write(sb, (*it)->chunk_name);
+      break;
+    case HIR_JMP:
+      target->emit_jmp(sb, (*it)->chunk_name);
+      break;
+    case HIR_JMP_EQUAL:
+      target->emit_jmp_equal(sb, (*it)->chunk_name);
+      break;
+    case HIR_JMP_NOT_EQUAL:
+      target->emit_jmp_not_equal(sb, (*it)->chunk_name);
+      break;
+    case HIR_JMP_GREATER_THAN:
+      target->emit_jmp_greater_than(sb, (*it)->chunk_name);
+      break;
+    case HIR_JMP_GREATER_THAN_EQUAL:
+      target->emit_jmp_greater_than_equal(sb, (*it)->chunk_name);
+      break;
+    case HIR_JMP_LOWER_THAN:
+      target->emit_jmp_lower_than(sb, (*it)->chunk_name);
+      break;
+    case HIR_JMP_LOWER_THAN_EQUAL:
+      target->emit_jmp_lower_than_equal(sb, (*it)->chunk_name);
+      break;
+    case HIR_BINARY:
+      if ((*it)->binary_op == HIR_BINARY_CMP) {
+        target->emit_cmp(sb, 
+            CODEGEN_get_reg(target, (*it)->a), 
+            CODEGEN_get_reg(target, (*it)->b));
+      } else if ((*it)->binary_op == HIR_BINARY_ADD) {
+        target->emit_add(sb, 
+            CODEGEN_get_reg(target, (*it)->b),
+            CODEGEN_get_reg(target, (*it)->a));
+      } else {
+        error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED,
+            "binary op not yet implemented in codegen");
+        return 1;
       }
       break;
     case HIR_INT_CONST:
       target->emit_mov_direct(sb, 
-          target->regs[(*it)->dest], (*it)->int_value);
+          CODEGEN_get_reg(target, (*it)->dest),
+          (*it)->int_value);
+      break;
+    case HIR_MOV: {
+      const char* dst = CODEGEN_get_reg(target, (*it)->dest);
+      const char* src = CODEGEN_get_reg(target, (*it)->a);
+      target->emit_mov(sb, dst, src);
+      break;
+    }
+    case HIR_CALL:
+      target->emit_call(sb, (*it)->func_name);
+      break;
+    case HIR_RETURN:
+      target->emit_stack_restore(sb, func->stack_reserve_size);
+      target->emit_ret(sb);
       break;
     case HIR_EXIT:
-      CODEGEN_restore_stack(sb, target, func->stack_reserve_size);
-      target->emit_mov_direct(sb, "rax", 60);
-      target->emit_mov(sb, "rdi", target->regs[(*it)->dest]);
-      target->emit_syscall(sb);
+      target->emit_stack_restore(sb, func->stack_reserve_size);
+      target->emit_process_exit(sb, CODEGEN_get_reg(target, (*it)->dest));
       break;
     default:
       error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED, 

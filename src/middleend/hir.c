@@ -454,22 +454,22 @@ int HIR_lower_for_statement(
   jump->chunk_name = strdup(main_chunk);
   switch (stmt->for_stmt.condition->binary.op) {
   case BINARY_EQ:
-    jump->kind = HIR_JMP_NOT_EQUAL;
-    break;
-  case BINARY_NEQ:
     jump->kind = HIR_JMP_EQUAL;
     break;
+  case BINARY_NEQ:
+    jump->kind = HIR_JMP_NOT_EQUAL;
+    break;
   case BINARY_GT:
-    jump->kind = HIR_JMP_GREATER_THAN_EQUAL;
-    break;
-  case BINARY_LT:
-    jump->kind = HIR_JMP_LOWER_THAN_EQUAL;
-    break;
-  case BINARY_GTE:
     jump->kind = HIR_JMP_GREATER_THAN;
     break;
-  case BINARY_LTE:
+  case BINARY_LT:
     jump->kind = HIR_JMP_LOWER_THAN;
+    break;
+  case BINARY_GTE:
+    jump->kind = HIR_JMP_GREATER_THAN_EQUAL;
+    break;
+  case BINARY_LTE:
+    jump->kind = HIR_JMP_LOWER_THAN_EQUAL;
     break;
   default:
     free(jump);

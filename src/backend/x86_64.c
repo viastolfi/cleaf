@@ -108,16 +108,118 @@ static void x86_emit_mov_at_stack(
   sb_append_fmt(sb, "    mov [rbp - %d], %s\n", place, src);
 }
 
+static void x86_emit_mov_from_stack(
+    string_builder_t* sb,
+    const char* dst,
+    int place)
+{
+  sb_append_fmt(sb, "    mov %s, [rbp - %d]\n", dst, place);
+}
+
 static void x86_emit_add(
     string_builder_t* sb,
     const char* dst,
-    int value)
+    const char* src)
 {
-  sb_append_fmt(sb, "    add %s, %d\n", dst, value);
+  sb_append_fmt(sb, "    add %s, %s\n", dst, src);
+}
+
+static void x86_emit_jmp(
+    string_builder_t* sb,
+    const char* chunk)
+{
+  sb_append_fmt(sb, "    jmp %s\n", chunk);
+}
+
+static void x86_emit_je(
+    string_builder_t* sb,
+    const char* chunk)
+{
+  sb_append_fmt(sb, "    je %s\n", chunk);
+}
+
+static void x86_emit_jne(
+    string_builder_t* sb,
+    const char* chunk)
+{
+  sb_append_fmt(sb, "    jne %s\n", chunk);
+}
+
+static void x86_emit_jl(
+    string_builder_t* sb,
+    const char* chunk)
+{
+  sb_append_fmt(sb, "    jl %s\n", chunk);
+}
+
+static void x86_emit_jle(
+    string_builder_t* sb,
+    const char* chunk)
+{
+  sb_append_fmt(sb, "    jle %s\n", chunk);
+}
+
+static void x86_emit_jg(
+    string_builder_t* sb,
+    const char* chunk)
+{
+  sb_append_fmt(sb, "    jg %s\n", chunk);
+}
+
+static void x86_emit_jge(
+    string_builder_t* sb,
+    const char* chunk)
+{
+  sb_append_fmt(sb, "    jge %s\n", chunk);
 }
 
 static void x86_emit_syscall(string_builder_t* sb)
 {
+  sb_append_fmt(sb, "    syscall\n");
+}
+
+static void x86_emit_cmp(
+    string_builder_t* sb,
+    const char* a,
+    const char* b)
+{
+  sb_append_fmt(sb, "    cmp %s, %s\n", a, b);
+}
+
+static void x86_emit_call(
+    string_builder_t* sb,
+    const char* name)
+{
+  sb_append_fmt(sb, "    call _%s\n", name);
+}
+
+static void x86_emit_inc(string_builder_t* sb, const char* reg)
+{
+  sb_append_fmt(sb, "    inc %s\n", reg);
+}
+
+static void x86_emit_dec(string_builder_t* sb, const char* reg)
+{
+  sb_append_fmt(sb, "    dec %s\n", reg);
+}
+
+static void x86_emit_stack_setup(string_builder_t* sb, int size)
+{
+  sb_append_fmt(sb, "    push rbp\n");
+  sb_append_fmt(sb, "    mov rbp, rsp\n");
+  sb_append_fmt(sb, "    sub rsp, %d\n", size);
+}
+
+static void x86_emit_stack_restore(string_builder_t* sb, int size)
+{
+  sb_append_fmt(sb, "    add rsp, %d\n", size);
+  sb_append_fmt(sb, "    pop rbp\n");
+}
+
+static void x86_emit_process_exit(string_builder_t* sb, const char* exit_code_reg)
+{
+  sb_append_fmt(sb, "    mov rax, 60\n");
+  sb_append_fmt(sb, "    mov rdi, %s\n", exit_code_reg);
   sb_append_fmt(sb, "    syscall\n");
 }
 
@@ -138,4 +240,19 @@ const target_t x86_64_target = {
     .emit_add = x86_emit_add,
     .emit_mov_direct = x86_emit_mov_direct,
     .emit_syscall = x86_emit_syscall,
+    .emit_cmp = x86_emit_cmp,
+    .emit_jmp = x86_emit_jmp,
+    .emit_jmp_equal = x86_emit_je,
+    .emit_jmp_not_equal = x86_emit_jne,
+    .emit_jmp_greater_than = x86_emit_jg,
+    .emit_jmp_greater_than_equal = x86_emit_jge,
+    .emit_jmp_lower_than = x86_emit_jl,
+    .emit_jmp_lower_than_equal = x86_emit_jle,
+    .emit_call = x86_emit_call,
+    .emit_inc = x86_emit_inc,
+    .emit_dec = x86_emit_dec,
+    .emit_stack_setup = x86_emit_stack_setup,
+    .emit_stack_restore = x86_emit_stack_restore,
+    .emit_process_exit = x86_emit_process_exit,
+    .emit_mov_from_stack = x86_emit_mov_from_stack,
 };
