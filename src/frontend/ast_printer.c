@@ -20,8 +20,8 @@ static const char* type_str(type_kind t)
 static const char* binary_op_str(binary_op_kind op)
 {
   switch (op) {
-    case BINARY_PLUS:  return "+";
-    case BINARY_MINUS: return "-";
+    case BINARY_ADD:  return "+";
+    case BINARY_SUB: return "-";
     case BINARY_MUL:   return "*";
     case BINARY_DIV:   return "/";
     case BINARY_GT:    return ">";
