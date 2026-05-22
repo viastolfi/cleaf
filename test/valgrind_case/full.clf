@@ -1,3 +1,8 @@
+struct v2 {
+  int x;
+  int y;
+}
+
 fn main(): int {
   var a = bar(0);
   int b = bar(0);

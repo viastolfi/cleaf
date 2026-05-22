@@ -2,3 +2,4 @@ build/
 *.swp
 *.log
 a.out
+vgcore.*

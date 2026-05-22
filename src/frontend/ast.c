@@ -142,6 +142,18 @@ void free_declaration(declaration_t* d)
     }
   }
 
+  if (d->type == DECLARATION_STRUCT) {
+    if (d->struc.name)
+      free(d->struc.name); 
+
+     da_foreach(typed_identifier_t, it, &(d->struc.members)) {
+      if (it->name)
+        free(it->name);
+    }
+
+    da_free(&(d->struc.members));
+  }
+
   if (d->type == DECLARATION_VAR) {
     if (d->var_decl.ident.name) 
       free(d->var_decl.ident.name);
