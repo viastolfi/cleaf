@@ -9,6 +9,7 @@ typedef enum
 {
   DECLARATION_VAR,
   DECLARATION_FUNC,
+  DECLARATION_STRUCT,
 } declaration_kind;
 
 typedef enum
@@ -92,7 +93,7 @@ typedef struct
   typed_identifier_t* items;
   size_t count;
   size_t capacity;
-} function_param_array;
+} typed_identifier_array;
 
 typedef struct 
 {
@@ -124,9 +125,14 @@ struct declaration_t
     struct { 
       char* name;  
       type_kind return_type; 
-      function_param_array params; 
+      typed_identifier_array params; 
       statement_block_t* body;
     } func;
+
+    struct {
+      char* name;
+      typed_identifier_array members; 
+    } struc;
   };
 };
 

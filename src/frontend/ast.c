@@ -1008,10 +1008,134 @@ declaration_t* ast_parse_untype_var_decl(parser_t* p)
   return d;
 }
 
+declaration_t* ast_parse_struct_decl(parser_t* p)
+{
+  declaration_t* decl = calloc(1, sizeof(declaration_t));
+  if (!decl) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
+    return NULL;
+  }
+
+  decl->type = DECLARATION_STRUCT;
+  decl->source_pos = advance(p)->source_pos;
+
+  if (check(p, LEXER_token_id)) {
+    token_t* name_tok = advance(p);   
+    if (name_tok->string_value) {
+      decl->struc.name = strdup(name_tok->string_value);   
+      if (!decl->struc.name) {
+        error_report_general(ERROR_SEVERITY_ERROR, 
+            "out of memory");
+        free_declaration(decl);
+        return NULL;
+      }
+    }
+  } else {
+    token_t* tok = peek(p);
+    if (p->error_ctx && tok) {
+      error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR,
+                           "expected struct name");
+    }
+    free_declaration(decl);
+    return NULL;
+  }
+
+  if (!expect(p, '{', "expected '{' after struct definition")) {
+    free_declaration(decl);
+    return NULL;
+  }
+
+  while (!check(p, '}')) {
+    typed_identifier_t member;
+
+    if (!check(p, LEXER_token_id) || !check_is_type(p)) {
+      token_t* tok = peek(p);
+      if (p->error_ctx && tok) {
+        error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR,
+                             "expected member type");
+      }
+      free_declaration(decl);
+      return NULL;
+    }
+
+    token_t* type_tok = advance(p);
+
+    if (!type_tok->string_value) {
+      if (p->error_ctx) {
+        error_report_at_token(p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
+                             "parameter type has no value");
+      }
+      free_declaration(decl);
+      return NULL;
+    }
+
+    if (strcmp(type_tok->string_value, "var") == 0) {
+      if (p->error_ctx) {
+        error_report_at_token(p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
+                              "`var` cannot be use for struct members. Use an explicit type instead");
+      }
+      free_declaration(decl);
+      return NULL;
+    }
+
+    member.type = get_type_kind_from_string(type_tok->string_value);
+  
+    if (!check(p, LEXER_token_id)) {
+      token_t* tok = peek(p);
+      if (p->error_ctx && tok) {
+        error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR,
+                             "expected member name after type");
+      }
+      free_declaration(decl);
+      return NULL;
+    }
+    token_t* name_tok = advance(p);
+
+    if (!name_tok->string_value) {
+      if (p->error_ctx) {
+        error_report_at_token(p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
+                             "member name has no value");
+      }
+      free_declaration(decl);
+      return NULL;
+    }
+
+    member.name = strdup(name_tok->string_value);
+    if (!member.name) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+      free_declaration(decl);
+      return NULL;
+    }
+
+    member.source_pos = name_tok->source_pos;
+
+    da_append(&(decl->struc.members), member);
+    if (check(p, ';')) {
+      advance(p);
+    } else {
+      if (p->error_ctx) {
+        error_report_at_token(p->error_ctx, peek(p), 
+            ERROR_SEVERITY_ERROR, 
+            "';' expected bewteen every member declaration");
+      }   
+    }
+ }
+
+  // consume '}'
+  advance(p);
+
+  return decl;
+}
+
 declaration_t* parse_declaration(parser_t* p)
 {
   if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "fn") == 0) {
     return ast_parse_function(p);
+  }
+
+  if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, 
+          "struct") == 0) {
+    return ast_parse_struct_decl(p);
   }
 
   if (check(p, LEXER_token_id) && check_is_type(p)) {

@@ -42,6 +42,7 @@ type_kind get_type_kind_from_string(char* type_string);
 declaration_t* ast_parse_function(parser_t* p);
 declaration_t* ast_parse_var_decl(parser_t* p);
 declaration_t* ast_parse_untype_var_decl(parser_t* p);
+declaration_t* ast_parse_struct_decl(parser_t* p);
 declaration_t* parse_declaration(parser_t* p);
 
 statement_t*   ast_parse_return_stmt(parser_t* p);

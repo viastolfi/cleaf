@@ -254,6 +254,20 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
       if (d->var_decl.init)
         print_expression(d->var_decl.init, cp, true);
       break;
+
+    case DECLARATION_STRUCT: {
+      printf(CLR_DECL "StructDecl" CLR_RESET " '%s'\n",
+             d->struc.name ? d->struc.name : "");
+      for (size_t i = 0; i < d->struc.members.count; i++) {
+        typed_identifier_t* m = &d->struc.members.items[i];
+        bool last = (i == d->struc.members.count - 1);
+        print_branch(cp, last);
+        printf(CLR_DECL "FieldDecl" CLR_RESET " '%s': " CLR_TYPE "%s" CLR_RESET "\n",
+               m->name ? m->name : "",
+               type_str(m->type));
+      }
+      break;
+    }
   }
 }
 

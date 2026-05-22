@@ -336,3 +336,30 @@ ct_test(ast, var_function_param, "fn main(var a): int { return a; }")
   declaration_t* decl = parse_declaration(&parser);
   ct_assert_null(decl, "Decl should be NULL");
 }
+
+ct_test(ast, struct_declaration, "struct v2 { int a; int b; }") 
+{
+  declaration_t* decl = parse_declaration(&parser);
+  ct_assert_not_null(decl, "struct decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_STRUCT, "decl type should be DECLARATION_STRUCT");
+  ct_assert_not_null(decl->struc.name, "struct name should not be NULL");
+  ct_assert_eq(decl->struc.name, "v2", "struct name should be the same as writted in code");
+  ct_assert_eq(decl->struc.members.count, 2, "struct should have two members");
+  ct_assert_not_null(decl->struc.members.items[0].name, "first struct member name should not be NULL");
+  ct_assert_eq(decl->struc.members.items[0].name, "a", "first struct member should have same name as defined in code");
+  ct_assert_eq(decl->struc.members.items[0].type, TYPE_INT, "first struct member should have same type as declared in code");
+  ct_assert_not_null(decl->struc.members.items[1].name, "second struct member name should not be NULL");
+  ct_assert_eq(decl->struc.members.items[1].name, "b", "second struct member should have same name as defined in code");
+  ct_assert_eq(decl->struc.members.items[1].type, TYPE_INT, "second struct member should have same type as declared in code");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, struct_declaration_var, "struct v1 { var a; int b }")
+{
+  declaration_t* decl = parse_declaration(&parser);
+  ct_assert_null(decl, "decl should be NULL if defined with 'var' as one of it's member");
+
+  da_free(&parser);
+}
