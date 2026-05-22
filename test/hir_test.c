@@ -67,6 +67,9 @@ before_each(int, result, char* file_path, char* expected_path)
 
   free(storage);
 
+  p.types = calloc(1, sizeof(known_type_array));
+  populate_parser_known_type(p.types);
+
   while ((size_t)p.pos < p.count) {
     declaration_t* decl = parse_declaration(&p);
     da_append(program, decl);

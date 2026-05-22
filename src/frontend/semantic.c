@@ -76,12 +76,13 @@ int analyze_declaration(semantic_analyzer_t* analyzer,
                         declaration_t* decl,
                         scope_t* scope)
 {
-  if (scope_resolve(scope, decl->var_decl.ident.name)) {
+  if (scope_resolve(scope, decl->var_decl.ident.type.name)) {
     semantic_error_register(analyzer,
         decl->var_decl.ident.source_pos - 1,
         "already defined variable redifinition");
     return 0;
-  } else if (semantic_check_name_not_reserved(decl->var_decl.ident.name)) {
+  } else if (semantic_check_name_not_reserved(
+        decl->var_decl.ident.type.name)) {
     semantic_error_register(analyzer,
         decl->var_decl.ident.source_pos - 1,
         "can't named a variable using a reserved keyword");
@@ -99,8 +100,6 @@ type_kind semantic_check_expression(semantic_analyzer_t* analyzer,
 {
   if (expr->type == EXPRESSION_INT_LIT) 
     return TYPE_INT;
-  if (expr->type == EXPRESSION_STRING_LIT)
-    return TYPE_STRING;
   if (expr->type == EXPRESSION_VAR) {
     uintptr_t k = (uintptr_t) scope_resolve(scope, expr->var.name);
     if (!k) {
@@ -281,7 +280,7 @@ void semantic_check_for_statement(semantic_analyzer_t* analyzer,
           decl->var_decl.init,
           for_scope);
       hashmap_put(for_scope->symbols, 
-                  decl->var_decl.ident.name, 
+                  decl->var_decl.ident.type.name, 
                   (void*)(uintptr_t)t + 1);
     }
   } else if (stmt->for_stmt.init_kind == FOR_INIT_EXPR && stmt->for_stmt.expr_init) {
@@ -321,10 +320,10 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
         declaration_t* decl = stmt->decl_stmt.decl; 
 
         if (analyze_declaration(analyzer, decl, local_scope)) {
-          type_kind expected_type = decl->var_decl.ident.type;
+          type_kind expected_type = decl->var_decl.ident.type.kind;
           type_kind actual_type; 
           if (!decl->var_decl.init) {
-            actual_type = decl->var_decl.ident.type;
+            actual_type = decl->var_decl.ident.type.kind;
             goto var_def_put;
           }
           actual_type = semantic_check_expression(analyzer,
@@ -339,7 +338,7 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
 
 var_def_put:
           hashmap_put(local_scope->symbols, 
-                    decl->var_decl.ident.name, 
+                    decl->var_decl.ident.type.name, 
                     (void*)(uintptr_t)actual_type + 1);
         }
       }
@@ -423,15 +422,17 @@ void semantic_load_function_definition(semantic_analyzer_t* analyzer)
 
       for (size_t i = 0; i < (*it)->func.params.count; ++i) {
         if (string_array_contains(value->params_name, 
-                                  actual_count, 
-                                  (*it)->func.params.items[i].name)) 
+              actual_count, 
+              (*it)->func.params.items[i].type.name)) 
           semantic_error_register(
               analyzer, 
               (*it)->func.params.items[i].source_pos - 1,
               "already defined function parameters redifinition");
 
-        value->params_name[i] = (*it)->func.params.items[i].name;
-        value->params_type[i] = (*it)->func.params.items[i].type;
+        value->params_name[i] = 
+          (*it)->func.params.items[i].type.name;
+        value->params_type[i] = 
+          (*it)->func.params.items[i].type.kind;
         actual_count++;
       }
     }

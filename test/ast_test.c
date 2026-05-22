@@ -28,6 +28,9 @@ before_each(parser_t, parser, char* source_code)
     da_append(&p, t);
   }
 
+  p.types = calloc(1, sizeof(known_type_array));
+  populate_parser_known_type(p.types);
+
   free(storage);
   parser = p;
 }
@@ -58,7 +61,7 @@ ct_test(ast, fn_ret_type, "fn main(): int {}")
   da_free(&parser);
 }
 
-ct_test(ast, fn_params, "fn main(int a, string b) {}")
+ct_test(ast, fn_params, "fn main(int a, int b) {}")
 {
   declaration_t* decl = parse_declaration(&parser);
   ct_assert_not_null(decl, "Declaration should not be NULL");
@@ -67,11 +70,11 @@ ct_test(ast, fn_params, "fn main(int a, string b) {}")
   typed_identifier_t p1 = decl->func.params.items[0];
   typed_identifier_t p2 = decl->func.params.items[1];
 
-  ct_assert_eq(p1.name, "a", "First parameter name should be 'a'");
-  ct_assert_eq(p1.type, TYPE_INT, "First parameter type should be TYPE_INT");
+  ct_assert_eq(p1.type.name, "a", "First parameter name should be 'a'");
+  ct_assert_eq(p1.type.kind, TYPE_INT, "First parameter type should be TYPE_INT");
 
-  ct_assert_eq(p2.name, "b", "Second parameter name should be 'b'");
-  ct_assert_eq(p2.type, TYPE_STRING, "Second parameter type should be TYPE_STRING");
+  ct_assert_eq(p2.type.name, "b", "Second parameter name should be 'b'");
+  ct_assert_eq(p2.type.kind, TYPE_INT, "Second parameter type should be TYPE_INT");
 
   free_declaration(decl);
   da_free(&parser);
@@ -83,24 +86,11 @@ ct_test(ast, typed_int_var, "int i = 3;")
 {
   declaration_t* decl = parse_declaration(&parser);
 
-  ct_assert_eq(decl->var_decl.ident.name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type, TYPE_INT, "Variable type should be TYPE_INT");
+  ct_assert_eq(decl->var_decl.ident.type.name, "i", "Variable name should be 'i'");
+  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_INT, "Variable type should be TYPE_INT");
   ct_assert_not_null(decl->var_decl.init, "Variable init expression should not be NULL");
   ct_assert_eq(decl->var_decl.init->type, EXPRESSION_INT_LIT, "Init expression should be INT literal");
   ct_assert_eq(decl->var_decl.init->int_lit.value, 3, "Init int value should be 3");
-
-  free_declaration(decl);
-  da_free(&parser);
-}
-
-ct_test(ast, typed_string_var, "string i = \"test\";")
-{
-  declaration_t* decl = parse_declaration(&parser);
-
-  ct_assert_eq(decl->var_decl.ident.name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type, TYPE_STRING, "Variable type should be TYPE_STRING");
-  ct_assert_eq(decl->var_decl.init->type, EXPRESSION_STRING_LIT, "Init expression should be STRING literal");
-  ct_assert_eq(decl->var_decl.init->string_lit.value, "test", "Init string literal should be 'test'");
 
   free_declaration(decl);
   da_free(&parser);
@@ -111,8 +101,8 @@ ct_test(ast, untyped_var_decl, "var i = 3;")
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_eq(decl->type, DECLARATION_VAR, "Declaration type should be VAR");
-  ct_assert_eq(decl->var_decl.ident.name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type, TYPE_UNTYPE, "Variable type should be UNTYPE");
+  ct_assert_eq(decl->var_decl.ident.type.name, "i", "Variable name should be 'i'");
+  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_UNTYPE, "Variable type should be UNTYPE");
   ct_assert_eq(decl->var_decl.init->type, EXPRESSION_INT_LIT, "Init expression should be INT literal");
   ct_assert_eq(decl->var_decl.init->int_lit.value, 3, "Init int literal value should be 3");
 
@@ -125,8 +115,8 @@ ct_test(ast, uninitialized_var_decl, "var i;")
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_eq(decl->type, DECLARATION_VAR, "Declaration type should be VAR");
-  ct_assert_eq(decl->var_decl.ident.name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type, TYPE_UNTYPE, "Variable type should be UNTYPE");
+  ct_assert_eq(decl->var_decl.ident.type.name, "i", "Variable name should be 'i'");
+  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_UNTYPE, "Variable type should be UNTYPE");
   ct_assert(!decl->var_decl.init, "Init expression should be NULL for uninitialized var");
 
   free_declaration(decl);
@@ -142,18 +132,6 @@ ct_test(ast, return_int, "return 1;")
   ct_assert_eq(s->type, STATEMENT_RETURN, "Statement should be RETURN");
   ct_assert_eq(s->ret.value->type, EXPRESSION_INT_LIT, "Return expression should be INT literal");
   ct_assert_eq(s->ret.value->int_lit.value, 1, "Return int value should be 1");
-
-  free_statement(s);
-  da_free(&parser);
-}
-
-ct_test(ast, return_string, "return \"test\";")
-{
-  statement_t* s = parse_statement(&parser);
-
-  ct_assert_eq(s->type, STATEMENT_RETURN, "Statement should be RETURN");
-  ct_assert_eq(s->ret.value->type, EXPRESSION_STRING_LIT, "Return expression should be STRING literal");
-  ct_assert_eq(s->ret.value->string_lit.value, "test", "Return string literal should be 'test'");
 
   free_statement(s);
   da_free(&parser);
@@ -214,18 +192,17 @@ ct_test(ast, expr_binary_gt, "i > 5;")
   da_free(&parser);
 }
 
-ct_test(ast, function_call, "test(a, 5, \"test\");")
+ct_test(ast, function_call, "test(a, 5);")
 {
   statement_t* s = parse_statement(&parser);
   expression_t* e = s->expr_stmt.expr;
 
   ct_assert_eq(e->type, EXPRESSION_CALL, "Expression type should be CALL");
   ct_assert_eq(e->call.callee, "test", "Function name should be 'test'");
-  ct_assert_eq((int)e->call.arg_count, 3, "Function call should have 3 args");
+  ct_assert_eq((int)e->call.arg_count, 2, "Function call should have 3 args");
 
   ct_assert_eq(e->call.args[0]->var.name, "a", "Arg1 should be var 'a'");
   ct_assert_eq(e->call.args[1]->int_lit.value, 5, "Arg2 should be int 5");
-  ct_assert_eq(e->call.args[2]->string_lit.value, "test", "Arg3 should be string 'test'");
 
   free_statement(s);
   da_free(&parser);
@@ -345,12 +322,12 @@ ct_test(ast, struct_declaration, "struct v2 { int a; int b; }")
   ct_assert_not_null(decl->struc.name, "struct name should not be NULL");
   ct_assert_eq(decl->struc.name, "v2", "struct name should be the same as writted in code");
   ct_assert_eq(decl->struc.members.count, 2, "struct should have two members");
-  ct_assert_not_null(decl->struc.members.items[0].name, "first struct member name should not be NULL");
-  ct_assert_eq(decl->struc.members.items[0].name, "a", "first struct member should have same name as defined in code");
-  ct_assert_eq(decl->struc.members.items[0].type, TYPE_INT, "first struct member should have same type as declared in code");
-  ct_assert_not_null(decl->struc.members.items[1].name, "second struct member name should not be NULL");
-  ct_assert_eq(decl->struc.members.items[1].name, "b", "second struct member should have same name as defined in code");
-  ct_assert_eq(decl->struc.members.items[1].type, TYPE_INT, "second struct member should have same type as declared in code");
+  ct_assert_not_null(decl->struc.members.items[0].type.name, "first struct member name should not be NULL");
+  ct_assert_eq(decl->struc.members.items[0].type.name, "a", "first struct member should have same name as defined in code");
+  ct_assert_eq(decl->struc.members.items[0].type.kind, TYPE_INT, "first struct member should have same type as declared in code");
+  ct_assert_not_null(decl->struc.members.items[1].type.name, "second struct member name should not be NULL");
+  ct_assert_eq(decl->struc.members.items[1].type.name, "b", "second struct member should have same name as defined in code");
+  ct_assert_eq(decl->struc.members.items[1].type.kind, TYPE_INT, "second struct member should have same type as declared in code");
 
   free_declaration(decl);
   da_free(&parser);

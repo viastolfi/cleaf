@@ -2,10 +2,6 @@
   
 void HIR_free_instruction(HIR_instruction_t* instr) {
   switch (instr->kind) {
-    case HIR_STRING_CONST:
-      if (instr->string_value)
-        free(instr->string_value);
-      break;
     case HIR_STORE_VAR:
       if (instr->var.name)
         free(instr->var.name);
@@ -71,7 +67,7 @@ int HIR_lower_declaration(
   }
 
   instr->kind = HIR_STORE_VAR;
-  instr->var.name = strdup(decl->var_decl.ident.name);
+  instr->var.name = strdup(decl->var_decl.ident.type.name);
   if (!instr->var.name) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return -1;
@@ -788,7 +784,7 @@ int HIR_lower_function(HIR_parser_t* hir,
       return -1;
     }
     str->kind = HIR_STORE_VAR;
-    str->var.name = strdup(function->func.params.items[i].name);
+    str->var.name = strdup(function->func.params.items[i].type.name);
     if (!str->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
       return -1;

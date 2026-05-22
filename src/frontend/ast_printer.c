@@ -10,7 +10,6 @@ static const char* type_str(type_kind t)
 {
   switch (t) {
     case TYPE_INT:    return "int";
-    case TYPE_STRING: return "string";
     case TYPE_UNTYPE: return "untyped";
     case TYPE_ERROR:  return "<error>";
     default:          return "?";
@@ -85,11 +84,6 @@ static void print_expression(expression_t* e, const char* prefix, bool is_last)
   switch (e->type) {
     case EXPRESSION_INT_LIT:
       printf(CLR_LIT "IntegerLiteral" CLR_RESET " %d\n", e->int_lit.value);
-      break;
-
-    case EXPRESSION_STRING_LIT:
-      printf(CLR_LIT "StringLiteral" CLR_RESET " \"%s\"\n",
-             e->string_lit.value ? e->string_lit.value : "");
       break;
 
     case EXPRESSION_VAR:
@@ -231,8 +225,8 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
       for (size_t i = 0; i < d->func.params.count; i++) {
         typed_identifier_t* p = &d->func.params.items[i];
         printf(CLR_TYPE "%s" CLR_RESET " %s%s",
-               type_str(p->type),
-               p->name ? p->name : "",
+               type_str(p->type.kind),
+               p->type.name ? p->type.name : "",
                i < d->func.params.count - 1 ? ", " : "");
       }
       printf(")");
@@ -249,8 +243,8 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
 
     case DECLARATION_VAR:
       printf(CLR_DECL "VarDecl" CLR_RESET " '%s': " CLR_TYPE "%s" CLR_RESET "\n",
-             d->var_decl.ident.name ? d->var_decl.ident.name : "",
-             type_str(d->var_decl.ident.type));
+             d->var_decl.ident.type.name ? d->var_decl.ident.type.name : "",
+             type_str(d->var_decl.ident.type.kind));
       if (d->var_decl.init)
         print_expression(d->var_decl.init, cp, true);
       break;
@@ -263,8 +257,8 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
         bool last = (i == d->struc.members.count - 1);
         print_branch(cp, last);
         printf(CLR_DECL "FieldDecl" CLR_RESET " '%s': " CLR_TYPE "%s" CLR_RESET "\n",
-               m->name ? m->name : "",
-               type_str(m->type));
+               m->type.name ? m->type.name : "",
+               type_str(m->type.kind));
       }
       break;
     }

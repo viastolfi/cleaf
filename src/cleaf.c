@@ -125,6 +125,14 @@ int main(int argc, char** argv)
 
   log_phase("lexing", "%zu tokens", res.parser.count);
 
+  res.parser.types = calloc(1, sizeof(known_type_array));
+  if (!res.parser.types) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
+    return 1;
+  }
+
+  populate_parser_known_type(res.parser.types);
+
   while ((size_t) res.parser.pos < res.parser.count) {
     declaration_t* decl = parse_declaration(&res.parser);
     if (decl == NULL) {

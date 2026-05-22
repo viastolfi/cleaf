@@ -25,7 +25,6 @@ typedef enum
 typedef enum 
 {
   EXPRESSION_INT_LIT,
-  EXPRESSION_STRING_LIT,
   EXPRESSION_VAR,
   EXPRESSION_BINARY,
   EXPRESSION_CALL,
@@ -36,7 +35,6 @@ typedef enum
 typedef enum
 {
   TYPE_INT,
-  TYPE_STRING,
   TYPE_UNTYPE,
   TYPE_ERROR
 } type_kind;
@@ -79,14 +77,24 @@ typedef struct expression_t expression_t;
 
 // ----------------- Types and Identifiers ------------------
 
+typedef struct {
+  char* name;
+  size_t size; // in bytes
+  type_kind kind;
+} known_type_t;
+
 typedef struct 
 {
-  char* name;
-  type_kind type;
+  known_type_t type; 
   const char* source_pos;
 } typed_identifier_t;
-
 // ----------------- Dynamic arrays ------------------
+
+typedef struct {
+  known_type_t* items;
+  size_t count;
+  size_t capacity; 
+} known_type_array;
 
 typedef struct 
 {
@@ -178,7 +186,6 @@ struct expression_t
 
   union {
     struct { int value; } int_lit;
-    struct { char* value; } string_lit;
     struct { char* name; } var;
     struct { expression_t* lhs; expression_t* rhs; } assign;
     struct { 

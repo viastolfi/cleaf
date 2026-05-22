@@ -60,6 +60,9 @@ before_each(semantic_analyzer_t, analyzer, char* file_path)
 
   free(storage);
 
+  p.types = calloc(1, sizeof(known_type_array));
+  populate_parser_known_type(p.types);
+
   while ((size_t)p.pos < p.count) {
     declaration_t* decl = parse_declaration(&p);
     da_append(program, decl);
@@ -111,7 +114,7 @@ ct_test(semantic_analyze, fn_def_with_params, "test/semantic_case/fn_def_with_pa
   ct_assert_eq(fs->params_name[0], "a", "First param name should be 'a'");
   ct_assert_eq(fs->params_type[0], TYPE_INT, "First param type should be TYPE_INT");
   ct_assert_eq(fs->params_name[1], "b", "Second param name should be 'b'");
-  ct_assert_eq(fs->params_type[1], TYPE_STRING, "Second param type should be TYPE_STRING");
+  ct_assert_eq(fs->params_type[1], TYPE_INT, "Second param type should be TYPE_STRING");
 
   free_analyzer(&analyzer);
 }
@@ -132,7 +135,7 @@ ct_test(semantic_analyze, fn_duplicate_definition, "test/semantic_case/fn_duplic
 }
 
 ct_test(semantic_analyze, fn_duplicate_params, "test/semantic_case/fn_duplicate_params.clf") {
-  ct_assert_eq(analyzer.error_count, 4, "Should have 4 errors for duplicate parameter names");
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 errors for duplicate parameter names");
   free_analyzer(&analyzer);
 }
 
@@ -147,47 +150,17 @@ ct_test(semantic_analyze, var_decl_untyped, "test/semantic_case/var_decl_untyped
 }
 
 ct_test(semantic_analyze, var_redefinition, "test/semantic_case/var_redefinition.clf") {
-  ct_assert_eq(analyzer.error_count, 6, "Should have 6 errors for variable redefinition");
+  ct_assert_eq(analyzer.error_count, 4, "Should have 4 errors for variable redefinition");
   free_analyzer(&analyzer);
 }
 
 ct_test(semantic_analyze, var_undefined_use, "test/semantic_case/var_undefined_use.clf") {
-  ct_assert_eq(analyzer.error_count, 3, "Should have 3 errors for using undefined variable");
-  free_analyzer(&analyzer);
-}
-
-ct_test(semantic_analyze, binary_wrong_type, "test/semantic_case/binary_wrong_type.clf") {
-  ct_assert_eq(analyzer.error_count, 5, "Should have 5 errors for adding two different type variable");
-  free_analyzer(&analyzer);
-}
-
-ct_test(semantic_analyze, nested_binary_wrong_type, "test/semantic_case/nested_binary_wrong_type.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have one error for adding two different type variable");
-  free_analyzer(&analyzer);
-}
-
-ct_test(semantic_analyze, error_type_expression_usage, "test/semantic_case/error_type_expression_usage.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have one error for wrong var type initialization and usage of this var later");
+  ct_assert_eq(analyzer.error_count, 2, "Should have 2 errors for using undefined variable");
   free_analyzer(&analyzer);
 }
 
 ct_test(semantic_analyze, return_correct_type, "test/semantic_case/return_correct_type.clf") {
   ct_assert_eq(analyzer.error_count, 0, "Should have no errors for correct return type");
-  free_analyzer(&analyzer);
-}
-
-ct_test(semantic_analyze, return_wrong_type_int_string, "test/semantic_case/return_wrong_type_int_string.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for wrong return type (int instead of string)");
-  free_analyzer(&analyzer);
-}
-
-ct_test(semantic_analyze, return_wrong_type_string_int, "test/semantic_case/return_wrong_type_string_int.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for wrong return type (string instead of int)");
-  free_analyzer(&analyzer);
-}
-
-ct_test(semantic_analyze, return_string_correct, "test/semantic_case/return_string_correct.clf") {
-  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for correct string return");
   free_analyzer(&analyzer);
 }
 
@@ -236,11 +209,6 @@ ct_test(semantic_analyze, assign_expression, "test/semantic_case/assign_expressi
   free_analyzer(&analyzer);
 }
 
-ct_test(semantic_analyze, assign_expression_type_mismatch, "test/semantic_case/assign_expression_type_mismatch.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for type mismatch variable assignment");
-  free_analyzer(&analyzer);
-}
-
 ct_test(semantic_analyze, for_bad_condition, "test/semantic_case/for_bad_condition.clf") {
   ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for undef var in for condition");
   free_analyzer(&analyzer);
@@ -258,16 +226,6 @@ ct_test(semantic_analyze, unary_expression, "test/semantic_case/unary.clf") {
 
 ct_test(semantic_analyze, unary_expression_error, "test/semantic_case/unary_expression_error.clf") {
   ct_assert_eq(analyzer.error_count, 4, "Should have 4 errors for basic unary expression errors");
-  free_analyzer(&analyzer);
-}
-
-ct_test(semantic_analyze, unary_string, "test/semantic_case/unary_string.clf") {
-  ct_assert_eq(analyzer.error_count, 5, "Should have 5 errors for using unary expr on string");
-  free_analyzer(&analyzer);
-}
-
-ct_test(semantic_analyze, unary_var_string, "test/semantic_case/unary_var_string.clf") {
-  ct_assert_eq(analyzer.error_count, 5, "Should have 5 errors for using unary expr on string typed var");
   free_analyzer(&analyzer);
 }
 
@@ -311,18 +269,8 @@ ct_test(semantic_case, function_call_no_arg_in_callee, "test/semantic_case/funct
   free_analyzer(&analyzer);
 }
 
-ct_test(semantic_case, function_call_wrong_type, "test/semantic_case/function_call_wrong_type.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have one error for calling function with bad type");
-  free_analyzer(&analyzer);
-}
-
 ct_test(semantic_case, function_call_use_return, "test/semantic_case/function_call_use_return.clf") {
   ct_assert_eq(analyzer.error_count, 0, "Should have no error for using return type from a function call");
-  free_analyzer(&analyzer);
-}
-
-ct_test(semantic_case, function_call_use_return_error, "test/semantic_case/function_call_use_return_error.clf") {
-  ct_assert_eq(analyzer.error_count, 2, "Should have 2 errors on different test case with function call return type");
   free_analyzer(&analyzer);
 }
 

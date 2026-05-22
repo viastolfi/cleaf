@@ -4,7 +4,4 @@ fn main() {
 
   int a;
   a = 3;
-
-  string t;
-  t = "test";
 }

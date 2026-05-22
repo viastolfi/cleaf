@@ -22,7 +22,6 @@ typedef enum
   HIR_CHUNK,
 
   HIR_INT_CONST,
-  HIR_STRING_CONST,
 
   HIR_BINARY,
 
