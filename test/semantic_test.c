@@ -96,7 +96,7 @@ void free_analyzer(semantic_analyzer_t* analyzer)
   free(analyzer->ast);
   free(analyzer->error_ctx);
 
-  semantic_free_function_definition(analyzer);
+  semantic_free_program_definition(analyzer);
 }
 
 

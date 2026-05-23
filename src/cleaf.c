@@ -165,7 +165,7 @@ int main(int argc, char** argv)
   analyzer.error_count = 0;
 
   semantic_analyze(&analyzer);
-  semantic_free_function_definition(&analyzer);
+  semantic_free_program_definition(&analyzer);
 
   if (analyzer.error_count > 0) {
     log_phase("semantic", "%d error(s)", analyzer.error_count);

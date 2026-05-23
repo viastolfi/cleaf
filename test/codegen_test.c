@@ -88,7 +88,7 @@ before_each(int, result, char* file_path, char* expected_path)
   analyzer.error_ctx = error_ctx;
   analyzer.ast = program;
   semantic_analyze(&analyzer);
-  semantic_free_function_definition(&analyzer);
+  semantic_free_program_definition(&analyzer);
   if (analyzer.error_count > 0) {
     fprintf(stderr, "semantic error(s) in: %s\n", file_path);
     abort();

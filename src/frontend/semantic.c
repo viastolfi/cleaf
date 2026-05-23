@@ -9,7 +9,7 @@ int string_array_contains(char** source, size_t source_len, const char* name)
   return 0;
 }
 
-void semantic_free_function_definition(semantic_analyzer_t* analyzer)
+void semantic_free_program_definition(semantic_analyzer_t* analyzer)
 {
   if (analyzer->function_symbols) {
     for (size_t i = 0; i < 211; ++i) {
@@ -24,13 +24,26 @@ void semantic_free_function_definition(semantic_analyzer_t* analyzer)
     free(analyzer->function_symbols);
   }
 
+  if (analyzer->struct_symbols) {
+    for (size_t i = 0; i < 211; ++i) {
+      if (analyzer->struct_symbols->buckets[i]) {
+        struct_symbol_t* v = 
+          (struct_symbol_t*) analyzer->struct_symbols->buckets[i]->value;
+        free(v->members_type);
+        free(v->members_name);
+      } 
+    } 
+    hashmap_free(analyzer->struct_symbols, 1);
+    free(analyzer->struct_symbols);
+  }
+
   da_free(&analyzer->semantic_errors);
 }
 
 void semantic_analyze(semantic_analyzer_t* analyzer) 
 {
   if (analyzer->ast) {
-    semantic_load_function_definition(analyzer);
+    semantic_load_program_definition(analyzer);
     da_foreach(declaration_t*, it, analyzer->ast) 
       if ((*it)->type == DECLARATION_FUNC) {
         scope_t* function_scope = scope_enter(NULL);
@@ -369,7 +382,7 @@ var_def_put:
   scope_exit(local_scope);
 }
 
-void semantic_load_function_definition(semantic_analyzer_t* analyzer) 
+void semantic_load_program_definition(semantic_analyzer_t* analyzer) 
 {
   // TODO: return some sort of status code to make this stop the compiler
   hashmap_t* func_sym = (hashmap_t*) malloc(sizeof(hashmap_t));
