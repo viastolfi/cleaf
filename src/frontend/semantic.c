@@ -371,51 +371,70 @@ var_def_put:
 
 void semantic_load_function_definition(semantic_analyzer_t* analyzer) 
 {
+  // TODO: return some sort of status code to make this stop the compiler
   hashmap_t* func_sym = (hashmap_t*) malloc(sizeof(hashmap_t));
   if (!func_sym) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
     return;
   }
   memset(func_sym, 0, sizeof(hashmap_t));
+  hashmap_t* struct_sym = calloc(1, sizeof(hashmap_t));
+  if (!struct_sym) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return;
+  }
 
   da_foreach(declaration_t*, it, analyzer->ast) {
-    if ((*it)->type!= DECLARATION_FUNC)
-      continue;
+    if ((*it)->type == DECLARATION_FUNC) {
+      if (semantic_check_name_not_reserved((*it)->func.name)) {
+        semantic_error_register(analyzer,
+            (*it)->source_pos + 1,
+            "can't named a function using a reserved keyword");
+        continue;
+      }
 
-    if (semantic_check_name_not_reserved((*it)->func.name)) {
-      semantic_error_register(analyzer,
-          (*it)->source_pos + 1,
-          "can't named a function using a reserved keyword");
-      continue;
-    }
+      if (hashmap_get(func_sym, (*it)->func.name)) {
+        const char* pos = (*it)->source_pos + 1;
+        semantic_error_register(analyzer, pos, 
+            "already defined function redefinition");
+        continue;
+      }
 
-    if (hashmap_get(func_sym, (*it)->func.name)) {
-      const char* pos = (*it)->source_pos + 1;
-      semantic_error_register(analyzer, pos, "already defined function redefinition");
-      continue;
-    }
+      function_symbol_t* value = 
+        (function_symbol_t*) malloc(sizeof(function_symbol_t));
+      if (!value) {
+        error_report_general(ERROR_SEVERITY_ERROR, 
+            "out of memory"); 
+        hashmap_free(func_sym, 1);
+        hashmap_free(struct_sym, 1);
+        return; 
+      }
+      memset(value, 0, sizeof(function_symbol_t));
 
-    function_symbol_t* value = (function_symbol_t*) malloc(sizeof(function_symbol_t));
-    if (!value) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      hashmap_free(func_sym, 1);
-      return; 
-    }
-    memset(value, 0, sizeof(function_symbol_t));
+      value->return_type = (*it)->func.return_type;
 
-    value->return_type = (*it)->func.return_type;
+      if ((*it)->func.params.count <= 0) {
+        goto hash_func_put; 
+      }
 
-    if ((*it)->func.params.count > 0) {
       size_t actual_count = 0;
-      value->params_name = calloc((*it)->func.params.count, sizeof(char*));
+      value->params_name = 
+        calloc((*it)->func.params.count, sizeof(char*));
       if (!value->params_name) {
-        error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+        error_report_general(ERROR_SEVERITY_ERROR, 
+            "out of memory"); 
+        hashmap_free(func_sym, 1);
+        hashmap_free(struct_sym, 1);
         return ;
       }
 
-      value->params_type = calloc((*it)->func.params.count, sizeof(type_kind));
+      value->params_type = 
+        calloc((*it)->func.params.count, sizeof(type_kind));
       if (!value->params_type) {
-        error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+        error_report_general(ERROR_SEVERITY_ERROR, 
+            "out of memory"); 
+        hashmap_free(func_sym, 1);
+        hashmap_free(struct_sym, 1);
         return;
       }
       value->params_count = (*it)->func.params.count;
@@ -435,11 +454,84 @@ void semantic_load_function_definition(semantic_analyzer_t* analyzer)
           (*it)->func.params.items[i].type.kind;
         actual_count++;
       }
+
+hash_func_put:
+      hashmap_put(func_sym, (*it)->func.name, value);
+    } else if ((*it)->type == DECLARATION_STRUCT) {
+      if (semantic_check_name_not_reserved((*it)->struc.name)) {
+        semantic_error_register(analyzer, (*it)->source_pos + 1,
+           "can't name a struct after a reserved keyword"); 
+        continue;
+      } 
+
+      if (hashmap_get(struct_sym, (*it)->struc.name)) {
+        const char* pos = (*it)->source_pos + 1; 
+        semantic_error_register(analyzer, pos,
+            "already defined struct redifinition");
+        continue;
+      }
+
+      struct_symbol_t* value = calloc(1, sizeof(struct_symbol_t));
+      if (!value) {
+        error_report_general(ERROR_SEVERITY_ERROR,
+           "out of memory"); 
+        hashmap_free(func_sym, 1);
+        hashmap_free(struct_sym, 1);
+        return;
+      }
+
+      // we still store the struct for redeclaration error but with dumie values
+      if ((*it)->struc.members.count <= 0) {
+        semantic_error_register(analyzer, (*it)->source_pos + 1,
+           "struct might have at least one member"); 
+        goto hash_struct_put;
+      }
+
+      value->members_count = (*it)->struc.members.count;
+      value->members_name =
+        calloc(value->members_count, sizeof(char*));
+      if (!value->members_name) {
+        error_report_general(ERROR_SEVERITY_ERROR, 
+            "out of memory"); 
+        hashmap_free(func_sym, 1);
+        hashmap_free(struct_sym, 1);
+        return ;
+      }
+
+      value->members_type= 
+        calloc(value->members_count, sizeof(type_kind));
+      if (!value->members_type) {
+        error_report_general(ERROR_SEVERITY_ERROR, 
+            "out of memory"); 
+        hashmap_free(func_sym, 1);
+        hashmap_free(struct_sym, 1);
+        return;
+      }
+
+      size_t actual_count = 0;
+      for (size_t i = 0; i < (*it)->struc.members.count; ++i) {
+        if (string_array_contains(value->members_name,
+             actual_count,
+            (*it)->struc.members.items[i].ident_name))
+          semantic_error_register(
+            analyzer,
+            (*it)->struc.members.items[i].source_pos - 1,
+            "already defined struct members redifinition");
+
+        value->members_name[i] =
+          (*it)->struc.members.items[i].ident_name;
+        value->members_type[i] =
+          (*it)->struc.members.items[i].type.kind;
+        actual_count++;
+      }
+
+hash_struct_put:
+      hashmap_put(struct_sym, (*it)->struc.name, value);
     }
-    hashmap_put(func_sym, (*it)->func.name, value);
   }
 
   analyzer->function_symbols = func_sym;
+  analyzer->struct_symbols = struct_sym;
 }
 
 void semantic_error_display(semantic_analyzer_t* analyzer)

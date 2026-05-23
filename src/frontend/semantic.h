@@ -24,6 +24,7 @@ static const char* reserved_keywords[] = {
     "int",
     "return",
     "string",
+    "struct",
     "true",
     "var",
     "while",
@@ -54,6 +55,12 @@ typedef struct
   size_t params_count;
 } function_symbol_t;
 
+typedef struct {
+  char** members_name;
+  type_kind* members_type;
+  size_t members_count;
+} struct_symbol_t;
+
 typedef struct 
 {
   error_context_t* error_ctx;
@@ -63,6 +70,7 @@ typedef struct
   declaration_array* ast;
 
   hashmap_t* function_symbols;
+  hashmap_t* struct_symbols;
 
   const char* current_analyzed_function;
 } semantic_analyzer_t;

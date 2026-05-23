@@ -266,7 +266,7 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
         bool last = (i == d->struc.members.count - 1);
         print_branch(cp, last);
         printf(CLR_DECL "FieldDecl" CLR_RESET " '%s': ",
-               m->type.name ? m->type.name : "");
+               m->ident_name ? m->ident_name : "");
         print_known_type(&m->type);
         printf("\n");
       }

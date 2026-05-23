@@ -1097,8 +1097,9 @@ declaration_t* ast_parse_struct_decl(parser_t* p)
     if (!check(p, LEXER_token_id)) {
       token_t* tok = peek(p);
       if (p->error_ctx && tok) {
-        error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR,
-                             "expected member name after type");
+        error_report_at_token(p->error_ctx, tok, 
+            ERROR_SEVERITY_ERROR,
+            "expected member name after type");
       }
       free_declaration(decl);
       return NULL;
@@ -1107,8 +1108,9 @@ declaration_t* ast_parse_struct_decl(parser_t* p)
 
     if (!name_tok->string_value) {
       if (p->error_ctx) {
-        error_report_at_token(p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
-                             "member name has no value");
+        error_report_at_token(
+            p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
+            "member name has no value");
       }
       free_declaration(decl);
       return NULL;
