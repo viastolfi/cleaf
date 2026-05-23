@@ -336,7 +336,16 @@ ct_test(ast, struct_declaration, "struct v2 { int a; int b; }")
 ct_test(ast, struct_declaration_var, "struct v1 { var a; int b }")
 {
   declaration_t* decl = parse_declaration(&parser);
-  ct_assert_null(decl, "decl should be NULL if defined with 'var' as one of it's member");
+  ct_assert_null(decl, "decl should be NULL if defined with 'var' as one of its member");
 
   da_free(&parser);
 }
+
+ct_test(ast, struct_declaration_unknown_type, "struct v2 { dump a; int b; }") 
+{
+  declaration_t* decl = parse_declaration(&parser);
+  ct_assert_null(decl, "decl should be NULL if defined with unkown type as one of its member");
+
+  da_free(&parser);
+}
+

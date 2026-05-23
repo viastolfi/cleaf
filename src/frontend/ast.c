@@ -152,6 +152,9 @@ void free_declaration(declaration_t* d)
   }
 
   if (d->type == DECLARATION_VAR) {
+    if (d->var_decl.ident.ident_name)
+      free(d->var_decl.ident.ident_name);
+
     if(d->var_decl.init)
       free_expression(d->var_decl.init);
   }
@@ -864,6 +867,15 @@ declaration_t* ast_parse_var_decl(parser_t* p)
 
   known_type_t* type_info = 
     get_type_info_from_string(p, type_tok->string_value);
+  if (!type_info) {
+    if (p->error_ctx) {
+      error_report_at_token(p->error_ctx, type_tok,
+         ERROR_SEVERITY_ERROR, "unknown type: %s",
+         type_tok->string_value); 
+    } 
+    free_declaration(d);
+    return NULL;
+  }
 
   d->var_decl.ident.type = *type_info;
 
@@ -1076,9 +1088,9 @@ declaration_t* ast_parse_struct_decl(parser_t* p)
         error_report_at_token(p->error_ctx, type_tok,
             ERROR_SEVERITY_ERROR, "unknown type: %s", 
             type_tok->string_value);
-        free_declaration(decl);
-        return NULL;
       }
+      free_declaration(decl);
+      return NULL;
     }
     member.type = *type_info;
   

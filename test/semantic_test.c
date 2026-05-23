@@ -288,8 +288,3 @@ ct_test(semantic_case, struct_definition, "test/semantic_case/struct_definition.
   ct_assert_eq(analyzer.error_count, 0, "Should have 0 error for struct definition");
   free_analyzer(&analyzer);
 }
-
-ct_test(semantic_case, struct_definition_unknown_type, "test/semantic_case/struct_definition_unknown_type.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for struct definition with unknown type in members");
-  free_analyzer(&analyzer);
-}
