@@ -36,6 +36,7 @@ typedef enum
 {
   TYPE_INT,
   TYPE_UNTYPE,
+  TYPE_CUSTOM,
   TYPE_ERROR
 } type_kind;
 
@@ -86,6 +87,7 @@ typedef struct {
 typedef struct 
 {
   known_type_t type; 
+  char* ident_name;
   const char* source_pos;
 } typed_identifier_t;
 // ----------------- Dynamic arrays ------------------

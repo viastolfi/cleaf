@@ -1,0 +1,10 @@
+struct v2 {
+  dumb x;
+  int y;
+}
+
+
+fn main(v2 a): int {
+  v2 b;
+  return 0;
+}

@@ -157,7 +157,7 @@ void error_report_at_token(error_context_t* ctx, token_t* token, error_severity_
     }
     
     int line, column;
-    error_get_location(ctx->source_text, token->source_pos, &line, &column);
+    error_get_location(ctx->source_text, token->source_pos - 1, &line, &column);
     
     print_error_header(ctx->filename, line, column, severity);
     

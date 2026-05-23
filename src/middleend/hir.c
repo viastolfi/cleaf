@@ -67,7 +67,7 @@ int HIR_lower_declaration(
   }
 
   instr->kind = HIR_STORE_VAR;
-  instr->var.name = strdup(decl->var_decl.ident.type.name);
+  instr->var.name = strdup(decl->var_decl.ident.ident_name);
   if (!instr->var.name) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return -1;
@@ -784,7 +784,7 @@ int HIR_lower_function(HIR_parser_t* hir,
       return -1;
     }
     str->kind = HIR_STORE_VAR;
-    str->var.name = strdup(function->func.params.items[i].type.name);
+    str->var.name = strdup(function->func.params.items[i].ident_name);
     if (!str->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
       return -1;

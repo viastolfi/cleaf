@@ -26,6 +26,14 @@ typedef struct {
 
 static void compiler_resources_free(compiler_resources_t* res)
 {
+    da_foreach(known_type_t, it, res->parser.types) {
+      if (it->kind == TYPE_CUSTOM)
+        if (it->name)
+          free(it->name);
+    }
+    da_free(res->parser.types);
+    free(res->parser.types);
+
   if (res->hir_program) {
     da_foreach(HIR_function_t*, it, res->hir_program) {
       HIR_free_function(*it);
@@ -184,6 +192,9 @@ int main(int argc, char** argv)
   HIR_PARSER_USE_RNG(hir_parser, &rng);
 
   da_foreach(declaration_t*, it, &res.program) {
+    if ((*it)->type != DECLARATION_FUNC)
+      continue;
+
     int lowering_result = HIR_lower_function(&hir_parser, *it);
     if (lowering_result != 0) {
       error_report_general(ERROR_SEVERITY_ERROR, "HIR lowering error");

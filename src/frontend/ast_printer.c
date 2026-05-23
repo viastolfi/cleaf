@@ -12,8 +12,15 @@ static const char* type_str(type_kind t)
     case TYPE_INT:    return "int";
     case TYPE_UNTYPE: return "untyped";
     case TYPE_ERROR:  return "<error>";
+    case TYPE_CUSTOM: return "<custom>";
     default:          return "?";
   }
+}
+
+static void print_known_type(const known_type_t* t)
+{
+  const char* name = (t->kind == TYPE_CUSTOM && t->name) ? t->name : type_str(t->kind);
+  printf(CLR_TYPE "%s" CLR_RESET " " CLR_SIZE "(%zu)" CLR_RESET, name, t->size);
 }
 
 static const char* binary_op_str(binary_op_kind op)
@@ -224,9 +231,9 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
 
       for (size_t i = 0; i < d->func.params.count; i++) {
         typed_identifier_t* p = &d->func.params.items[i];
-        printf(CLR_TYPE "%s" CLR_RESET " %s%s",
-               type_str(p->type.kind),
-               p->type.name ? p->type.name : "",
+        print_known_type(&p->type);
+        printf(" %s%s",
+               p->ident_name ? p->ident_name : "",
                i < d->func.params.count - 1 ? ", " : "");
       }
       printf(")");
@@ -242,9 +249,11 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
     }
 
     case DECLARATION_VAR:
-      printf(CLR_DECL "VarDecl" CLR_RESET " '%s': " CLR_TYPE "%s" CLR_RESET "\n",
-             d->var_decl.ident.type.name ? d->var_decl.ident.type.name : "",
-             type_str(d->var_decl.ident.type.kind));
+      printf(CLR_DECL "VarDecl" CLR_RESET " '%s': ",
+             d->var_decl.ident.ident_name ? 
+              d->var_decl.ident.ident_name : "");
+      print_known_type(&d->var_decl.ident.type);
+      printf("\n");
       if (d->var_decl.init)
         print_expression(d->var_decl.init, cp, true);
       break;
@@ -256,9 +265,10 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
         typed_identifier_t* m = &d->struc.members.items[i];
         bool last = (i == d->struc.members.count - 1);
         print_branch(cp, last);
-        printf(CLR_DECL "FieldDecl" CLR_RESET " '%s': " CLR_TYPE "%s" CLR_RESET "\n",
-               m->type.name ? m->type.name : "",
-               type_str(m->type.kind));
+        printf(CLR_DECL "FieldDecl" CLR_RESET " '%s': ",
+               m->type.name ? m->type.name : "");
+        print_known_type(&m->type);
+        printf("\n");
       }
       break;
     }

@@ -124,8 +124,8 @@ void free_declaration(declaration_t* d)
       free(d->func.name);
 
     da_foreach(typed_identifier_t, it, &(d->func.params)) {
-      if (it->type.name)
-        free(it->type.name);
+      if (it->ident_name)
+        free(it->ident_name);
     }
 
     da_free(&(d->func.params));
@@ -144,17 +144,14 @@ void free_declaration(declaration_t* d)
       free(d->struc.name); 
 
      da_foreach(typed_identifier_t, it, &(d->struc.members)) {
-      if (it->type.name)
-        free(it->type.name);
+      if (it->ident_name)
+        free(it->ident_name);
     }
 
     da_free(&(d->struc.members));
   }
 
   if (d->type == DECLARATION_VAR) {
-    if (d->var_decl.ident.type.name) 
-      free(d->var_decl.ident.type.name);
-
     if(d->var_decl.init)
       free_expression(d->var_decl.init);
   }
@@ -209,6 +206,8 @@ bool check_is_type(parser_t* p)
     return false;
 
   if (!tok->string_value) {
+    // TODO: this can edge effect that show errors and let the compilation works fine
+    // May need to remove it later
     if (p->error_ctx) {
       error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR, 
                            "expected type name");
@@ -249,10 +248,23 @@ type_kind get_type_kind_from_string(parser_t* p, char* type_string)
       return it->kind;
   }
 
-  return TYPE_ERROR;
+  return TYPE_CUSTOM;
 }
 
-expression_t*  ast_parse_expr_int_lit(parser_t* p) {
+known_type_t* get_type_info_from_string(
+    parser_t* p,
+    const char* type_string)
+{
+  da_foreach(known_type_t, it, p->types) {
+    if (strcmp(type_string, it->name) == 0)
+     return it;
+  }
+  
+  return NULL;
+}
+
+expression_t*  ast_parse_expr_int_lit(parser_t* p) 
+{
   expression_t* e = (expression_t*) malloc(sizeof(expression_t));
   
   if (!e) {
@@ -689,7 +701,7 @@ declaration_t* ast_parse_function(parser_t* p)
   }
 
   while (!check(p, ')')) {
-    typed_identifier_t param;
+    typed_identifier_t param = {0};
 
     if (!check(p, LEXER_token_id) || !check_is_type(p)) {
       token_t* tok = peek(p);
@@ -721,8 +733,19 @@ declaration_t* ast_parse_function(parser_t* p)
       return NULL;
     }
 
-    param.type.kind = get_type_kind_from_string(
+    known_type_t* type_info = get_type_info_from_string(
         p, type_tok->string_value);
+    if (!type_info) {
+      if (p->error_ctx) {
+        error_report_at_token(p->error_ctx, type_tok,
+            ERROR_SEVERITY_ERROR, "unkown type: %s",
+            type_tok->string_value);
+      } 
+      free_declaration(decl);
+      return NULL;
+    }
+
+    param.type = *type_info;
 
     if (!check(p, LEXER_token_id)) {
       token_t* tok = peek(p);
@@ -744,8 +767,8 @@ declaration_t* ast_parse_function(parser_t* p)
       return NULL;
     }
 
-    param.type.name = strdup(name_tok->string_value);
-    if (!param.type.name) {
+    param.ident_name = strdup(name_tok->string_value);
+    if (!param.ident_name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
       free_declaration(decl);
       return NULL;
@@ -839,20 +862,10 @@ declaration_t* ast_parse_var_decl(parser_t* p)
     return NULL;
   }
 
-  if (strcmp(type_tok->string_value, "int") == 0) {
-    d->var_decl.ident.type.kind = TYPE_INT;
-  } else if (strcmp(type_tok->string_value, "var") == 0) {
-    d->var_decl.ident.type.kind = TYPE_UNTYPE; 
-  } else {
-    // For now, let's mark this as an error,
-    // In a more advanced compiler this should be marked as TYPE_CUSTOM
-    if (p->error_ctx) {
-      error_report_at_token(p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
-                           "unknown type '%s'", type_tok->string_value);
-    }
-    free_declaration(d);
-    return NULL;
-  }
+  known_type_t* type_info = 
+    get_type_info_from_string(p, type_tok->string_value);
+
+  d->var_decl.ident.type = *type_info;
 
   if (!check(p, LEXER_token_id)) {
     token_t* tok = peek(p);
@@ -874,8 +887,8 @@ declaration_t* ast_parse_var_decl(parser_t* p)
     return NULL;
   }
 
-  d->var_decl.ident.type.name = strdup(name_tok->string_value);
-  if (!d->var_decl.ident.type.name) {
+  d->var_decl.ident.ident_name = strdup(name_tok->string_value);
+  if (!d->var_decl.ident.ident_name) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     free_declaration(d);
     return NULL;
@@ -987,6 +1000,7 @@ declaration_t* ast_parse_untype_var_decl(parser_t* p)
 
 declaration_t* ast_parse_struct_decl(parser_t* p)
 {
+  size_t total_struct_size = 0;
   declaration_t* decl = calloc(1, sizeof(declaration_t));
   if (!decl) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
@@ -1023,9 +1037,9 @@ declaration_t* ast_parse_struct_decl(parser_t* p)
   }
 
   while (!check(p, '}')) {
-    typed_identifier_t member;
+    typed_identifier_t member = {0};
 
-    if (!check(p, LEXER_token_id) || !check_is_type(p)) {
+    if (!check(p, LEXER_token_id)) {
       token_t* tok = peek(p);
       if (p->error_ctx && tok) {
         error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR,
@@ -1055,8 +1069,18 @@ declaration_t* ast_parse_struct_decl(parser_t* p)
       return NULL;
     }
 
-    member.type.kind = get_type_kind_from_string(
-        p, type_tok->string_value);
+    known_type_t* type_info = 
+      get_type_info_from_string(p, type_tok->string_value);
+    if (!type_info) {
+      if (p->error_ctx) {
+        error_report_at_token(p->error_ctx, type_tok,
+            ERROR_SEVERITY_ERROR, "unknown type: %s", 
+            type_tok->string_value);
+        free_declaration(decl);
+        return NULL;
+      }
+    }
+    member.type = *type_info;
   
     if (!check(p, LEXER_token_id)) {
       token_t* tok = peek(p);
@@ -1078,14 +1102,15 @@ declaration_t* ast_parse_struct_decl(parser_t* p)
       return NULL;
     }
 
-    member.type.name = strdup(name_tok->string_value);
-    if (!member.type.name) {
+    member.ident_name= strdup(name_tok->string_value);
+    if (!member.ident_name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
       free_declaration(decl);
       return NULL;
     }
 
     member.source_pos = name_tok->source_pos;
+    total_struct_size += type_info->size;
 
     da_append(&(decl->struc.members), member);
     if (check(p, ';')) {
@@ -1098,6 +1123,13 @@ declaration_t* ast_parse_struct_decl(parser_t* p)
       }   
     }
  }
+
+  known_type_t t = {
+    .name = strdup(decl->struc.name),
+    .size = total_struct_size,
+    .kind = TYPE_CUSTOM
+  };
+  da_append(p->types, t);
 
   // consume '}'
   advance(p);

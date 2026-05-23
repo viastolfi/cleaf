@@ -39,6 +39,9 @@ bool check_is_type(parser_t* p);
 // If yes, advance pos
 bool expect(parser_t* p, long kind, char* err);
 
+known_type_t* get_type_info_from_string(
+    parser_t* p,
+    const char* type_string);
 type_kind get_type_kind_from_string(parser_t* p, char* type_string);
 
 declaration_t* ast_parse_function(parser_t* p);

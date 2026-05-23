@@ -76,13 +76,13 @@ int analyze_declaration(semantic_analyzer_t* analyzer,
                         declaration_t* decl,
                         scope_t* scope)
 {
-  if (scope_resolve(scope, decl->var_decl.ident.type.name)) {
+  if (scope_resolve(scope, decl->var_decl.ident.ident_name)) {
     semantic_error_register(analyzer,
         decl->var_decl.ident.source_pos - 1,
         "already defined variable redifinition");
     return 0;
   } else if (semantic_check_name_not_reserved(
-        decl->var_decl.ident.type.name)) {
+        decl->var_decl.ident.ident_name)) {
     semantic_error_register(analyzer,
         decl->var_decl.ident.source_pos - 1,
         "can't named a variable using a reserved keyword");
@@ -280,7 +280,7 @@ void semantic_check_for_statement(semantic_analyzer_t* analyzer,
           decl->var_decl.init,
           for_scope);
       hashmap_put(for_scope->symbols, 
-                  decl->var_decl.ident.type.name, 
+                  decl->var_decl.ident.ident_name, 
                   (void*)(uintptr_t)t + 1);
     }
   } else if (stmt->for_stmt.init_kind == FOR_INIT_EXPR && stmt->for_stmt.expr_init) {
@@ -338,7 +338,7 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
 
 var_def_put:
           hashmap_put(local_scope->symbols, 
-                    decl->var_decl.ident.type.name, 
+                    decl->var_decl.ident.ident_name, 
                     (void*)(uintptr_t)actual_type + 1);
         }
       }
@@ -423,14 +423,14 @@ void semantic_load_function_definition(semantic_analyzer_t* analyzer)
       for (size_t i = 0; i < (*it)->func.params.count; ++i) {
         if (string_array_contains(value->params_name, 
               actual_count, 
-              (*it)->func.params.items[i].type.name)) 
+              (*it)->func.params.items[i].ident_name)) 
           semantic_error_register(
               analyzer, 
               (*it)->func.params.items[i].source_pos - 1,
               "already defined function parameters redifinition");
 
         value->params_name[i] = 
-          (*it)->func.params.items[i].type.name;
+          (*it)->func.params.items[i].ident_name;
         value->params_type[i] = 
           (*it)->func.params.items[i].type.kind;
         actual_count++;
