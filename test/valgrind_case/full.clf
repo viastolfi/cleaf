@@ -6,6 +6,7 @@ struct v2 {
 fn main(): int {
   var a = bar(0);
   int b = bar(0);
+  v2 x;
 
   var d = a + b;
 
