@@ -42,6 +42,8 @@ typedef enum
   HIR_RETURN,
   HIR_EXIT,
 
+  HIR_ALLOC,
+
   HIR_CALL
 } HIR_instruction_kind;
 
@@ -64,7 +66,7 @@ typedef struct
 
   union {
     int int_value;
-    char* string_value; 
+    size_t alloc_size;
 
     struct {
       char* name;

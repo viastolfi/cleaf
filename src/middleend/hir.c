@@ -56,7 +56,8 @@ int HIR_lower_declaration(
 {
   (void)hir;
   if (decl->type != DECLARATION_VAR) {
-    error_report_general(ERROR_SEVERITY_ERROR, "awaiting var declaration, getting somethign else");
+    error_report_general(ERROR_SEVERITY_ERROR, 
+        "awaiting var declaration, getting something else");
     return -1;
   }
 
@@ -78,7 +79,24 @@ int HIR_lower_declaration(
     instr->var.is_init = 1;
     instr->a = func->next_temp_id;
   } else {
-    instr->var.is_init = 0; 
+    if (decl->var_decl.ident.type.kind == TYPE_INT) {
+      instr->var.is_init = 0; 
+    }
+    else if (decl->var_decl.ident.type.kind == TYPE_CUSTOM) {
+      HIR_instruction_t* alloc = calloc(
+          1, sizeof(HIR_instruction_t));   
+      if (!alloc) {
+        error_report_general(
+            ERROR_SEVERITY_ERROR, "out of memory"); 
+        return -1;
+      }
+      alloc->kind = HIR_ALLOC;
+      alloc->alloc_size = decl->var_decl.ident.type.size;
+
+      da_append(func->code, alloc);
+      instr->var.is_init = 1;
+      instr->a = -1;
+    }
   }
 
   da_append(func->code, instr);
@@ -745,6 +763,10 @@ int HIR_lower_statement(HIR_parser_t* hir,
 int HIR_lower_function(HIR_parser_t* hir, 
     declaration_t* function) 
 {
+  if (function->type != DECLARATION_FUNC) {
+    return 0;  
+  }
+
   HIR_function_t* func = calloc(1, sizeof(HIR_function_t));
   if (!func) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
@@ -923,6 +945,11 @@ char* HIR_generate_string_program(HIR_function_t* function)
 
     if (instr->kind == HIR_CALL) {
       sb_append_fmt(&sb, "CALL %s\n", instr->func_name); 
+      continue;
+    }
+
+    if (instr->kind == HIR_ALLOC) {
+      sb_append_fmt(&sb, "ALLOC %zu\n", instr->alloc_size);
       continue;
     }
   }

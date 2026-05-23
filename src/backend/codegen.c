@@ -122,8 +122,8 @@ int CODEGEN_write_function(
       const char* dst = CODEGEN_get_reg(target, (*it)->dest);
       const char* src = CODEGEN_get_reg(target, (*it)->a);
       target->emit_mov(sb, dst, src);
-      break;
     }
+      break;
     case HIR_CALL:
       target->emit_call(sb, (*it)->func_name);
       break;
@@ -134,6 +134,9 @@ int CODEGEN_write_function(
     case HIR_EXIT:
       target->emit_stack_restore(sb, func->stack_reserve_size);
       target->emit_process_exit(sb, CODEGEN_get_reg(target, (*it)->dest));
+      break;
+    case HIR_ALLOC:
+      target->alloc_memory(sb, (*it)->alloc_size);
       break;
     default:
       error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED, 

@@ -232,10 +232,23 @@ static void x86_emit_stack_restore(string_builder_t* sb, int size)
   sb_append_fmt(sb, "    pop rbp\n");
 }
 
-static void x86_emit_process_exit(string_builder_t* sb, const char* exit_code_reg)
+static void x86_emit_process_exit(
+    string_builder_t* sb, const char* exit_code_reg)
 {
   sb_append_fmt(sb, "    mov rax, 60\n");
   sb_append_fmt(sb, "    mov rdi, %s\n", exit_code_reg);
+  sb_append_fmt(sb, "    syscall\n");
+}
+
+static void x86_alloc_memory(string_builder_t* sb, int size) 
+{
+  sb_append_fmt(sb, "    mov rax, 9\n");
+  sb_append_fmt(sb, "    mov rdi, 0\n");
+  sb_append_fmt(sb, "    mov rsi, %d\n", size);
+  sb_append_fmt(sb, "    mov rdx, 0x01 | 0x02\n");
+  sb_append_fmt(sb, "    mov r10, 0x22\n");
+  sb_append_fmt(sb, "    mov r8, -1\n");
+  sb_append_fmt(sb, "    mov r9, 0\n");
   sb_append_fmt(sb, "    syscall\n");
 }
 
@@ -273,4 +286,5 @@ const target_t x86_64_target = {
     .emit_mov_from_stack = x86_emit_mov_from_stack,
     .emit_sub = x86_emit_sub,
     .emit_mul = x86_emit_mul,
+    .alloc_memory = x86_alloc_memory,
 };

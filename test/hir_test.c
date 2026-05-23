@@ -196,3 +196,7 @@ ct_test(hir_test, for_stmt, "test/hir_case/for_stmt.clf", "test/hir_case/for_stm
 ct_test(hir_test, call, "test/hir_case/call.clf", "test/hir_case/call.res") {
   ct_assert_eq(result, 0, "hir parsing give right output");
 }
+
+ct_test(hir_test, struct_var_allocation, "test/hir_case/struct_var_allocation.clf", "test/hir_case/struct_var_allocation.res") {
+  ct_assert_eq(result, 0, "hit parsing give right output");
+}

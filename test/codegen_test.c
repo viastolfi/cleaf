@@ -215,3 +215,7 @@ ct_test(codegen_test, for_stmt, "test/codegen_case/for_stmt.clf", "test/codegen_
 ct_test(codegen_test, call, "test/codegen_case/call.clf", "test/codegen_case/call.asm") {
   ct_assert_eq(result, 0, "codegen gives right output");
 }
+
+ct_test(codegen_test, struct_var_allocation, "test/codegen_case/struct_var_allocation.clf", "test/codegen_case/struct_var_allocation.res") {
+  ct_assert_eq(result, 0, "hit parsing give right output");
+}
