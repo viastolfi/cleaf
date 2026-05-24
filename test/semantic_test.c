@@ -293,3 +293,8 @@ ct_test(semantic_case, struct_definition_errors, "test/semantic_case/struct_defi
   ct_assert_eq(analyzer.error_count, 3, "Should have 3 error for struct definition");
   free_analyzer(&analyzer);
 }
+
+ct_test(semantic_case, struct_var_zero_init, "test/semantic_case/struct_var_zero_init.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have 0 errors for struct var with zero init");
+  free_analyzer(&analyzer);
+}

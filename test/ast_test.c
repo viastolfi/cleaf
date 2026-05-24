@@ -349,3 +349,21 @@ ct_test(ast, struct_declaration_unknown_type, "struct v2 { dump a; int b; }")
   da_free(&parser);
 }
 
+ct_test(ast, struct_var_zero_init, "struct v2 { int a; int b; } v2 a = { 0 };")
+{
+  declaration_t* struct_decl = parse_declaration(&parser);
+  ct_assert_not_null(struct_decl, "struct decl should not be NULL");
+
+  declaration_t* decl = parse_declaration(&parser);
+  ct_assert_not_null(decl, "var decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_VAR, "declaration type should be VAR");
+  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_CUSTOM, "var type should be TYPE_CUSTOM");
+  ct_assert_not_null(decl->var_decl.init, "init expression should not be NULL");
+  ct_assert_eq(decl->var_decl.init->type, EXPRESSION_COMPOSITE_LITERAL, "init expression should be COMPOSITE_LITERAL");
+  ct_assert_eq((int)decl->var_decl.init->composite_literal.is_initializer, 0, "is_initializer should be false for zero init");
+
+  free_declaration(struct_decl);
+  free_declaration(decl);
+  da_free(&parser);
+}
+
