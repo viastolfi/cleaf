@@ -18,6 +18,7 @@ typedef enum
   HIR_NOP,
 
   HIR_MOV,
+  HIR_MOV_OFFSET,
 
   HIR_CHUNK,
 
@@ -55,6 +56,12 @@ typedef enum
   HIR_BINARY_CMP,
 } HIR_binary_kind;
 
+typedef enum 
+{
+  HIR_PRE_OFFSET,
+  HIR_POST_OFFSET,
+} HIR_offset_timing;
+
 typedef int HIR_temp_id;
 
 typedef struct 
@@ -72,6 +79,11 @@ typedef struct
       char* name;
       int is_init;
     } var;
+
+    struct {
+      HIR_offset_timing timing;
+      size_t size;
+    } offset;
 
     HIR_binary_kind binary_op;
 

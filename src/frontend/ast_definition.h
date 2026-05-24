@@ -29,7 +29,8 @@ typedef enum
   EXPRESSION_BINARY,
   EXPRESSION_CALL,
   EXPRESSION_ASSIGN,
-  EXPRESSION_UNARY
+  EXPRESSION_UNARY,
+  EXPRESSION_COMPOSITE_LITERAL
 } expression_kind;
 
 typedef enum
@@ -204,6 +205,9 @@ struct expression_t
       unary_op_kind op;
       expression_t* operand;
     } unary;
+    struct {
+      bool is_initializer; 
+    } composite_literal;
   };
 };
 

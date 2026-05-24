@@ -74,15 +74,7 @@ int HIR_lower_declaration(
     return -1;
   }
 
-  if (decl->var_decl.init) {
-    HIR_lower_expression(hir, decl->var_decl.init, func);   
-    instr->var.is_init = 1;
-    instr->a = func->next_temp_id;
-  } else {
-    if (decl->var_decl.ident.type.kind == TYPE_INT) {
-      instr->var.is_init = 0; 
-    }
-    else if (decl->var_decl.ident.type.kind == TYPE_CUSTOM) {
+  if (decl->var_decl.ident.type.kind == TYPE_CUSTOM) {
       HIR_instruction_t* alloc = calloc(
           1, sizeof(HIR_instruction_t));   
       if (!alloc) {
@@ -96,14 +88,64 @@ int HIR_lower_declaration(
       da_append(func->code, alloc);
       instr->var.is_init = 1;
       instr->a = -1;
-    }
+
+      da_append(func->code, instr);
+      if (decl->var_decl.init) {
+        int err = 
+          HIR_lower_composite_literal_expression(hir, decl, func);
+      }
+  } else {
+    if (decl->var_decl.init) {
+      instr->var.is_init = 1;
+        HIR_lower_expression(hir, decl->var_decl.init, func);   
+        instr->a = func->next_temp_id;
+    } else {
+      if (decl->var_decl.ident.type.kind == TYPE_INT) {
+        instr->var.is_init = 0; 
+      }
+    } 
+    da_append(func->code, instr);
   }
 
-  da_append(func->code, instr);
 
   // TODO: this only works if we only store int
   // Must change as we add more base types and custom types
   func->stack_reserve_size += 8;
+  return 0;
+}
+
+int HIR_lower_composite_literal_expression(
+    HIR_parser_t* hir, 
+    declaration_t* decl, 
+    HIR_function_t* func)
+{
+  HIR_instruction_t* load = calloc(1, sizeof(HIR_instruction_t));
+  if (!load) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return 1;
+  }
+  load->kind = HIR_LOAD_VAR;
+  load->dest = func->next_temp_id;
+  load->var.is_init = 1;
+  load->var.name = strdup(decl->var_decl.ident.ident_name);
+  if (!load->var.name) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return 1;
+  }
+
+  da_append(func->code, load);
+
+  if (decl->var_decl.init->composite_literal.is_initializer) {
+    // TODO: add lower_expression_literal to lower_expression
+    /*
+    int err = HIR_lower_expression(func, decl->var_decl.init); 
+    if (err)
+      HIR_OFFSET_TIMING;return 1;
+    */
+    error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED,
+        "composite expression lowering is not implemented yet");
+  }
+
   return 0;
 }
 

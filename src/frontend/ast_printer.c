@@ -123,6 +123,11 @@ static void print_expression(expression_t* e, const char* prefix, bool is_last)
              unary_op_str(e->unary.op));
       print_expression(e->unary.operand, cp, true);
       break;
+
+    case EXPRESSION_COMPOSITE_LITERAL:
+      printf(CLR_LIT "CompositeLiteral" CLR_RESET " %s\n",
+             e->composite_literal.is_initializer ? "{}" : "{0}");
+      break;
   }
 }
 

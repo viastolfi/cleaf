@@ -312,6 +312,36 @@ expression_t* ast_parse_expr_var(parser_t* p)
   return e;
 }
 
+expression_t* ast_parse_expr_composite_literal(parser_t* p)
+{
+  expression_t* e = calloc(1, sizeof(expression_t));
+  if (!e) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return NULL;
+  }
+
+  e->type = EXPRESSION_COMPOSITE_LITERAL;
+  e->source_pos = peek(p)->source_pos;
+
+  // consume '{'
+  advance(p);
+
+  if (check(p, LEXER_token_intlit) && peek(p)->int_value == 0) {
+    e->composite_literal.is_initializer = false; 
+
+    // consume '0'
+    advance(p);
+  } else {
+    error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED, 
+        "initialized TYPE_CUSTOM var is not part of the compiler yet");
+    free_expression(e);
+    return NULL;
+  }
+
+  expect(p, '}', "exect '}' after composite literal expression");
+  return e;
+}
+
 expression_t* ast_parse_expr_assign(parser_t* p)
 {
   expression_t* e = (expression_t*) malloc(sizeof(expression_t));
@@ -657,7 +687,10 @@ expression_t* parse_expression(parser_t* p)
     return ast_parse_expr_var(p);
 
   if (check(p, LEXER_token_intlit))
-      return ast_parse_expr_int_lit(p);
+    return ast_parse_expr_int_lit(p);
+
+  if (check(p, '{'))
+    return ast_parse_expr_composite_literal(p);
 
   return NULL;
 }
