@@ -125,8 +125,11 @@ static void print_expression(expression_t* e, const char* prefix, bool is_last)
       break;
 
     case EXPRESSION_COMPOSITE_LITERAL:
-      printf(CLR_LIT "CompositeLiteral" CLR_RESET " %s\n",
-             e->composite_literal.is_initializer ? "{}" : "{0}");
+      printf(CLR_LIT "CompositeLiteral" CLR_RESET " is_initializer=%s\n",
+             e->composite_literal.is_initializer ? "true" : "false");
+      for (size_t i = 0; i < e->composite_literal.count; i++)
+        print_expression(e->composite_literal.values[i], cp,
+                         i == e->composite_literal.count - 1);
       break;
   }
 }

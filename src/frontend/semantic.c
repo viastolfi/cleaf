@@ -100,11 +100,45 @@ int analyze_declaration(semantic_analyzer_t* analyzer,
         decl->var_decl.ident.source_pos - 1,
         "can't named a variable using a reserved keyword");
     return 0;
-  } else {
-    return 1;
   }
 
-  return 0;
+  if (decl->var_decl.ident.type.kind == TYPE_CUSTOM &&
+      decl->var_decl.init) {
+    if (!decl->var_decl.init->composite_literal.is_initializer)
+      return 1;
+
+    struct_symbol_t* struc_sym = (struct_symbol_t*)
+      hashmap_get(
+          analyzer->struct_symbols, 
+          decl->var_decl.ident.type.name);
+    if (struc_sym->members_count != 
+        decl->var_decl.init->composite_literal.count) {
+      semantic_error_register(
+          analyzer, decl->var_decl.init->source_pos - 1,
+          "must declare the exact number of members on custom var declaration");
+      return 0;
+    }
+
+    expression_t* e = decl->var_decl.init;
+    for (size_t j = 0; j < e->composite_literal.count; ++j) {
+      expression_t* assign = e->composite_literal.values[j];  
+      int found = 0;
+      for (size_t i = 0; i < struc_sym->members_count; ++ i) {
+        if (strcmp(
+              assign->assign.lhs->var.name, 
+              struc_sym->members_name[i]) == 0)
+          found = 1;
+      }
+      if (!found) {
+        semantic_error_register(
+            analyzer, assign->source_pos - 1,
+            "member is not part of struct declaration");
+        return 0;
+      }
+    }
+  }
+
+  return 1;
 }
 
 type_kind semantic_check_expression(semantic_analyzer_t* analyzer,

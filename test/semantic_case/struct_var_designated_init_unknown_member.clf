@@ -1,0 +1,9 @@
+struct v2 {
+  int a;
+  int b;
+}
+
+fn main(): int {
+  v2 a = { .x = 1, .b = 2 };
+  return 0;
+}

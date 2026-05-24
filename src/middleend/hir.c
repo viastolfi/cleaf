@@ -90,27 +90,28 @@ int HIR_lower_declaration(
       instr->a = -1;
 
       da_append(func->code, instr);
-      if (decl->var_decl.init) {
+      if (decl->var_decl.init && 
+          decl->var_decl.init->composite_literal.is_initializer) {
         int err = 
           HIR_lower_composite_literal_expression(hir, decl, func);
+        if (err)
+          return 1;
       }
+      func->stack_reserve_size += 8;
   } else {
     if (decl->var_decl.init) {
       instr->var.is_init = 1;
-        HIR_lower_expression(hir, decl->var_decl.init, func);   
-        instr->a = func->next_temp_id;
+      HIR_lower_expression(hir, decl->var_decl.init, func);   
+      instr->a = func->next_temp_id;
     } else {
       if (decl->var_decl.ident.type.kind == TYPE_INT) {
         instr->var.is_init = 0; 
       }
     } 
     da_append(func->code, instr);
+    func->stack_reserve_size += 8;
   }
 
-
-  // TODO: this only works if we only store int
-  // Must change as we add more base types and custom types
-  func->stack_reserve_size += 8;
   return 0;
 }
 
@@ -135,16 +136,14 @@ int HIR_lower_composite_literal_expression(
 
   da_append(func->code, load);
 
-  if (decl->var_decl.init->composite_literal.is_initializer) {
-    // TODO: add lower_expression_literal to lower_expression
-    /*
-    int err = HIR_lower_expression(func, decl->var_decl.init); 
-    if (err)
-      HIR_OFFSET_TIMING;return 1;
-    */
-    error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED,
-        "composite expression lowering is not implemented yet");
-  }
+  // TODO: add lower_expression_literal to lower_expression
+  /*
+  int err = HIR_lower_expression(func, decl->var_decl.init); 
+  if (err)
+    HIR_OFFSET_TIMING;return 1;
+  */
+  error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED,
+      "composite expression lowering is not implemented yet");
 
   return 0;
 }

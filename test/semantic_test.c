@@ -298,3 +298,18 @@ ct_test(semantic_case, struct_var_zero_init, "test/semantic_case/struct_var_zero
   ct_assert_eq(analyzer.error_count, 0, "Should have 0 errors for struct var with zero init");
   free_analyzer(&analyzer);
 }
+
+ct_test(semantic_case, struct_var_designated_init, "test/semantic_case/struct_var_designated_init.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have 0 errors for struct var with valid designated init");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_var_designated_init_wrong_count, "test/semantic_case/struct_var_designated_init_wrong_count.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for designated init with wrong member count");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_var_designated_init_unknown_member, "test/semantic_case/struct_var_designated_init_unknown_member.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for designated init with unknown member name");
+  free_analyzer(&analyzer);
+}

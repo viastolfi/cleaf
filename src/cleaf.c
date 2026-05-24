@@ -127,6 +127,8 @@ int main(int argc, char** argv)
       return 1;
     }
     token_t t = lexer_copy_token(&lex);
+    lexer_print_token(&lex);
+    printf("  ");
     da_append(&res.parser, t);
   }
   free(lex.string_storage);

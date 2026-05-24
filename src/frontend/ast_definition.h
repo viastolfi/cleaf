@@ -208,6 +208,8 @@ struct expression_t
     } unary;
     struct {
       bool is_initializer; 
+      expression_t** values;  
+      size_t count;
     } composite_literal;
   };
 };

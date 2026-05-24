@@ -44,7 +44,15 @@ void free_expression(expression_t* e)
 
   if (e->type == EXPRESSION_UNARY) 
     if (e->unary.operand)
-      free_expression(e->unary.operand);  
+      free_expression(e->unary.operand);
+
+  if (e->type == EXPRESSION_COMPOSITE_LITERAL) {
+    if (e->composite_literal.values) {
+      for (size_t i = 0; i < e->composite_literal.count; ++i)
+        free_expression(e->composite_literal.values[i]);
+      free(e->composite_literal.values);
+    }
+  }
 
   free(e);
 }
@@ -332,10 +340,27 @@ expression_t* ast_parse_expr_composite_literal(parser_t* p)
     // consume '0'
     advance(p);
   } else {
-    error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED, 
-        "initialized TYPE_CUSTOM var is not part of the compiler yet");
-    free_expression(e);
-    return NULL;
+    e->composite_literal.count = 0;
+    e->composite_literal.is_initializer = true;
+    // TODO: double guard is kinda ugly, this may be optimized
+    while (!check(p, '}')) {
+      expect(p, '.', 
+          "expect member declaration in custom var instanciation");     
+      expression_t* a = ast_parse_expr_assign(p);
+      if (a) {
+        e->composite_literal.values = 
+          realloc(e->composite_literal.values,
+              ++e->composite_literal.count * sizeof(expression_t*));
+        e->composite_literal.values[
+          e->composite_literal.count - 1] = a;
+      }
+      
+      if (check(p, '}'))
+        break;
+
+      expect(p, ',',
+          "expect ',' between custom var members declaration");
+    }
   }
 
   expect(p, '}', "exect '}' after composite literal expression");
