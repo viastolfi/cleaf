@@ -2,6 +2,7 @@
 #define AST_DEFINITION_H
 
 #include <stddef.h>
+#include <stdbool.h>
 
 // ----------------- Enums ------------------
 
