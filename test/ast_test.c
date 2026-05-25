@@ -389,3 +389,23 @@ ct_test(ast, struct_var_designated_init, "struct v2 { int a; int b; } v2 a = { .
   da_free(&parser);
 }
 
+ct_test(ast, struct_var_designated_init_single, "struct v1 { int x; } v1 a = { .x = 42 };")
+{
+  declaration_t* struct_decl = parse_declaration(&parser);
+  ct_assert_not_null(struct_decl, "struct decl should not be NULL");
+
+  declaration_t* decl = parse_declaration(&parser);
+  ct_assert_not_null(decl, "var decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_VAR, "declaration type should be VAR");
+  ct_assert_not_null(decl->var_decl.init, "init expression should not be NULL");
+  ct_assert_eq(decl->var_decl.init->type, EXPRESSION_COMPOSITE_LITERAL, "init should be COMPOSITE_LITERAL");
+  ct_assert_eq((int)decl->var_decl.init->composite_literal.is_initializer, 1, "is_initializer should be true for designated init");
+  ct_assert_eq((int)decl->var_decl.init->composite_literal.count, 1, "should have exactly 1 field assignment");
+  ct_assert_eq(decl->var_decl.init->composite_literal.values[0]->assign.lhs->var.name, "x", "field name should be 'x'");
+  ct_assert_eq(decl->var_decl.init->composite_literal.values[0]->assign.rhs->int_lit.value, 42, "field value should be 42");
+
+  free_declaration(struct_decl);
+  free_declaration(decl);
+  da_free(&parser);
+}
+

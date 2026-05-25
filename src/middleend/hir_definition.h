@@ -4,6 +4,8 @@
 #include "../frontend/ast_definition.h"
 #include "../thirdparty/rand.h"
 #include "../thirdparty/error.h"
+#include "../thirdparty/hashmap.h"
+#include "../frontend/symbols.h"
 
 typedef void (*chunk_name_gen_t)(void* ctx, char* out);
 
@@ -125,6 +127,7 @@ typedef struct
   chunk_name_gen_t gen_chunk;
   void* chunk_ctx;
 
+  hashmap_t* struct_symbols;
   HIR_function_array* hir_program;
 } HIR_parser_t;
 

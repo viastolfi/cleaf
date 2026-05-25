@@ -313,3 +313,8 @@ ct_test(semantic_case, struct_var_designated_init_unknown_member, "test/semantic
   ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for designated init with unknown member name");
   free_analyzer(&analyzer);
 }
+
+ct_test(semantic_case, struct_var_designated_init_reordered, "test/semantic_case/struct_var_designated_init_reordered.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have 0 errors for designated init with valid members in non-declaration order");
+  free_analyzer(&analyzer);
+}

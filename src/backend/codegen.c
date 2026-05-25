@@ -138,6 +138,18 @@ int CODEGEN_write_function(
     case HIR_ALLOC:
       target->alloc_memory(sb, (*it)->alloc_size);
       break;
+    case HIR_MOV_OFFSET:
+      if ((*it)->offset.timing == HIR_PRE_OFFSET) {
+      const char* dst = CODEGEN_get_reg(target, (*it)->dest);
+      const char* src = CODEGEN_get_reg(target, (*it)->a);
+        target->emit_mov_offset_pre(
+            sb, dst, (*it)->offset.size, src);
+        break;
+      } else {
+        error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED,
+           "unkown offset operation"); 
+        break;
+      }
     default:
       error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED, 
           "unknown HIR instruction");

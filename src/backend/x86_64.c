@@ -252,6 +252,12 @@ static void x86_alloc_memory(string_builder_t* sb, int size)
   sb_append_fmt(sb, "    syscall\n");
 }
 
+static void x86_emit_mov_offset_pre(string_builder_t* sb,
+    const char* dst, size_t size, const char* src)
+{
+  sb_append_fmt(sb, "    mov [%s + %zu], %s\n", dst, size, src);
+}
+
 const target_t x86_64_target = {
     .setup = x86_setup,
     .regs = x86_regs,
@@ -287,4 +293,5 @@ const target_t x86_64_target = {
     .emit_sub = x86_emit_sub,
     .emit_mul = x86_emit_mul,
     .alloc_memory = x86_alloc_memory,
+    .emit_mov_offset_pre = x86_emit_mov_offset_pre,
 };

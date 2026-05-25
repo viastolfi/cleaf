@@ -136,14 +136,40 @@ int HIR_lower_composite_literal_expression(
 
   da_append(func->code, load);
 
-  // TODO: add lower_expression_literal to lower_expression
-  /*
-  int err = HIR_lower_expression(func, decl->var_decl.init); 
-  if (err)
-    HIR_OFFSET_TIMING;return 1;
-  */
-  error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED,
-      "composite expression lowering is not implemented yet");
+  struct_symbol_t* sym = hashmap_get(hir->struct_symbols,
+      decl->var_decl.ident.type.name);
+  expression_t* e = decl->var_decl.init;
+
+  HIR_temp_id save = func->next_temp_id;
+
+  for (size_t i = 0; i < e->composite_literal.count; ++i) {
+    HIR_lower_expression(
+        hir, e->composite_literal.values[i]->assign.rhs, func);
+    size_t computed_place = 0;
+    HIR_instruction_t* mov_offset =
+      calloc(1, sizeof(HIR_instruction_t));
+    if (!mov_offset) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return 1;
+    }
+    mov_offset->kind = HIR_MOV_OFFSET;
+    mov_offset->offset.timing = HIR_PRE_OFFSET;
+    mov_offset->dest = save;
+    mov_offset->a = func->next_temp_id;
+
+    for (size_t j = 0; j < sym->members_count; ++j) {
+      if (strcmp(
+            e->composite_literal.values[i]->assign.lhs->var.name,
+            sym->members_name[j]) == 0) {
+        break ; 
+      } else {
+        // TODO: maybe find a way to get kind size
+        computed_place += 8;
+      }
+    } 
+    mov_offset->offset.size = computed_place;
+    da_append(func->code, mov_offset);
+  }
 
   return 0;
 }
@@ -992,6 +1018,14 @@ char* HIR_generate_string_program(HIR_function_t* function)
     if (instr->kind == HIR_ALLOC) {
       sb_append_fmt(&sb, "ALLOC %zu\n", instr->alloc_size);
       continue;
+    }
+
+    if (instr->kind == HIR_MOV_OFFSET) {
+      if (instr->offset.timing == HIR_PRE_OFFSET) {
+        sb_append_fmt(&sb, "MOV [t%d + %zu], t%d\n", instr->dest, instr->offset.size, instr->a);
+      } else {
+        exit(1); 
+      }
     }
   }
 

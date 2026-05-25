@@ -127,6 +127,11 @@ typedef struct {
     void 
       (*alloc_memory)
       (string_builder_t*, int size);
+
+    void
+      (*emit_mov_offset_pre)
+      (string_builder_t*, 
+       const char* dst, size_t size, const char* src);
 } target_t;
 
 #endif // TARGET_H

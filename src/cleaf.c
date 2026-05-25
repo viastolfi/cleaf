@@ -26,13 +26,13 @@ typedef struct {
 
 static void compiler_resources_free(compiler_resources_t* res)
 {
-    da_foreach(known_type_t, it, res->parser.types) {
-      if (it->kind == TYPE_CUSTOM)
-        if (it->name)
-          free(it->name);
-    }
-    da_free(res->parser.types);
-    free(res->parser.types);
+  da_foreach(known_type_t, it, res->parser.types) {
+    if (it->kind == TYPE_CUSTOM)
+      if (it->name)
+        free(it->name);
+  }
+  da_free(res->parser.types);
+  free(res->parser.types);
 
   if (res->hir_program) {
     da_foreach(HIR_function_t*, it, res->hir_program) {
@@ -167,7 +167,6 @@ int main(int argc, char** argv)
   analyzer.error_count = 0;
 
   semantic_analyze(&analyzer);
-  semantic_free_program_definition(&analyzer);
 
   if (analyzer.error_count > 0) {
     log_phase("semantic", "%d error(s)", analyzer.error_count);
@@ -189,6 +188,7 @@ int main(int argc, char** argv)
   hir_parser.error_ctx = &error_ctx;
   hir_parser.error_count = 0;
   hir_parser.hir_program = res.hir_program;
+  hir_parser.struct_symbols = analyzer.struct_symbols;
   rand_t rng;
   rand_init(&rng);
   HIR_PARSER_USE_RNG(hir_parser, &rng);
@@ -207,6 +207,7 @@ int main(int argc, char** argv)
 
   log_phase("HIR lowering", "%zu function(s)", res.hir_program->count);
 
+  semantic_free_program_definition(&analyzer);
   if (log_is_dump()) {
     log_section_begin("HIR");
     da_foreach(HIR_function_t*, it, hir_parser.hir_program) {
