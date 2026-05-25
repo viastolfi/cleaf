@@ -172,6 +172,7 @@ int main(int argc, char** argv)
     log_phase("semantic", "%d error(s)", analyzer.error_count);
     error_report_general(ERROR_SEVERITY_NOTE,
         "%d error(s) during semantic analysis, aborting", analyzer.error_count);
+    semantic_free_program_definition(&analyzer);
     compiler_resources_free(&res);
     return 1;
   }
