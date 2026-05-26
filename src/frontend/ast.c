@@ -1240,6 +1240,19 @@ declaration_t* parse_declaration(parser_t* p)
     return ast_parse_untype_var_decl(p);
   }
 
+  token_t* tok = peek(p);
+  if (tok && p->error_ctx) {
+    if (tok->string_value) {
+      error_report_at_token(
+          p->error_ctx, tok, ERROR_SEVERITY_ERROR,
+          "unexpected token '%s': expected declaration", 
+          tok->string_value);
+    } else {
+      error_report_at_token(
+            p->error_ctx, tok, ERROR_SEVERITY_ERROR,
+            "unexpected token: expected declaration");
+    }
+  }
   return NULL;
 }
 

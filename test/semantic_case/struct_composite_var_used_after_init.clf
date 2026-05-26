@@ -1,0 +1,13 @@
+struct v2 {
+  int x;
+  int y;
+}
+
+fn use_v2(v2 v): int {
+  return 0;
+}
+
+fn main(): int {
+  v2 a = { .x = 3, .y = 7 };
+  return use_v2(a);
+}

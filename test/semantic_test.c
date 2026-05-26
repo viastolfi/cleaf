@@ -112,9 +112,9 @@ ct_test(semantic_analyze, fn_def_with_params, "test/semantic_case/fn_def_with_pa
   ct_assert_not_null(fs, "Function symbol should be in symbol table");
   ct_assert_eq((int)fs->params_count, 2, "Function should have 2 parameters");
   ct_assert_eq(fs->params_name[0], "a", "First param name should be 'a'");
-  ct_assert_eq(fs->params_type[0], TYPE_INT, "First param type should be TYPE_INT");
+  ct_assert_eq(fs->params_type[0].kind, TYPE_INT, "First param type should be TYPE_INT");
   ct_assert_eq(fs->params_name[1], "b", "Second param name should be 'b'");
-  ct_assert_eq(fs->params_type[1], TYPE_INT, "Second param type should be TYPE_STRING");
+  ct_assert_eq(fs->params_type[1].kind, TYPE_INT, "Second param type should be TYPE_STRING");
 
   free_analyzer(&analyzer);
 }
@@ -124,7 +124,7 @@ ct_test(semantic_analyze, fn_def_with_return_type, "test/semantic_case/fn_def_wi
 
   function_symbol_t* fs = (function_symbol_t*) hashmap_get(analyzer.function_symbols, "main");
   ct_assert_not_null(fs, "Function symbol should be in symbol table");
-  ct_assert_eq(fs->return_type, TYPE_INT, "Return type should be TYPE_INT");
+  ct_assert_eq(fs->return_type.kind, TYPE_INT, "Return type should be TYPE_INT");
 
   free_analyzer(&analyzer);
 }
@@ -326,5 +326,35 @@ ct_test(semantic_case, struct_var_designated_init_three_fields, "test/semantic_c
 
 ct_test(semantic_case, struct_var_designated_init_duplicate_member, "test/semantic_case/struct_var_designated_init_duplicate_member.clf") {
   ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for designated init with duplicate member name");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, var_inferred_type_return, "test/semantic_case/var_inferred_type_return.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have 0 errors: var inferred as int must be usable in return");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, var_for_init_inferred_condition, "test/semantic_case/var_for_init_inferred_condition.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have 0 errors: var in for-init must infer correct type for use in condition");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_composite_var_used_after_init, "test/semantic_case/struct_composite_var_used_after_init.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have 0 errors: struct var from designated init must be usable without spurious TYPE_ERROR");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, typed_var_undef_no_cascade, "test/semantic_case/typed_var_undef_no_cascade.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have exactly 1 error: typed var from undefined func must not cascade spurious error on subsequent use");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_member_access_undef, "test/semantic_case/struct_member_access_undef.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error: member 'z' is not part of struct v2");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_member_access_valid, "test/semantic_case/struct_member_access_valid.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have 0 errors: member 'x' is a valid member of struct v2");
   free_analyzer(&analyzer);
 }

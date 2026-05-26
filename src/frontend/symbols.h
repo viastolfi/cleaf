@@ -5,16 +5,16 @@
 
 typedef struct 
 {
-  type_kind return_type;
+  known_type_t return_type;
 
   char** params_name;
-  type_kind* params_type;
+  known_type_t* params_type;
   size_t params_count;
 } function_symbol_t;
 
 typedef struct {
   char** members_name;
-  type_kind* members_type;
+  known_type_t* members_type;
   size_t members_count;
 } struct_symbol_t;
 
