@@ -218,3 +218,7 @@ ct_test(hir_test, struct_var_zero_init, "test/hir_case/struct_var_zero_init.clf"
 ct_test(hir_test, struct_var_designated_init, "test/hir_case/struct_var_designated_init.clf", "test/hir_case/struct_var_designated_init.res") {
   ct_assert_eq(result, 0, "hir parsing give right output for designated struct initializer");
 }
+
+ct_test(hir_test, struct_var_designated_init_reordered, "test/hir_case/struct_var_designated_init_reordered.clf", "test/hir_case/struct_var_designated_init_reordered.res") {
+  ct_assert_eq(result, 0, "hir parsing gives right output for reordered designated struct initializer");
+}

@@ -190,7 +190,7 @@ struct expression_t
 
   union {
     struct { int value; } int_lit;
-    struct { char* name; } var;
+    struct { char* name; expression_t* member; } var;
     struct { expression_t* lhs; expression_t* rhs; } assign;
     struct { 
       expression_t* left; 

@@ -12,6 +12,8 @@ void free_expression(expression_t* e)
   if (e->type == EXPRESSION_VAR) {
     if (e->var.name)
       free(e->var.name);
+    if (e->var.member)
+      free_expression(e->var.member);
   }
 
   if (e->type == EXPRESSION_ASSIGN) {
@@ -317,6 +319,15 @@ expression_t* ast_parse_expr_var(parser_t* p)
 
   e->var.name = strdup(var_tok->string_value);
 
+  if (check(p, '.')) {
+    // consume '.'
+    advance(p);  
+    e->var.member = parse_expression(p);
+
+    if (!e->var.member)
+      return NULL;
+  }
+
   return e;
 }
 
@@ -386,6 +397,7 @@ expression_t* ast_parse_expr_assign(parser_t* p)
     free_expression(e);
     return NULL;
   }
+  memset(lhs, 0, sizeof(expression_t));
 
   lhs->type = EXPRESSION_VAR;
 

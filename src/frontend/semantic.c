@@ -120,30 +120,56 @@ int analyze_declaration(semantic_analyzer_t* analyzer,
     }
 
     expression_t* e = decl->var_decl.init;
+    size_t total_found = 0;
+    char** founds = 
+      calloc(struc_sym->members_count, sizeof(char*));
+    if (!founds) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return 0;
+    }
+
     for (size_t j = 0; j < e->composite_literal.count; ++j) {
       expression_t* assign = e->composite_literal.values[j];  
       int found = 0;
       for (size_t i = 0; i < struc_sym->members_count; ++ i) {
         if (strcmp(
               assign->assign.lhs->var.name, 
-              struc_sym->members_name[i]) == 0)
+              struc_sym->members_name[i]) == 0) {
+          for (size_t x = 0; x < struc_sym->members_count; ++x) {
+            if (!founds[x])
+              break;
+
+            if (strcmp(
+                  founds[x], struc_sym->members_name[i]) == 0) {
+              semantic_error_register(
+                 analyzer, assign->source_pos - 1,
+                 "already declared struct member");
+              free(founds);
+              return 0;
+            }
+          }
+          founds[total_found++] = struc_sym->members_name[i];
           found = 1;
+        }
       }
       if (!found) {
+        free(founds);
         semantic_error_register(
             analyzer, assign->source_pos - 1,
             "member is not part of struct declaration");
         return 0;
       }
     }
+    free(founds);
   }
 
   return 1;
 }
 
-type_kind semantic_check_expression(semantic_analyzer_t* analyzer,
-                       expression_t* expr,
-                       scope_t* scope)
+type_kind semantic_check_expression(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope)
 {
   if (expr->type == EXPRESSION_INT_LIT) 
     return TYPE_INT;
@@ -155,6 +181,11 @@ type_kind semantic_check_expression(semantic_analyzer_t* analyzer,
           "use of undefined variable");
       return TYPE_ERROR;
     }
+
+    if (expr->var.member) {
+     
+    }
+
     return (type_kind) k - 1; 
   }
 

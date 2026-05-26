@@ -409,3 +409,23 @@ ct_test(ast, struct_var_designated_init_single, "struct v1 { int x; } v1 a = { .
   da_free(&parser);
 }
 
+ct_test(ast, struct_var_designated_init_three_fields, "struct v3 { int a; int b; int c; } v3 s = { .a = 1, .b = 2, .c = 3 };")
+{
+  declaration_t* struct_decl = parse_declaration(&parser);
+  ct_assert_not_null(struct_decl, "struct decl should not be NULL");
+
+  declaration_t* decl = parse_declaration(&parser);
+  ct_assert_not_null(decl, "var decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_VAR, "declaration type should be VAR");
+  ct_assert_not_null(decl->var_decl.init, "init expression should not be NULL");
+  ct_assert_eq(decl->var_decl.init->type, EXPRESSION_COMPOSITE_LITERAL, "init should be COMPOSITE_LITERAL");
+  ct_assert_eq((int)decl->var_decl.init->composite_literal.is_initializer, 1, "is_initializer should be true");
+  ct_assert_eq((int)decl->var_decl.init->composite_literal.count, 3, "should have 3 field assignments");
+  ct_assert_eq(decl->var_decl.init->composite_literal.values[2]->assign.lhs->var.name, "c", "third field name should be 'c'");
+  ct_assert_eq(decl->var_decl.init->composite_literal.values[2]->assign.rhs->int_lit.value, 3, "third field value should be 3");
+
+  free_declaration(struct_decl);
+  free_declaration(decl);
+  da_free(&parser);
+}
+
