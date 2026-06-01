@@ -159,7 +159,7 @@ int HIR_lower_composite_literal_expression(
 
     for (size_t j = 0; j < sym->members_count; ++j) {
       if (strcmp(
-            e->composite_literal.values[i]->assign.lhs->var.name,
+            e->composite_literal.values[i]->assign.lhs->var.ident.ident_name,
             sym->members_name[j]) == 0) {
         break ; 
       } else {
@@ -188,7 +188,8 @@ int HIR_lower_unary_expression(HIR_parser_t* hir,
     }
 
     load->kind = HIR_LOAD_VAR;
-    load->var.name = strdup(expr->unary.operand->var.name);
+    load->var.name = strdup(
+        expr->unary.operand->var.ident.ident_name);
     load->dest = ++(func->next_temp_id);
     if (!load->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
@@ -234,7 +235,8 @@ int HIR_lower_unary_expression(HIR_parser_t* hir,
 
     str->kind = HIR_STORE_VAR;
     str->a = func->next_temp_id + 1; 
-    str->var.name = strdup(expr->unary.operand->var.name);
+    str->var.name = strdup(
+        expr->unary.operand->var.ident.ident_name);
     str->var.is_init = 1;
     if (!str->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
@@ -255,7 +257,8 @@ int HIR_lower_unary_expression(HIR_parser_t* hir,
 
     load->kind = HIR_LOAD_VAR;
     load->dest = ++(func->next_temp_id);
-    load->var.name = strdup(expr->unary.operand->var.name);
+    load->var.name = strdup(
+        expr->unary.operand->var.ident.ident_name);
     if (!load->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
       return 1;
@@ -289,7 +292,8 @@ int HIR_lower_unary_expression(HIR_parser_t* hir,
 
     str->kind = HIR_STORE_VAR;
     str->a = func->next_temp_id;
-    str->var.name = strdup(expr->unary.operand->var.name);
+    str->var.name = 
+      strdup(expr->unary.operand->var.ident.ident_name);
     if (!str->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
       return 1; 
@@ -417,13 +421,19 @@ int HIR_lower_expression(HIR_parser_t* hir,
 
     instr->kind = HIR_LOAD_VAR;
     instr->dest = ++(func->next_temp_id);
-    instr->var.name = strdup(expr->var.name);
+    instr->var.name = 
+      strdup(expr->var.ident.ident_name);
     if (!instr->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
       return -1;
     }
-
     da_append(func->code, instr);
+
+    if (expr->var.member) {
+      //  return HIR_lower_member_expression(
+      //    hir, expr->var.member, func);
+    } 
+
     return 0;
   }
 
@@ -464,7 +474,8 @@ int HIR_lower_expression(HIR_parser_t* hir,
     instr->a = func->next_temp_id;
     // This works only if lhs in assign is a var
     // TODO: make sure this won't break as the compiler evolve
-    instr->var.name = strdup(expr->assign.lhs->var.name);
+    instr->var.name = 
+      strdup(expr->assign.lhs->var.ident.ident_name);
     instr->var.is_init = 1;
     if (!instr->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 

@@ -54,10 +54,13 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
 
         if (!fs) continue;
 
-        for (size_t i = 0; i < fs->params_count; ++i) 
-          hashmap_put(function_scope->symbols,
-                      fs->params_name[i],
-                      &fs->params_type[i]);
+        for (size_t i = 0; i < fs->params_count; ++i) {
+          known_type_t* t = calloc(1, sizeof(known_type_t));
+          if (t) {
+            *t = fs->params_type[i];
+            hashmap_put(function_scope->symbols, fs->params_name[i], t);
+          }
+        }
 
         analyzer->current_analyzed_function = (*it)->func.name; 
         semantic_check_scope(analyzer, (*it)->func.body, function_scope); 
@@ -133,7 +136,7 @@ int analyze_declaration(semantic_analyzer_t* analyzer,
       int found = 0;
       for (size_t i = 0; i < struc_sym->members_count; ++ i) {
         if (strcmp(
-              assign->assign.lhs->var.name, 
+              assign->assign.lhs->var.ident.ident_name, 
               struc_sym->members_name[i]) == 0) {
           for (size_t x = 0; x < struc_sym->members_count; ++x) {
             if (!founds[x])
@@ -175,7 +178,10 @@ known_type_t semantic_check_expression(
     return (known_type_t){.kind = TYPE_INT};
   
   if (expr->type == EXPRESSION_VAR) {
-    known_type_t* k = (known_type_t*) scope_resolve(scope, expr->var.name);
+    known_type_t* k = 
+      (known_type_t*) scope_resolve(
+          scope, expr->var.ident.ident_name);
+
     if (!k) {
       semantic_error_register(analyzer, expr->source_pos - 1,
           "use of undefined variable");
@@ -195,7 +201,7 @@ known_type_t semantic_check_expression(
 
       for (size_t i = 0; i < sym->members_count; ++i) {
         if (strcmp(
-              expr->var.member->var.name,
+              expr->var.member->var.ident.ident_name,
               sym->members_name[i]) == 0) {
           return sym->members_type[i];
         }
@@ -441,10 +447,6 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
 
 var_def_put:
           known_type_t* t = calloc(1, sizeof(known_type_t));
-          // If the init expression couldn't be typed (e.g. composite literal has no
-          // semantic_check_expression handler) but we have an explicit declared type,
-          // use the declared type for recovery. Only propagate TYPE_ERROR when the
-          // declared type is TYPE_UNTYPE (var) so cascading errors are suppressed.
           if (actual_type.kind == TYPE_ERROR && expected_type.kind != TYPE_UNTYPE)
             *t = expected_type;
           else

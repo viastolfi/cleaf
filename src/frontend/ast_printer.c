@@ -78,7 +78,8 @@ static void print_member(expression_t* e, const char* prefix, bool is_last)
 
   print_branch(prefix, is_last);
   printf(CLR_LIT "Member" CLR_RESET " '%s'\n",
-         e->var.name ? e->var.name : "");
+         e->var.ident.ident_name ? 
+         e->var.ident.ident_name : "");
   if (e->var.member)
     print_member(e->var.member, cp, true);
 }
@@ -110,7 +111,8 @@ static void print_expression(expression_t* e, const char* prefix, bool is_last)
 
     case EXPRESSION_VAR:
       printf(CLR_LIT "VarRef" CLR_RESET " '%s'\n",
-             e->var.name ? e->var.name : "");
+             e->var.ident.ident_name ? 
+             e->var.ident.ident_name : "");
       if (e->var.member)
         print_member(e->var.member, cp, true);
       break;

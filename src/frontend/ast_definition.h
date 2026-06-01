@@ -92,6 +92,7 @@ typedef struct
   char* ident_name;
   const char* source_pos;
 } typed_identifier_t;
+
 // ----------------- Dynamic arrays ------------------
 
 typedef struct {
@@ -190,7 +191,10 @@ struct expression_t
 
   union {
     struct { int value; } int_lit;
-    struct { char* name; expression_t* member; } var;
+    struct { 
+      typed_identifier_t ident; 
+      expression_t* member; 
+    } var;
     struct { expression_t* lhs; expression_t* rhs; } assign;
     struct { 
       expression_t* left; 

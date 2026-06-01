@@ -10,8 +10,8 @@ void free_expression(expression_t* e)
     return;
 
   if (e->type == EXPRESSION_VAR) {
-    if (e->var.name)
-      free(e->var.name);
+    if (e->var.ident.ident_name)
+      free(e->var.ident.ident_name);
     if (e->var.member)
       free_expression(e->var.member);
   }
@@ -317,7 +317,7 @@ expression_t* ast_parse_expr_var(parser_t* p)
     return NULL;
   }
 
-  e->var.name = strdup(var_tok->string_value);
+  e->var.ident.ident_name = strdup(var_tok->string_value);
 
   if (check(p, '.')) {
     // consume '.'
@@ -412,8 +412,8 @@ expression_t* ast_parse_expr_assign(parser_t* p)
     return NULL;
   }
 
-  lhs->var.name = strdup(var_tok->string_value);
-  if (!lhs->var.name) {
+  lhs->var.ident.ident_name = strdup(var_tok->string_value);
+  if (!lhs->var.ident.ident_name) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     free_expression(e);
     free_expression(lhs);
