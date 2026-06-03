@@ -178,6 +178,12 @@ int main(int argc, char** argv)
   }
   log_phase("semantic", "ok");
 
+  if (log_is_dump()) {
+    log_section_begin("AST after semantic");
+    ast_print_program(&res.program);
+    log_section_end();
+  }
+
   res.hir_program = calloc(1, sizeof(HIR_function_array));
   if (!res.hir_program) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");

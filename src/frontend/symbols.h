@@ -16,6 +16,7 @@ typedef struct {
   char** members_name;
   known_type_t* members_type;
   size_t members_count;
+  size_t total_size;
 } struct_symbol_t;
 
 #endif // SYMBOLS_H

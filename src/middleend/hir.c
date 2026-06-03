@@ -430,8 +430,17 @@ int HIR_lower_expression(HIR_parser_t* hir,
     da_append(func->code, instr);
 
     if (expr->var.member) {
-      //  return HIR_lower_member_expression(
-      //    hir, expr->var.member, func);
+      HIR_instruction_t* instr = 
+        calloc(1, sizeof(HIR_instruction_t));
+      if (!instr) {
+        error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+        return -1;
+      }
+      instr->kind = HIR_MOV_OFFSET;
+      instr->offset.timing = HIR_POST_OFFSET;
+
+      // we need to get the struct def and find at which coordinates is the member we want to access
+              
     } 
 
     return 0;

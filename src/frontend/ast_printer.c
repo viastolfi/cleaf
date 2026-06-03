@@ -68,7 +68,6 @@ static void print_statement(statement_t* s, const char* prefix, bool is_last);
 static void print_declaration(declaration_t* d, const char* prefix, bool is_last);
 static void print_block(statement_block_t* block, const char* prefix);
 
-/* Prints the tail of a member-access chain (a.b.c → Member 'b' → Member 'c'). */
 static void print_member(expression_t* e, const char* prefix, bool is_last)
 {
   if (!e) return;
@@ -77,9 +76,11 @@ static void print_member(expression_t* e, const char* prefix, bool is_last)
   child_prefix(prefix, is_last, cp);
 
   print_branch(prefix, is_last);
-  printf(CLR_LIT "Member" CLR_RESET " '%s'\n",
+  printf(CLR_LIT "Member" CLR_RESET " '%s': ",
          e->var.ident.ident_name ? 
          e->var.ident.ident_name : "");
+  print_known_type(&e->var.ident.type);
+  printf("\n");
   if (e->var.member)
     print_member(e->var.member, cp, true);
 }
@@ -110,9 +111,11 @@ static void print_expression(expression_t* e, const char* prefix, bool is_last)
       break;
 
     case EXPRESSION_VAR:
-      printf(CLR_LIT "VarRef" CLR_RESET " '%s'\n",
+      printf(CLR_LIT "VarRef" CLR_RESET " '%s': ",
              e->var.ident.ident_name ? 
              e->var.ident.ident_name : "");
+      print_known_type(&e->var.ident.type);
+      printf("\n");
       if (e->var.member)
         print_member(e->var.member, cp, true);
       break;

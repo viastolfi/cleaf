@@ -1,5 +1,22 @@
 #include "semantic.h"
 
+static void semantic_resolve_type_size(semantic_analyzer_t* analyzer,
+                                       known_type_t* t)
+{
+  if (t->size != 0)
+    return;
+
+  if (t->kind == TYPE_INT) {
+    t->size = 8;
+    t->name = "int";
+  } else if (t->kind == TYPE_CUSTOM && t->name) {
+    struct_symbol_t* sym =
+      (struct_symbol_t*) hashmap_get(analyzer->struct_symbols, t->name);
+    if (sym)
+      t->size = sym->total_size;
+  }
+}
+
 int string_array_contains(char** source, size_t source_len, const char* name)
 {
   for (char** s = source; s < source + source_len; ++s)
@@ -203,6 +220,9 @@ known_type_t semantic_check_expression(
         if (strcmp(
               expr->var.member->var.ident.ident_name,
               sym->members_name[i]) == 0) {
+          semantic_resolve_type_size(analyzer, k);
+          expr->var.ident.type = *k;
+          expr->var.member->var.ident.type = sym->members_type[i];
           return sym->members_type[i];
         }
       }
@@ -212,6 +232,8 @@ known_type_t semantic_check_expression(
       return (known_type_t){.kind = TYPE_ERROR};
     }
 
+    semantic_resolve_type_size(analyzer, k);
+    expr->var.ident.type = *k;
     return *k; 
   }
 
@@ -383,6 +405,8 @@ void semantic_check_for_statement(semantic_analyzer_t* analyzer,
       known_type_t* t = calloc(1, sizeof(known_type_t));
       if (t) {
         *t = inferred;
+        semantic_resolve_type_size(analyzer, t);
+        decl->var_decl.ident.type = *t;
         hashmap_put(for_scope->symbols, decl->var_decl.ident.ident_name, t);
       }
     }
@@ -451,6 +475,8 @@ var_def_put:
             *t = expected_type;
           else
             *t = actual_type;
+          semantic_resolve_type_size(analyzer, t);
+          decl->var_decl.ident.type = *t;
           hashmap_put(
               local_scope->symbols, 
               decl->var_decl.ident.ident_name, t);
@@ -636,6 +662,7 @@ hash_func_put:
           (*it)->struc.members.items[i].ident_name;
         value->members_type[i] =
           (*it)->struc.members.items[i].type;
+        value->total_size += (*it)->struc.members.items[i].type.size;
         actual_count++;
       }
 
