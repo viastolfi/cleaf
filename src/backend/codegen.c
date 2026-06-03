@@ -146,8 +146,10 @@ int CODEGEN_write_function(
             sb, dst, (*it)->offset.size, src);
         break;
       } else {
-        error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED,
-           "unkown offset operation"); 
+        const char* dst = CODEGEN_get_reg(target, (*it)->dest);
+        const char* src = CODEGEN_get_reg(target, (*it)->a);
+        target->emit_mov_offset_post(
+            sb, dst, (*it)->offset.size, src);
         break;
       }
     default:

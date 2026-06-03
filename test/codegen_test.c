@@ -229,3 +229,11 @@ ct_test(codegen_test, struct_var_designated_init, "test/codegen_case/struct_var_
 ct_test(codegen_test, struct_var_designated_init_reordered, "test/codegen_case/struct_var_designated_init_reordered.clf", "test/codegen_case/struct_var_designated_init_reordered.asm") {
   ct_assert_eq(result, 0, "codegen gives right output for reordered designated struct initializer");
 }
+
+ct_test(codegen_test, struct_member_access_first, "test/codegen_case/struct_member_access_first.clf", "test/codegen_case/struct_member_access_first.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for struct member access return (first member, offset 0)");
+}
+
+ct_test(codegen_test, struct_member_access_second, "test/codegen_case/struct_member_access_second.clf", "test/codegen_case/struct_member_access_second.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for struct member access return (second member, offset 8)");
+}

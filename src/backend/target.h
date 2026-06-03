@@ -132,6 +132,11 @@ typedef struct {
       (*emit_mov_offset_pre)
       (string_builder_t*, 
        const char* dst, size_t size, const char* src);
+
+    void
+      (*emit_mov_offset_post)
+      (string_builder_t*, 
+       const char* dst, size_t size, const char* src);
 } target_t;
 
 #endif // TARGET_H

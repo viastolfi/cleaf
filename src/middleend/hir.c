@@ -429,7 +429,7 @@ int HIR_lower_expression(HIR_parser_t* hir,
     }
     da_append(func->code, instr);
 
-    if (expr->var.member) {
+    while (expr->var.member) {
       HIR_instruction_t* instr = 
         calloc(1, sizeof(HIR_instruction_t));
       if (!instr) {
@@ -439,8 +439,29 @@ int HIR_lower_expression(HIR_parser_t* hir,
       instr->kind = HIR_MOV_OFFSET;
       instr->offset.timing = HIR_POST_OFFSET;
 
-      // we need to get the struct def and find at which coordinates is the member we want to access
-              
+      // sym should never be NULL after semantic
+      // hence, we don't check and error report this but this is important to keep in mind in case it segfaults here
+      struct_symbol_t* sym = 
+        hashmap_get(hir->struct_symbols, expr->var.ident.type.name);
+      
+      size_t offset = 0;
+      for (size_t i = 0; i < sym->members_count; ++i) {
+        if (strcmp(
+              expr->var.member->var.ident.ident_name,
+              sym->members_name[i]) == 0) {
+            goto insert_member;
+        }
+
+        offset += sym->members_type[i].size;
+      } 
+
+insert_member:
+      instr->offset.size = offset;
+      instr->a = func->next_temp_id;
+      instr->dest = ++func->next_temp_id;
+      da_append(func->code, instr);
+
+      expr = expr->var.member;
     } 
 
     return 0;
@@ -1044,7 +1065,7 @@ char* HIR_generate_string_program(HIR_function_t* function)
       if (instr->offset.timing == HIR_PRE_OFFSET) {
         sb_append_fmt(&sb, "MOV [t%d + %zu], t%d\n", instr->dest, instr->offset.size, instr->a);
       } else {
-        exit(1); 
+        sb_append_fmt(&sb, "MOV t%d, [t%d + %zu]\n", instr->dest, instr->a, instr->offset.size);
       }
     }
   }

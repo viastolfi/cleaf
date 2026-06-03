@@ -358,3 +358,102 @@ ct_test(semantic_case, struct_member_access_valid, "test/semantic_case/struct_me
   ct_assert_eq(analyzer.error_count, 0, "Should have 0 errors: member 'x' is a valid member of struct v2");
   free_analyzer(&analyzer);
 }
+
+// --- Type write-back and size resolution tests ---
+
+ct_test(semantic_case, type_writeback_inferred_var, "test/semantic_case/var_decl_untyped.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  declaration_t* func_decl = analyzer.ast->items[0];
+  statement_t* stmt = func_decl->func.body->items[0];
+  declaration_t* var_decl = stmt->decl_stmt.decl;
+
+  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_INT,
+      "Inferred var type should be TYPE_INT after write-back");
+  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 8,
+      "Inferred int var size should be 8");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, type_writeback_explicit_var, "test/semantic_case/var_decl_typed.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  declaration_t* func_decl = analyzer.ast->items[0];
+  statement_t* stmt = func_decl->func.body->items[0];
+  declaration_t* var_decl = stmt->decl_stmt.decl;
+
+  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_INT,
+      "Explicit int var type should be TYPE_INT after write-back");
+  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 8,
+      "Explicit int var size should be 8");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_var_type_and_size, "test/semantic_case/struct_member_access_valid.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  // ast->items[1] is the fn main declaration (items[0] is the struct)
+  declaration_t* func_decl = analyzer.ast->items[1];
+  statement_t* stmt = func_decl->func.body->items[0];
+  declaration_t* var_decl = stmt->decl_stmt.decl;
+
+  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_CUSTOM,
+      "Struct var type should be TYPE_CUSTOM after write-back");
+  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 16,
+      "Struct var size should be 16 (2 ints x 8 bytes)");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, for_init_type_writeback, "test/semantic_case/var_for_init_inferred_condition.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  declaration_t* func_decl = analyzer.ast->items[0];
+  statement_t* for_stmt = func_decl->func.body->items[0];
+  declaration_t* init_decl = for_stmt->for_stmt.decl_init;
+
+  ct_assert_not_null(init_decl, "For-init decl should not be null");
+  ct_assert_eq(init_decl->var_decl.ident.type.kind, TYPE_INT,
+      "For-init inferred var type should be TYPE_INT after write-back");
+  ct_assert_eq((int)init_decl->var_decl.ident.type.size, 8,
+      "For-init inferred int var size should be 8");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, member_access_type_annotation, "test/semantic_case/struct_member_access_valid.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  // fn main body: items[0] = var decl, items[1] = return a.x
+  declaration_t* func_decl = analyzer.ast->items[1];
+  statement_t* ret_stmt = func_decl->func.body->items[1];
+  expression_t* expr = ret_stmt->ret.value;
+
+  ct_assert_not_null(expr, "Return expression should not be null");
+  ct_assert_not_null(expr->var.member, "Member expression should not be null");
+
+  ct_assert_eq(expr->var.ident.type.kind, TYPE_CUSTOM,
+      "Member access base 'a' should be annotated as TYPE_CUSTOM (struct)");
+  ct_assert_eq((int)expr->var.ident.type.size, 16,
+      "Member access base 'a' should have size 16");
+  ct_assert_eq(expr->var.member->var.ident.type.kind, TYPE_INT,
+      "Member access '.x' should be annotated as TYPE_INT");
+  ct_assert_eq((int)expr->var.member->var.ident.type.size, 8,
+      "Member access '.x' should have size 8");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_symbol_total_size, "test/semantic_case/struct_definition.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  struct_symbol_t* sym =
+      (struct_symbol_t*) hashmap_get(analyzer.struct_symbols, "v2");
+  ct_assert_not_null(sym, "Struct symbol 'v2' should be in symbol table");
+  ct_assert_eq((int)sym->total_size, 16,
+      "Struct v2 total_size should be 16 (2 int fields x 8 bytes each)");
+
+  free_analyzer(&analyzer);
+}

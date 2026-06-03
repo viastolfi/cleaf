@@ -222,3 +222,11 @@ ct_test(hir_test, struct_var_designated_init, "test/hir_case/struct_var_designat
 ct_test(hir_test, struct_var_designated_init_reordered, "test/hir_case/struct_var_designated_init_reordered.clf", "test/hir_case/struct_var_designated_init_reordered.res") {
   ct_assert_eq(result, 0, "hir parsing gives right output for reordered designated struct initializer");
 }
+
+ct_test(hir_test, struct_member_access_first, "test/hir_case/struct_member_access_first.clf", "test/hir_case/struct_member_access_first.res") {
+  ct_assert_eq(result, 0, "hir parsing gives right output for struct member access (first member)");
+}
+
+ct_test(hir_test, struct_member_access_second, "test/hir_case/struct_member_access_second.clf", "test/hir_case/struct_member_access_second.res") {
+  ct_assert_eq(result, 0, "hir parsing gives right output for struct member access (second member, offset 8)");
+}
