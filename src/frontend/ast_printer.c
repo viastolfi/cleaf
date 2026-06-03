@@ -10,11 +10,17 @@ static const char* type_str(type_kind t)
 {
   switch (t) {
     case TYPE_INT:    return "int";
-    case TYPE_STRING: return "string";
     case TYPE_UNTYPE: return "untyped";
     case TYPE_ERROR:  return "<error>";
+    case TYPE_CUSTOM: return "<custom>";
     default:          return "?";
   }
+}
+
+static void print_known_type(const known_type_t* t)
+{
+  const char* name = (t->kind == TYPE_CUSTOM && t->name) ? t->name : type_str(t->kind);
+  printf(CLR_TYPE "%s" CLR_RESET " " CLR_SIZE "(%zu)" CLR_RESET, name, t->size);
 }
 
 static const char* binary_op_str(binary_op_kind op)
@@ -62,6 +68,23 @@ static void print_statement(statement_t* s, const char* prefix, bool is_last);
 static void print_declaration(declaration_t* d, const char* prefix, bool is_last);
 static void print_block(statement_block_t* block, const char* prefix);
 
+static void print_member(expression_t* e, const char* prefix, bool is_last)
+{
+  if (!e) return;
+
+  char cp[PREFIX_MAX];
+  child_prefix(prefix, is_last, cp);
+
+  print_branch(prefix, is_last);
+  printf(CLR_LIT "Member" CLR_RESET " '%s': ",
+         e->var.ident.ident_name ? 
+         e->var.ident.ident_name : "");
+  print_known_type(&e->var.ident.type);
+  printf("\n");
+  if (e->var.member)
+    print_member(e->var.member, cp, true);
+}
+
 static void print_compound_stmt(statement_block_t* block,
                                 const char* prefix, bool is_last)
 {
@@ -87,14 +110,14 @@ static void print_expression(expression_t* e, const char* prefix, bool is_last)
       printf(CLR_LIT "IntegerLiteral" CLR_RESET " %d\n", e->int_lit.value);
       break;
 
-    case EXPRESSION_STRING_LIT:
-      printf(CLR_LIT "StringLiteral" CLR_RESET " \"%s\"\n",
-             e->string_lit.value ? e->string_lit.value : "");
-      break;
-
     case EXPRESSION_VAR:
-      printf(CLR_LIT "VarRef" CLR_RESET " '%s'\n",
-             e->var.name ? e->var.name : "");
+      printf(CLR_LIT "VarRef" CLR_RESET " '%s': ",
+             e->var.ident.ident_name ? 
+             e->var.ident.ident_name : "");
+      print_known_type(&e->var.ident.type);
+      printf("\n");
+      if (e->var.member)
+        print_member(e->var.member, cp, true);
       break;
 
     case EXPRESSION_BINARY:
@@ -121,6 +144,14 @@ static void print_expression(expression_t* e, const char* prefix, bool is_last)
       printf(CLR_STMT "UnaryExpr" CLR_RESET " '%s'\n",
              unary_op_str(e->unary.op));
       print_expression(e->unary.operand, cp, true);
+      break;
+
+    case EXPRESSION_COMPOSITE_LITERAL:
+      printf(CLR_LIT "CompositeLiteral" CLR_RESET " is_initializer=%s\n",
+             e->composite_literal.is_initializer ? "true" : "false");
+      for (size_t i = 0; i < e->composite_literal.count; i++)
+        print_expression(e->composite_literal.values[i], cp,
+                         i == e->composite_literal.count - 1);
       break;
   }
 }
@@ -230,9 +261,9 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
 
       for (size_t i = 0; i < d->func.params.count; i++) {
         typed_identifier_t* p = &d->func.params.items[i];
-        printf(CLR_TYPE "%s" CLR_RESET " %s%s",
-               type_str(p->type),
-               p->name ? p->name : "",
+        print_known_type(&p->type);
+        printf(" %s%s",
+               p->ident_name ? p->ident_name : "",
                i < d->func.params.count - 1 ? ", " : "");
       }
       printf(")");
@@ -248,12 +279,29 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
     }
 
     case DECLARATION_VAR:
-      printf(CLR_DECL "VarDecl" CLR_RESET " '%s': " CLR_TYPE "%s" CLR_RESET "\n",
-             d->var_decl.ident.name ? d->var_decl.ident.name : "",
-             type_str(d->var_decl.ident.type));
+      printf(CLR_DECL "VarDecl" CLR_RESET " '%s': ",
+             d->var_decl.ident.ident_name ? 
+              d->var_decl.ident.ident_name : "");
+      print_known_type(&d->var_decl.ident.type);
+      printf("\n");
       if (d->var_decl.init)
         print_expression(d->var_decl.init, cp, true);
       break;
+
+    case DECLARATION_STRUCT: {
+      printf(CLR_DECL "StructDecl" CLR_RESET " '%s'\n",
+             d->struc.name ? d->struc.name : "");
+      for (size_t i = 0; i < d->struc.members.count; i++) {
+        typed_identifier_t* m = &d->struc.members.items[i];
+        bool last = (i == d->struc.members.count - 1);
+        print_branch(cp, last);
+        printf(CLR_DECL "FieldDecl" CLR_RESET " '%s': ",
+               m->ident_name ? m->ident_name : "");
+        print_known_type(&m->type);
+        printf("\n");
+      }
+      break;
+    }
   }
 }
 

@@ -9,6 +9,7 @@
 
 #include "../src/frontend/ast_definition.h"
 #include "../src/frontend/ast.h"
+#include "../src/frontend/semantic.h"
 #include "../src/middleend/hir.h"
 #include "../src/thirdparty/error.h"
 
@@ -67,6 +68,9 @@ before_each(int, result, char* file_path, char* expected_path)
 
   free(storage);
 
+  p.types = calloc(1, sizeof(known_type_array));
+  populate_parser_known_type(p.types);
+
   while ((size_t)p.pos < p.count) {
     declaration_t* decl = parse_declaration(&p);
     da_append(program, decl);
@@ -87,10 +91,17 @@ before_each(int, result, char* file_path, char* expected_path)
     abort();
   }
 
+  semantic_analyzer_t analyzer = {0};
+  analyzer.error_ctx  = error_ctx;
+  analyzer.ast        = program;
+  analyzer.error_count = 0;
+  semantic_analyze(&analyzer);
+
   HIR_parser_t hir_parser = {0};
   hir_parser.error_ctx = error_ctx;
   hir_parser.error_count = 0;
   hir_parser.hir_program = hir_program;
+  hir_parser.struct_symbols = analyzer.struct_symbols;
   chunk_counter_t chunk_counter = {0};
   hir_parser.gen_chunk = counter_chunk_gen;
   hir_parser.chunk_ctx = &chunk_counter;
@@ -109,6 +120,8 @@ before_each(int, result, char* file_path, char* expected_path)
     strcat(output, res);
     free(res);
   }
+
+  semantic_free_program_definition(&analyzer);
 
   da_foreach(declaration_t*, it, program) {
     free_declaration(*it);
@@ -192,4 +205,28 @@ ct_test(hir_test, for_stmt, "test/hir_case/for_stmt.clf", "test/hir_case/for_stm
 
 ct_test(hir_test, call, "test/hir_case/call.clf", "test/hir_case/call.res") {
   ct_assert_eq(result, 0, "hir parsing give right output");
+}
+
+ct_test(hir_test, struct_var_allocation, "test/hir_case/struct_var_allocation.clf", "test/hir_case/struct_var_allocation.res") {
+  ct_assert_eq(result, 0, "hit parsing give right output");
+}
+
+ct_test(hir_test, struct_var_zero_init, "test/hir_case/struct_var_zero_init.clf", "test/hir_case/struct_var_zero_init.res") {
+  ct_assert_eq(result, 0, "hir parsing give right output");
+}
+
+ct_test(hir_test, struct_var_designated_init, "test/hir_case/struct_var_designated_init.clf", "test/hir_case/struct_var_designated_init.res") {
+  ct_assert_eq(result, 0, "hir parsing give right output for designated struct initializer");
+}
+
+ct_test(hir_test, struct_var_designated_init_reordered, "test/hir_case/struct_var_designated_init_reordered.clf", "test/hir_case/struct_var_designated_init_reordered.res") {
+  ct_assert_eq(result, 0, "hir parsing gives right output for reordered designated struct initializer");
+}
+
+ct_test(hir_test, struct_member_access_first, "test/hir_case/struct_member_access_first.clf", "test/hir_case/struct_member_access_first.res") {
+  ct_assert_eq(result, 0, "hir parsing gives right output for struct member access (first member)");
+}
+
+ct_test(hir_test, struct_member_access_second, "test/hir_case/struct_member_access_second.clf", "test/hir_case/struct_member_access_second.res") {
+  ct_assert_eq(result, 0, "hir parsing gives right output for struct member access (second member, offset 8)");
 }

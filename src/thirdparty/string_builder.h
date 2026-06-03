@@ -24,7 +24,7 @@ inline static void sb_append_fmt(string_builder_t* sb, const char* fmt, ...)
 
   DA_ASSERT(required >= 0);
 
-  da_reserve(sb, sb->count + required);
+  da_reserve(sb, sb->count + required + 1);
 
   va_start(args, fmt);
   vsnprintf(&sb->items[sb->count], 

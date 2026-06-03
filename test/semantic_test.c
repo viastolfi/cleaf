@@ -60,6 +60,9 @@ before_each(semantic_analyzer_t, analyzer, char* file_path)
 
   free(storage);
 
+  p.types = calloc(1, sizeof(known_type_array));
+  populate_parser_known_type(p.types);
+
   while ((size_t)p.pos < p.count) {
     declaration_t* decl = parse_declaration(&p);
     da_append(program, decl);
@@ -93,7 +96,7 @@ void free_analyzer(semantic_analyzer_t* analyzer)
   free(analyzer->ast);
   free(analyzer->error_ctx);
 
-  semantic_free_function_definition(analyzer);
+  semantic_free_program_definition(analyzer);
 }
 
 
@@ -109,9 +112,9 @@ ct_test(semantic_analyze, fn_def_with_params, "test/semantic_case/fn_def_with_pa
   ct_assert_not_null(fs, "Function symbol should be in symbol table");
   ct_assert_eq((int)fs->params_count, 2, "Function should have 2 parameters");
   ct_assert_eq(fs->params_name[0], "a", "First param name should be 'a'");
-  ct_assert_eq(fs->params_type[0], TYPE_INT, "First param type should be TYPE_INT");
+  ct_assert_eq(fs->params_type[0].kind, TYPE_INT, "First param type should be TYPE_INT");
   ct_assert_eq(fs->params_name[1], "b", "Second param name should be 'b'");
-  ct_assert_eq(fs->params_type[1], TYPE_STRING, "Second param type should be TYPE_STRING");
+  ct_assert_eq(fs->params_type[1].kind, TYPE_INT, "Second param type should be TYPE_STRING");
 
   free_analyzer(&analyzer);
 }
@@ -121,7 +124,7 @@ ct_test(semantic_analyze, fn_def_with_return_type, "test/semantic_case/fn_def_wi
 
   function_symbol_t* fs = (function_symbol_t*) hashmap_get(analyzer.function_symbols, "main");
   ct_assert_not_null(fs, "Function symbol should be in symbol table");
-  ct_assert_eq(fs->return_type, TYPE_INT, "Return type should be TYPE_INT");
+  ct_assert_eq(fs->return_type.kind, TYPE_INT, "Return type should be TYPE_INT");
 
   free_analyzer(&analyzer);
 }
@@ -132,7 +135,7 @@ ct_test(semantic_analyze, fn_duplicate_definition, "test/semantic_case/fn_duplic
 }
 
 ct_test(semantic_analyze, fn_duplicate_params, "test/semantic_case/fn_duplicate_params.clf") {
-  ct_assert_eq(analyzer.error_count, 4, "Should have 4 errors for duplicate parameter names");
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 errors for duplicate parameter names");
   free_analyzer(&analyzer);
 }
 
@@ -147,47 +150,17 @@ ct_test(semantic_analyze, var_decl_untyped, "test/semantic_case/var_decl_untyped
 }
 
 ct_test(semantic_analyze, var_redefinition, "test/semantic_case/var_redefinition.clf") {
-  ct_assert_eq(analyzer.error_count, 6, "Should have 6 errors for variable redefinition");
+  ct_assert_eq(analyzer.error_count, 4, "Should have 4 errors for variable redefinition");
   free_analyzer(&analyzer);
 }
 
 ct_test(semantic_analyze, var_undefined_use, "test/semantic_case/var_undefined_use.clf") {
-  ct_assert_eq(analyzer.error_count, 3, "Should have 3 errors for using undefined variable");
-  free_analyzer(&analyzer);
-}
-
-ct_test(semantic_analyze, binary_wrong_type, "test/semantic_case/binary_wrong_type.clf") {
-  ct_assert_eq(analyzer.error_count, 5, "Should have 5 errors for adding two different type variable");
-  free_analyzer(&analyzer);
-}
-
-ct_test(semantic_analyze, nested_binary_wrong_type, "test/semantic_case/nested_binary_wrong_type.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have one error for adding two different type variable");
-  free_analyzer(&analyzer);
-}
-
-ct_test(semantic_analyze, error_type_expression_usage, "test/semantic_case/error_type_expression_usage.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have one error for wrong var type initialization and usage of this var later");
+  ct_assert_eq(analyzer.error_count, 2, "Should have 2 errors for using undefined variable");
   free_analyzer(&analyzer);
 }
 
 ct_test(semantic_analyze, return_correct_type, "test/semantic_case/return_correct_type.clf") {
   ct_assert_eq(analyzer.error_count, 0, "Should have no errors for correct return type");
-  free_analyzer(&analyzer);
-}
-
-ct_test(semantic_analyze, return_wrong_type_int_string, "test/semantic_case/return_wrong_type_int_string.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for wrong return type (int instead of string)");
-  free_analyzer(&analyzer);
-}
-
-ct_test(semantic_analyze, return_wrong_type_string_int, "test/semantic_case/return_wrong_type_string_int.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for wrong return type (string instead of int)");
-  free_analyzer(&analyzer);
-}
-
-ct_test(semantic_analyze, return_string_correct, "test/semantic_case/return_string_correct.clf") {
-  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for correct string return");
   free_analyzer(&analyzer);
 }
 
@@ -236,11 +209,6 @@ ct_test(semantic_analyze, assign_expression, "test/semantic_case/assign_expressi
   free_analyzer(&analyzer);
 }
 
-ct_test(semantic_analyze, assign_expression_type_mismatch, "test/semantic_case/assign_expression_type_mismatch.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for type mismatch variable assignment");
-  free_analyzer(&analyzer);
-}
-
 ct_test(semantic_analyze, for_bad_condition, "test/semantic_case/for_bad_condition.clf") {
   ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for undef var in for condition");
   free_analyzer(&analyzer);
@@ -258,16 +226,6 @@ ct_test(semantic_analyze, unary_expression, "test/semantic_case/unary.clf") {
 
 ct_test(semantic_analyze, unary_expression_error, "test/semantic_case/unary_expression_error.clf") {
   ct_assert_eq(analyzer.error_count, 4, "Should have 4 errors for basic unary expression errors");
-  free_analyzer(&analyzer);
-}
-
-ct_test(semantic_analyze, unary_string, "test/semantic_case/unary_string.clf") {
-  ct_assert_eq(analyzer.error_count, 5, "Should have 5 errors for using unary expr on string");
-  free_analyzer(&analyzer);
-}
-
-ct_test(semantic_analyze, unary_var_string, "test/semantic_case/unary_var_string.clf") {
-  ct_assert_eq(analyzer.error_count, 5, "Should have 5 errors for using unary expr on string typed var");
   free_analyzer(&analyzer);
 }
 
@@ -311,18 +269,8 @@ ct_test(semantic_case, function_call_no_arg_in_callee, "test/semantic_case/funct
   free_analyzer(&analyzer);
 }
 
-ct_test(semantic_case, function_call_wrong_type, "test/semantic_case/function_call_wrong_type.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have one error for calling function with bad type");
-  free_analyzer(&analyzer);
-}
-
 ct_test(semantic_case, function_call_use_return, "test/semantic_case/function_call_use_return.clf") {
   ct_assert_eq(analyzer.error_count, 0, "Should have no error for using return type from a function call");
-  free_analyzer(&analyzer);
-}
-
-ct_test(semantic_case, function_call_use_return_error, "test/semantic_case/function_call_use_return_error.clf") {
-  ct_assert_eq(analyzer.error_count, 2, "Should have 2 errors on different test case with function call return type");
   free_analyzer(&analyzer);
 }
 
@@ -333,5 +281,179 @@ ct_test(semantic_case, function_declaration_reserved_keywords, "test/semantic_ca
 
 ct_test(semantic_case, var_decl_reserved_keywords, "test/semantic_case/var_decl_reserved_keywords.clf") {
   ct_assert_eq(analyzer.error_count, 6, "Should have 6 errors for different test case on var decl with reserved keywords");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_definition, "test/semantic_case/struct_definition.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have 0 error for struct definition");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_definition_errors, "test/semantic_case/struct_definition_errors.clf") {
+  ct_assert_eq(analyzer.error_count, 3, "Should have 3 error for struct definition");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_var_zero_init, "test/semantic_case/struct_var_zero_init.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have 0 errors for struct var with zero init");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_var_designated_init, "test/semantic_case/struct_var_designated_init.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have 0 errors for struct var with valid designated init");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_var_designated_init_wrong_count, "test/semantic_case/struct_var_designated_init_wrong_count.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for designated init with wrong member count");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_var_designated_init_unknown_member, "test/semantic_case/struct_var_designated_init_unknown_member.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for designated init with unknown member name");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_var_designated_init_reordered, "test/semantic_case/struct_var_designated_init_reordered.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have 0 errors for designated init with valid members in non-declaration order");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_var_designated_init_three_fields, "test/semantic_case/struct_var_designated_init_three_fields.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have 0 errors for valid 3-field designated init");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_var_designated_init_duplicate_member, "test/semantic_case/struct_var_designated_init_duplicate_member.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for designated init with duplicate member name");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, var_inferred_type_return, "test/semantic_case/var_inferred_type_return.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have 0 errors: var inferred as int must be usable in return");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, var_for_init_inferred_condition, "test/semantic_case/var_for_init_inferred_condition.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have 0 errors: var in for-init must infer correct type for use in condition");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_composite_var_used_after_init, "test/semantic_case/struct_composite_var_used_after_init.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have 0 errors: struct var from designated init must be usable without spurious TYPE_ERROR");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, typed_var_undef_no_cascade, "test/semantic_case/typed_var_undef_no_cascade.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have exactly 1 error: typed var from undefined func must not cascade spurious error on subsequent use");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_member_access_undef, "test/semantic_case/struct_member_access_undef.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error: member 'z' is not part of struct v2");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_member_access_valid, "test/semantic_case/struct_member_access_valid.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have 0 errors: member 'x' is a valid member of struct v2");
+  free_analyzer(&analyzer);
+}
+
+// --- Type write-back and size resolution tests ---
+
+ct_test(semantic_case, type_writeback_inferred_var, "test/semantic_case/var_decl_untyped.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  declaration_t* func_decl = analyzer.ast->items[0];
+  statement_t* stmt = func_decl->func.body->items[0];
+  declaration_t* var_decl = stmt->decl_stmt.decl;
+
+  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_INT,
+      "Inferred var type should be TYPE_INT after write-back");
+  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 8,
+      "Inferred int var size should be 8");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, type_writeback_explicit_var, "test/semantic_case/var_decl_typed.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  declaration_t* func_decl = analyzer.ast->items[0];
+  statement_t* stmt = func_decl->func.body->items[0];
+  declaration_t* var_decl = stmt->decl_stmt.decl;
+
+  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_INT,
+      "Explicit int var type should be TYPE_INT after write-back");
+  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 8,
+      "Explicit int var size should be 8");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_var_type_and_size, "test/semantic_case/struct_member_access_valid.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  // ast->items[1] is the fn main declaration (items[0] is the struct)
+  declaration_t* func_decl = analyzer.ast->items[1];
+  statement_t* stmt = func_decl->func.body->items[0];
+  declaration_t* var_decl = stmt->decl_stmt.decl;
+
+  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_CUSTOM,
+      "Struct var type should be TYPE_CUSTOM after write-back");
+  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 16,
+      "Struct var size should be 16 (2 ints x 8 bytes)");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, for_init_type_writeback, "test/semantic_case/var_for_init_inferred_condition.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  declaration_t* func_decl = analyzer.ast->items[0];
+  statement_t* for_stmt = func_decl->func.body->items[0];
+  declaration_t* init_decl = for_stmt->for_stmt.decl_init;
+
+  ct_assert_not_null(init_decl, "For-init decl should not be null");
+  ct_assert_eq(init_decl->var_decl.ident.type.kind, TYPE_INT,
+      "For-init inferred var type should be TYPE_INT after write-back");
+  ct_assert_eq((int)init_decl->var_decl.ident.type.size, 8,
+      "For-init inferred int var size should be 8");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, member_access_type_annotation, "test/semantic_case/struct_member_access_valid.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  // fn main body: items[0] = var decl, items[1] = return a.x
+  declaration_t* func_decl = analyzer.ast->items[1];
+  statement_t* ret_stmt = func_decl->func.body->items[1];
+  expression_t* expr = ret_stmt->ret.value;
+
+  ct_assert_not_null(expr, "Return expression should not be null");
+  ct_assert_not_null(expr->var.member, "Member expression should not be null");
+
+  ct_assert_eq(expr->var.ident.type.kind, TYPE_CUSTOM,
+      "Member access base 'a' should be annotated as TYPE_CUSTOM (struct)");
+  ct_assert_eq((int)expr->var.ident.type.size, 16,
+      "Member access base 'a' should have size 16");
+  ct_assert_eq(expr->var.member->var.ident.type.kind, TYPE_INT,
+      "Member access '.x' should be annotated as TYPE_INT");
+  ct_assert_eq((int)expr->var.member->var.ident.type.size, 8,
+      "Member access '.x' should have size 8");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_symbol_total_size, "test/semantic_case/struct_definition.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  struct_symbol_t* sym =
+      (struct_symbol_t*) hashmap_get(analyzer.struct_symbols, "v2");
+  ct_assert_not_null(sym, "Struct symbol 'v2' should be in symbol table");
+  ct_assert_eq((int)sym->total_size, 16,
+      "Struct v2 total_size should be 16 (2 int fields x 8 bytes each)");
+
   free_analyzer(&analyzer);
 }

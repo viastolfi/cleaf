@@ -62,6 +62,9 @@ before_each(int, result, char* file_path, char* expected_path)
   free(storage);
 
   // --- Parse ---
+  p.types = calloc(1, sizeof(known_type_array));
+  populate_parser_known_type(p.types);
+
   declaration_array* program = calloc(1, sizeof(declaration_array));
   if (!program) abort();
   while ((size_t)p.pos < p.count) {
@@ -85,7 +88,6 @@ before_each(int, result, char* file_path, char* expected_path)
   analyzer.error_ctx = error_ctx;
   analyzer.ast = program;
   semantic_analyze(&analyzer);
-  semantic_free_function_definition(&analyzer);
   if (analyzer.error_count > 0) {
     fprintf(stderr, "semantic error(s) in: %s\n", file_path);
     abort();
@@ -98,6 +100,7 @@ before_each(int, result, char* file_path, char* expected_path)
   HIR_parser_t hir_parser = {0};
   hir_parser.error_ctx = error_ctx;
   hir_parser.hir_program = hir_program;
+  hir_parser.struct_symbols = analyzer.struct_symbols;
   chunk_counter_t chunk_counter = {0};
   hir_parser.gen_chunk = counter_chunk_gen;
   hir_parser.chunk_ctx = &chunk_counter;
@@ -124,6 +127,8 @@ before_each(int, result, char* file_path, char* expected_path)
   }
   da_free(hir_program);
   free(hir_program);
+
+  semantic_free_program_definition(&analyzer);
 
   da_foreach(declaration_t*, it, program) {
     free_declaration(*it);
@@ -211,4 +216,24 @@ ct_test(codegen_test, for_stmt, "test/codegen_case/for_stmt.clf", "test/codegen_
 
 ct_test(codegen_test, call, "test/codegen_case/call.clf", "test/codegen_case/call.asm") {
   ct_assert_eq(result, 0, "codegen gives right output");
+}
+
+ct_test(codegen_test, struct_var_allocation, "test/codegen_case/struct_var_allocation.clf", "test/codegen_case/struct_var_allocation.res") {
+  ct_assert_eq(result, 0, "hit parsing give right output");
+}
+
+ct_test(codegen_test, struct_var_designated_init, "test/codegen_case/struct_var_designated_init.clf", "test/codegen_case/struct_var_designated_init.res") {
+  ct_assert_eq(result, 0, "codegen gives right output for designated struct initializer");
+}
+
+ct_test(codegen_test, struct_var_designated_init_reordered, "test/codegen_case/struct_var_designated_init_reordered.clf", "test/codegen_case/struct_var_designated_init_reordered.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for reordered designated struct initializer");
+}
+
+ct_test(codegen_test, struct_member_access_first, "test/codegen_case/struct_member_access_first.clf", "test/codegen_case/struct_member_access_first.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for struct member access return (first member, offset 0)");
+}
+
+ct_test(codegen_test, struct_member_access_second, "test/codegen_case/struct_member_access_second.clf", "test/codegen_case/struct_member_access_second.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for struct member access return (second member, offset 8)");
 }

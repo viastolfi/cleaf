@@ -4,6 +4,8 @@
 #include "../frontend/ast_definition.h"
 #include "../thirdparty/rand.h"
 #include "../thirdparty/error.h"
+#include "../thirdparty/hashmap.h"
+#include "../frontend/symbols.h"
 
 typedef void (*chunk_name_gen_t)(void* ctx, char* out);
 
@@ -18,11 +20,11 @@ typedef enum
   HIR_NOP,
 
   HIR_MOV,
+  HIR_MOV_OFFSET,
 
   HIR_CHUNK,
 
   HIR_INT_CONST,
-  HIR_STRING_CONST,
 
   HIR_BINARY,
 
@@ -43,6 +45,8 @@ typedef enum
   HIR_RETURN,
   HIR_EXIT,
 
+  HIR_ALLOC,
+
   HIR_CALL
 } HIR_instruction_kind;
 
@@ -53,6 +57,12 @@ typedef enum
   HIR_BINARY_MUL,
   HIR_BINARY_CMP,
 } HIR_binary_kind;
+
+typedef enum 
+{
+  HIR_PRE_OFFSET,
+  HIR_POST_OFFSET,
+} HIR_offset_timing;
 
 typedef int HIR_temp_id;
 
@@ -65,12 +75,17 @@ typedef struct
 
   union {
     int int_value;
-    char* string_value; 
+    size_t alloc_size;
 
     struct {
       char* name;
       int is_init;
     } var;
+
+    struct {
+      HIR_offset_timing timing;
+      size_t size;
+    } offset;
 
     HIR_binary_kind binary_op;
 
@@ -112,6 +127,7 @@ typedef struct
   chunk_name_gen_t gen_chunk;
   void* chunk_ctx;
 
+  hashmap_t* struct_symbols;
   HIR_function_array* hir_program;
 } HIR_parser_t;
 

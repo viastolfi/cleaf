@@ -17,6 +17,8 @@ typedef struct
   size_t capacity;
 
   int pos;
+
+  known_type_array* types;
   
   error_context_t* error_ctx;
 } parser_t;
@@ -37,11 +39,15 @@ bool check_is_type(parser_t* p);
 // If yes, advance pos
 bool expect(parser_t* p, long kind, char* err);
 
-type_kind get_type_kind_from_string(char* type_string);
+known_type_t* get_type_info_from_string(
+    parser_t* p,
+    const char* type_string);
+type_kind get_type_kind_from_string(parser_t* p, char* type_string);
 
 declaration_t* ast_parse_function(parser_t* p);
 declaration_t* ast_parse_var_decl(parser_t* p);
 declaration_t* ast_parse_untype_var_decl(parser_t* p);
+declaration_t* ast_parse_struct_decl(parser_t* p);
 declaration_t* parse_declaration(parser_t* p);
 
 statement_t*   ast_parse_return_stmt(parser_t* p);
@@ -63,6 +69,9 @@ expression_t*  ast_parse_expr_binary(parser_t* p,
 expression_t*  ast_parse_expr_comparison_binary(parser_t* p);
 expression_t*  ast_parse_expr_call(parser_t* p);
 expression_t*  ast_parse_expr_unary(parser_t* p);
+expression_t*  ast_parse_expr_composite_literal(parser_t* p);
+
+void populate_parser_known_type(known_type_array* types);
 
 void free_declaration(declaration_t* d);
 void free_statement(statement_t* s);

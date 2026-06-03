@@ -27,7 +27,7 @@ static inline scope_t* scope_enter(scope_t* parent)
 static inline void scope_exit(scope_t* scope) {
   if (scope) {
     if (scope->symbols) {
-      hashmap_free(scope->symbols, 0);
+      hashmap_free(scope->symbols, 1);
       free(scope->symbols);
     }
     free(scope);

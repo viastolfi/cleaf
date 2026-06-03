@@ -28,6 +28,9 @@ before_each(parser_t, parser, char* source_code)
     da_append(&p, t);
   }
 
+  p.types = calloc(1, sizeof(known_type_array));
+  populate_parser_known_type(p.types);
+
   free(storage);
   parser = p;
 }
@@ -58,7 +61,7 @@ ct_test(ast, fn_ret_type, "fn main(): int {}")
   da_free(&parser);
 }
 
-ct_test(ast, fn_params, "fn main(int a, string b) {}")
+ct_test(ast, fn_params, "fn main(int a, int b) {}")
 {
   declaration_t* decl = parse_declaration(&parser);
   ct_assert_not_null(decl, "Declaration should not be NULL");
@@ -67,11 +70,11 @@ ct_test(ast, fn_params, "fn main(int a, string b) {}")
   typed_identifier_t p1 = decl->func.params.items[0];
   typed_identifier_t p2 = decl->func.params.items[1];
 
-  ct_assert_eq(p1.name, "a", "First parameter name should be 'a'");
-  ct_assert_eq(p1.type, TYPE_INT, "First parameter type should be TYPE_INT");
+  ct_assert_eq(p1.ident_name, "a", "First parameter name should be 'a'");
+  ct_assert_eq(p1.type.kind, TYPE_INT, "First parameter type should be TYPE_INT");
 
-  ct_assert_eq(p2.name, "b", "Second parameter name should be 'b'");
-  ct_assert_eq(p2.type, TYPE_STRING, "Second parameter type should be TYPE_STRING");
+  ct_assert_eq(p2.ident_name, "b", "Second parameter name should be 'b'");
+  ct_assert_eq(p2.type.kind, TYPE_INT, "Second parameter type should be TYPE_INT");
 
   free_declaration(decl);
   da_free(&parser);
@@ -83,24 +86,11 @@ ct_test(ast, typed_int_var, "int i = 3;")
 {
   declaration_t* decl = parse_declaration(&parser);
 
-  ct_assert_eq(decl->var_decl.ident.name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type, TYPE_INT, "Variable type should be TYPE_INT");
+  ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
+  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_INT, "Variable type should be TYPE_INT");
   ct_assert_not_null(decl->var_decl.init, "Variable init expression should not be NULL");
   ct_assert_eq(decl->var_decl.init->type, EXPRESSION_INT_LIT, "Init expression should be INT literal");
   ct_assert_eq(decl->var_decl.init->int_lit.value, 3, "Init int value should be 3");
-
-  free_declaration(decl);
-  da_free(&parser);
-}
-
-ct_test(ast, typed_string_var, "string i = \"test\";")
-{
-  declaration_t* decl = parse_declaration(&parser);
-
-  ct_assert_eq(decl->var_decl.ident.name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type, TYPE_STRING, "Variable type should be TYPE_STRING");
-  ct_assert_eq(decl->var_decl.init->type, EXPRESSION_STRING_LIT, "Init expression should be STRING literal");
-  ct_assert_eq(decl->var_decl.init->string_lit.value, "test", "Init string literal should be 'test'");
 
   free_declaration(decl);
   da_free(&parser);
@@ -111,8 +101,8 @@ ct_test(ast, untyped_var_decl, "var i = 3;")
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_eq(decl->type, DECLARATION_VAR, "Declaration type should be VAR");
-  ct_assert_eq(decl->var_decl.ident.name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type, TYPE_UNTYPE, "Variable type should be UNTYPE");
+  ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
+  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_UNTYPE, "Variable type should be UNTYPE");
   ct_assert_eq(decl->var_decl.init->type, EXPRESSION_INT_LIT, "Init expression should be INT literal");
   ct_assert_eq(decl->var_decl.init->int_lit.value, 3, "Init int literal value should be 3");
 
@@ -125,8 +115,8 @@ ct_test(ast, uninitialized_var_decl, "var i;")
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_eq(decl->type, DECLARATION_VAR, "Declaration type should be VAR");
-  ct_assert_eq(decl->var_decl.ident.name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type, TYPE_UNTYPE, "Variable type should be UNTYPE");
+  ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
+  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_UNTYPE, "Variable type should be UNTYPE");
   ct_assert(!decl->var_decl.init, "Init expression should be NULL for uninitialized var");
 
   free_declaration(decl);
@@ -147,25 +137,13 @@ ct_test(ast, return_int, "return 1;")
   da_free(&parser);
 }
 
-ct_test(ast, return_string, "return \"test\";")
-{
-  statement_t* s = parse_statement(&parser);
-
-  ct_assert_eq(s->type, STATEMENT_RETURN, "Statement should be RETURN");
-  ct_assert_eq(s->ret.value->type, EXPRESSION_STRING_LIT, "Return expression should be STRING literal");
-  ct_assert_eq(s->ret.value->string_lit.value, "test", "Return string literal should be 'test'");
-
-  free_statement(s);
-  da_free(&parser);
-}
-
 ct_test(ast, return_var, "return a;")
 {
   statement_t* s = parse_statement(&parser);
 
   ct_assert_eq(s->type, STATEMENT_RETURN, "Statement should be RETURN");
   ct_assert_eq(s->ret.value->type, EXPRESSION_VAR, "Return expression should be VAR");
-  ct_assert_eq(s->ret.value->var.name, "a", "Returned var name should be 'a'");
+  ct_assert_eq(s->ret.value->var.ident.ident_name, "a", "Returned var name should be 'a'");
 
   free_statement(s);
   da_free(&parser);
@@ -179,7 +157,7 @@ ct_test(ast, expr_assign, "i = 4;")
   expression_t* e = s->expr_stmt.expr;
 
   ct_assert_eq(e->type, EXPRESSION_ASSIGN, "Expression should be ASSIGN");
-  ct_assert_eq(e->assign.lhs->var.name, "i", "LHS var name should be 'i'");
+  ct_assert_eq(e->assign.lhs->var.ident.ident_name, "i", "LHS var name should be 'i'");
   ct_assert_eq(e->assign.rhs->int_lit.value, 4, "RHS int literal value should be 4");
 
   free_statement(s);
@@ -193,7 +171,7 @@ ct_test(ast, expr_binary, "i + 4;")
 
   ct_assert_eq(e->type, EXPRESSION_BINARY, "Expression type should be BINARY");
   ct_assert_eq(e->binary.op, BINARY_ADD, "Binary op should be ADD");
-  ct_assert_eq(e->binary.left->var.name, "i", "Left operand var should be 'i'");
+  ct_assert_eq(e->binary.left->var.ident.ident_name, "i", "Left operand var should be 'i'");
   ct_assert_eq(e->binary.right->int_lit.value, 4, "Right operand value should be 4");
 
   free_statement(s);
@@ -207,25 +185,24 @@ ct_test(ast, expr_binary_gt, "i > 5;")
 
   ct_assert_eq(e->type, EXPRESSION_BINARY, "Expression type should be BINARY");
   ct_assert_eq(e->binary.op, BINARY_GT, "Binary op should be GT");
-  ct_assert_eq(e->binary.left->var.name, "i", "Left operand var should be 'i'");
+  ct_assert_eq(e->binary.left->var.ident.ident_name, "i", "Left operand var should be 'i'");
   ct_assert_eq(e->binary.right->int_lit.value, 5, "Right operand value should be 5");
 
   free_statement(s);
   da_free(&parser);
 }
 
-ct_test(ast, function_call, "test(a, 5, \"test\");")
+ct_test(ast, function_call, "test(a, 5);")
 {
   statement_t* s = parse_statement(&parser);
   expression_t* e = s->expr_stmt.expr;
 
   ct_assert_eq(e->type, EXPRESSION_CALL, "Expression type should be CALL");
   ct_assert_eq(e->call.callee, "test", "Function name should be 'test'");
-  ct_assert_eq((int)e->call.arg_count, 3, "Function call should have 3 args");
+  ct_assert_eq((int)e->call.arg_count, 2, "Function call should have 3 args");
 
-  ct_assert_eq(e->call.args[0]->var.name, "a", "Arg1 should be var 'a'");
+  ct_assert_eq(e->call.args[0]->var.ident.ident_name, "a", "Arg1 should be var 'a'");
   ct_assert_eq(e->call.args[1]->int_lit.value, 5, "Arg2 should be int 5");
-  ct_assert_eq(e->call.args[2]->string_lit.value, "test", "Arg3 should be string 'test'");
 
   free_statement(s);
   da_free(&parser);
@@ -238,7 +215,7 @@ ct_test(ast, unary_pre_inc, "++i;")
 
   ct_assert_eq(e->type, EXPRESSION_UNARY, "Expression type should be UNARY");
   ct_assert_eq(e->unary.op, UNARY_PRE_INC, "Unary op should be PRE_INC");
-  ct_assert_eq(e->unary.operand->var.name, "i", "Unary operand name should be 'i'");
+  ct_assert_eq(e->unary.operand->var.ident.ident_name, "i", "Unary operand name should be 'i'");
 
   free_statement(s);
   da_free(&parser);
@@ -251,7 +228,7 @@ ct_test(ast, unary_post_dec, "i--;")
 
   ct_assert_eq(e->type, EXPRESSION_UNARY, "Expression type should be UNARY");
   ct_assert_eq(e->unary.op, UNARY_POST_DEC, "Unary op should be POST_DEC");
-  ct_assert_eq(e->unary.operand->var.name, "i", "Unary operand name should be 'i'");
+  ct_assert_eq(e->unary.operand->var.ident.ident_name, "i", "Unary operand name should be 'i'");
 
   free_statement(s);
   da_free(&parser);
@@ -264,7 +241,7 @@ ct_test(ast, unary_single_char, "!i;")
 
   ct_assert_eq(e->type, EXPRESSION_UNARY, "Expression type should be UNARY");
   ct_assert_eq(e->unary.op, UNARY_NOT, "Unary op should be NOT");
-  ct_assert_eq(e->unary.operand->var.name, "i", "Unary operand name should be 'i'");
+  ct_assert_eq(e->unary.operand->var.ident.ident_name, "i", "Unary operand name should be 'i'");
 
   free_statement(s);
   da_free(&parser);
@@ -280,7 +257,7 @@ ct_test(ast, if_statement, "if (a == 4) { a = 3; } else { a = 4; }")
 
   ct_assert_eq(cond->type, EXPRESSION_BINARY, "Condition should be BINARY expression");
   ct_assert_eq(cond->binary.op, BINARY_EQ, "Binary op should be EQ");
-  ct_assert_eq(cond->binary.left->var.name, "a", "LHS var name should be 'a'");
+  ct_assert_eq(cond->binary.left->var.ident.ident_name, "a", "LHS var name should be 'a'");
   ct_assert_eq(cond->binary.right->int_lit.value, 4, "RHS literal should be 4");
 
   statement_t* then_stmt = s->if_stmt.then_branch->items[0];
@@ -301,12 +278,12 @@ ct_test(ast, while_statement, "while (i == 10) { i = 3; }")
 
   ct_assert_eq(cond->type, EXPRESSION_BINARY, "Condition should be BINARY expression");
   ct_assert_eq(cond->binary.op, BINARY_EQ, "Binary op should be EQ");
-  ct_assert_eq(cond->binary.left->var.name, "i", "LHS var name should be 'i'");
+  ct_assert_eq(cond->binary.left->var.ident.ident_name, "i", "LHS var name should be 'i'");
   ct_assert_eq(cond->binary.right->int_lit.value, 10, "RHS literal should be 10");
 
   statement_t* body = s->while_stmt.body->items[0];
 
-  ct_assert_eq(body->expr_stmt.expr->assign.lhs->var.name, "i", "LHS var name should be 'i'");
+  ct_assert_eq(body->expr_stmt.expr->assign.lhs->var.ident.ident_name, "i", "LHS var name should be 'i'");
   ct_assert_eq(body->expr_stmt.expr->assign.rhs->int_lit.value, 3, "RHS literal value should be 3");
 
   free_statement(s);
@@ -336,3 +313,119 @@ ct_test(ast, var_function_param, "fn main(var a): int { return a; }")
   declaration_t* decl = parse_declaration(&parser);
   ct_assert_null(decl, "Decl should be NULL");
 }
+
+ct_test(ast, struct_declaration, "struct v2 { int a; int b; }") 
+{
+  declaration_t* decl = parse_declaration(&parser);
+  ct_assert_not_null(decl, "struct decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_STRUCT, "decl type should be DECLARATION_STRUCT");
+  ct_assert_not_null(decl->struc.name, "struct name should not be NULL");
+  ct_assert_eq(decl->struc.name, "v2", "struct name should be the same as writted in code");
+  ct_assert_eq(decl->struc.members.count, 2, "struct should have two members");
+  ct_assert_not_null(decl->struc.members.items[0].ident_name, "first struct member name should not be NULL");
+  ct_assert_eq(decl->struc.members.items[0].ident_name, "a", "first struct member should have same name as defined in code");
+  ct_assert_eq(decl->struc.members.items[0].type.kind, TYPE_INT, "first struct member should have same type as declared in code");
+  ct_assert_not_null(decl->struc.members.items[1].ident_name, "second struct member name should not be NULL");
+  ct_assert_eq(decl->struc.members.items[1].ident_name, "b", "second struct member should have same name as defined in code");
+  ct_assert_eq(decl->struc.members.items[1].type.kind, TYPE_INT, "second struct member should have same type as declared in code");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, struct_declaration_var, "struct v1 { var a; int b }")
+{
+  declaration_t* decl = parse_declaration(&parser);
+  ct_assert_null(decl, "decl should be NULL if defined with 'var' as one of its member");
+
+  da_free(&parser);
+}
+
+ct_test(ast, struct_declaration_unknown_type, "struct v2 { dump a; int b; }") 
+{
+  declaration_t* decl = parse_declaration(&parser);
+  ct_assert_null(decl, "decl should be NULL if defined with unkown type as one of its member");
+
+  da_free(&parser);
+}
+
+ct_test(ast, struct_var_zero_init, "struct v2 { int a; int b; } v2 a = { 0 };")
+{
+  declaration_t* struct_decl = parse_declaration(&parser);
+  ct_assert_not_null(struct_decl, "struct decl should not be NULL");
+
+  declaration_t* decl = parse_declaration(&parser);
+  ct_assert_not_null(decl, "var decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_VAR, "declaration type should be VAR");
+  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_CUSTOM, "var type should be TYPE_CUSTOM");
+  ct_assert_not_null(decl->var_decl.init, "init expression should not be NULL");
+  ct_assert_eq(decl->var_decl.init->type, EXPRESSION_COMPOSITE_LITERAL, "init expression should be COMPOSITE_LITERAL");
+  ct_assert_eq((int)decl->var_decl.init->composite_literal.is_initializer, 0, "is_initializer should be false for zero init");
+
+  free_declaration(struct_decl);
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, struct_var_designated_init, "struct v2 { int a; int b; } v2 a = { .a = 1, .b = 2 };")
+{
+  declaration_t* struct_decl = parse_declaration(&parser);
+  ct_assert_not_null(struct_decl, "struct decl should not be NULL");
+
+  declaration_t* decl = parse_declaration(&parser);
+  ct_assert_not_null(decl, "var decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_VAR, "declaration type should be VAR");
+  ct_assert_not_null(decl->var_decl.init, "init expression should not be NULL");
+  ct_assert_eq(decl->var_decl.init->type, EXPRESSION_COMPOSITE_LITERAL, "init should be COMPOSITE_LITERAL");
+  ct_assert_eq((int)decl->var_decl.init->composite_literal.is_initializer, 1, "is_initializer should be true for designated init");
+  ct_assert_eq((int)decl->var_decl.init->composite_literal.count, 2, "should have 2 field assignments");
+  ct_assert_eq(decl->var_decl.init->composite_literal.values[0]->assign.lhs->var.ident.ident_name, "a", "first field name should be 'a'");
+  ct_assert_eq(decl->var_decl.init->composite_literal.values[0]->assign.rhs->int_lit.value, 1, "first field value should be 1");
+  ct_assert_eq(decl->var_decl.init->composite_literal.values[1]->assign.lhs->var.ident.ident_name, "b", "second field name should be 'b'");
+  ct_assert_eq(decl->var_decl.init->composite_literal.values[1]->assign.rhs->int_lit.value, 2, "second field value should be 2");
+
+  free_declaration(struct_decl);
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, struct_var_designated_init_single, "struct v1 { int x; } v1 a = { .x = 42 };")
+{
+  declaration_t* struct_decl = parse_declaration(&parser);
+  ct_assert_not_null(struct_decl, "struct decl should not be NULL");
+
+  declaration_t* decl = parse_declaration(&parser);
+  ct_assert_not_null(decl, "var decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_VAR, "declaration type should be VAR");
+  ct_assert_not_null(decl->var_decl.init, "init expression should not be NULL");
+  ct_assert_eq(decl->var_decl.init->type, EXPRESSION_COMPOSITE_LITERAL, "init should be COMPOSITE_LITERAL");
+  ct_assert_eq((int)decl->var_decl.init->composite_literal.is_initializer, 1, "is_initializer should be true for designated init");
+  ct_assert_eq((int)decl->var_decl.init->composite_literal.count, 1, "should have exactly 1 field assignment");
+  ct_assert_eq(decl->var_decl.init->composite_literal.values[0]->assign.lhs->var.ident.ident_name, "x", "field name should be 'x'");
+  ct_assert_eq(decl->var_decl.init->composite_literal.values[0]->assign.rhs->int_lit.value, 42, "field value should be 42");
+
+  free_declaration(struct_decl);
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, struct_var_designated_init_three_fields, "struct v3 { int a; int b; int c; } v3 s = { .a = 1, .b = 2, .c = 3 };")
+{
+  declaration_t* struct_decl = parse_declaration(&parser);
+  ct_assert_not_null(struct_decl, "struct decl should not be NULL");
+
+  declaration_t* decl = parse_declaration(&parser);
+  ct_assert_not_null(decl, "var decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_VAR, "declaration type should be VAR");
+  ct_assert_not_null(decl->var_decl.init, "init expression should not be NULL");
+  ct_assert_eq(decl->var_decl.init->type, EXPRESSION_COMPOSITE_LITERAL, "init should be COMPOSITE_LITERAL");
+  ct_assert_eq((int)decl->var_decl.init->composite_literal.is_initializer, 1, "is_initializer should be true");
+  ct_assert_eq((int)decl->var_decl.init->composite_literal.count, 3, "should have 3 field assignments");
+  ct_assert_eq(decl->var_decl.init->composite_literal.values[2]->assign.lhs->var.ident.ident_name, "c", "third field name should be 'c'");
+  ct_assert_eq(decl->var_decl.init->composite_literal.values[2]->assign.rhs->int_lit.value, 3, "third field value should be 3");
+
+  free_declaration(struct_decl);
+  free_declaration(decl);
+  da_free(&parser);
+}
+

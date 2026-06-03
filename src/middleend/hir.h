@@ -45,4 +45,8 @@ int HIR_lower_for_statement(
     HIR_parser_t* hir,
     statement_t* stmt, 
     HIR_function_t* func);
+int HIR_lower_composite_literal_expression(
+    HIR_parser_t* hir, 
+    declaration_t* decl, 
+    HIR_function_t* func);
 #endif // HIR_H

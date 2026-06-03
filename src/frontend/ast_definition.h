@@ -2,6 +2,7 @@
 #define AST_DEFINITION_H
 
 #include <stddef.h>
+#include <stdbool.h>
 
 // ----------------- Enums ------------------
 
@@ -9,6 +10,7 @@ typedef enum
 {
   DECLARATION_VAR,
   DECLARATION_FUNC,
+  DECLARATION_STRUCT,
 } declaration_kind;
 
 typedef enum
@@ -24,19 +26,19 @@ typedef enum
 typedef enum 
 {
   EXPRESSION_INT_LIT,
-  EXPRESSION_STRING_LIT,
   EXPRESSION_VAR,
   EXPRESSION_BINARY,
   EXPRESSION_CALL,
   EXPRESSION_ASSIGN,
-  EXPRESSION_UNARY
+  EXPRESSION_UNARY,
+  EXPRESSION_COMPOSITE_LITERAL
 } expression_kind;
 
 typedef enum
 {
   TYPE_INT,
-  TYPE_STRING,
   TYPE_UNTYPE,
+  TYPE_CUSTOM,
   TYPE_ERROR
 } type_kind;
 
@@ -78,21 +80,33 @@ typedef struct expression_t expression_t;
 
 // ----------------- Types and Identifiers ------------------
 
+typedef struct {
+  char* name;
+  size_t size; // in bytes
+  type_kind kind;
+} known_type_t;
+
 typedef struct 
 {
-  char* name;
-  type_kind type;
+  known_type_t type; 
+  char* ident_name;
   const char* source_pos;
 } typed_identifier_t;
 
 // ----------------- Dynamic arrays ------------------
+
+typedef struct {
+  known_type_t* items;
+  size_t count;
+  size_t capacity; 
+} known_type_array;
 
 typedef struct 
 {
   typed_identifier_t* items;
   size_t count;
   size_t capacity;
-} function_param_array;
+} typed_identifier_array;
 
 typedef struct 
 {
@@ -124,9 +138,14 @@ struct declaration_t
     struct { 
       char* name;  
       type_kind return_type; 
-      function_param_array params; 
+      typed_identifier_array params; 
       statement_block_t* body;
     } func;
+
+    struct {
+      char* name;
+      typed_identifier_array members; 
+    } struc;
   };
 };
 
@@ -172,8 +191,10 @@ struct expression_t
 
   union {
     struct { int value; } int_lit;
-    struct { char* value; } string_lit;
-    struct { char* name; } var;
+    struct { 
+      typed_identifier_t ident; 
+      expression_t* member; 
+    } var;
     struct { expression_t* lhs; expression_t* rhs; } assign;
     struct { 
       expression_t* left; 
@@ -189,6 +210,11 @@ struct expression_t
       unary_op_kind op;
       expression_t* operand;
     } unary;
+    struct {
+      bool is_initializer; 
+      expression_t** values;  
+      size_t count;
+    } composite_literal;
   };
 };
 

@@ -86,7 +86,7 @@ $(SEM_TEST_BIN): $(SEM_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c
 	@mkdir -p $(BUILD)
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
 
-$(HIR_TEST_BIN): $(HIR_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c $(SRC)/middleend/hir.c
+$(HIR_TEST_BIN): $(HIR_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c $(SRC)/frontend/semantic.c $(SRC)/middleend/hir.c
 	@mkdir -p $(BUILD)
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
 

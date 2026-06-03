@@ -1,0 +1,10 @@
+struct v3 {
+  int a;
+  int b;
+  int c;
+}
+
+fn main(): int {
+  v3 s = { .a = 1, .b = 2, .c = 3 };
+  return 0;
+}

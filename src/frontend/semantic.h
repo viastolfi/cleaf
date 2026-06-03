@@ -7,6 +7,7 @@
 #include "../thirdparty/error.h"
 #include "../thirdparty/hashmap.h"
 #include "scope.h"    
+#include "symbols.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -24,6 +25,7 @@ static const char* reserved_keywords[] = {
     "int",
     "return",
     "string",
+    "struct",
     "true",
     "var",
     "while",
@@ -47,15 +49,6 @@ typedef struct
 
 typedef struct 
 {
-  type_kind return_type;
-
-  char** params_name;
-  type_kind* params_type;
-  size_t params_count;
-} function_symbol_t;
-
-typedef struct 
-{
   error_context_t* error_ctx;
   diagnostics_t semantic_errors;
   int error_count;
@@ -63,6 +56,7 @@ typedef struct
   declaration_array* ast;
 
   hashmap_t* function_symbols;
+  hashmap_t* struct_symbols;
 
   const char* current_analyzed_function;
 } semantic_analyzer_t;
@@ -72,7 +66,7 @@ int string_array_contains(char** source, size_t source_len, const char* name);
 int analyze_declaration(semantic_analyzer_t* analyzer,
                         declaration_t* decl,
                         scope_t* scope);
-type_kind semantic_check_expression(semantic_analyzer_t* analyzer,
+known_type_t semantic_check_expression(semantic_analyzer_t* analyzer,
                        expression_t* expr,
                        scope_t* scope);
 void semantic_analyze(semantic_analyzer_t* analyzer);
@@ -85,8 +79,8 @@ void semantic_check_return_statement(semantic_analyzer_t* analyzer,
 void semantic_check_scope(semantic_analyzer_t* analyzer, 
                           statement_block_t* func, 
                           scope_t* scope);
-void semantic_load_function_definition(semantic_analyzer_t* analyzer);
-void semantic_free_function_definition(semantic_analyzer_t* analyzer);
+void semantic_load_program_definition(semantic_analyzer_t* analyzer);
+void semantic_free_program_definition(semantic_analyzer_t* analyzer);
 
 void semantic_error_register(semantic_analyzer_t* analyzer,
                              const char* pos, 

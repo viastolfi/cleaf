@@ -2,10 +2,6 @@
   
 void HIR_free_instruction(HIR_instruction_t* instr) {
   switch (instr->kind) {
-    case HIR_STRING_CONST:
-      if (instr->string_value)
-        free(instr->string_value);
-      break;
     case HIR_STORE_VAR:
       if (instr->var.name)
         free(instr->var.name);
@@ -60,7 +56,8 @@ int HIR_lower_declaration(
 {
   (void)hir;
   if (decl->type != DECLARATION_VAR) {
-    error_report_general(ERROR_SEVERITY_ERROR, "awaiting var declaration, getting somethign else");
+    error_report_general(ERROR_SEVERITY_ERROR, 
+        "awaiting var declaration, getting something else");
     return -1;
   }
 
@@ -71,25 +68,109 @@ int HIR_lower_declaration(
   }
 
   instr->kind = HIR_STORE_VAR;
-  instr->var.name = strdup(decl->var_decl.ident.name);
+  instr->var.name = strdup(decl->var_decl.ident.ident_name);
   if (!instr->var.name) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return -1;
   }
 
-  if (decl->var_decl.init) {
-    HIR_lower_expression(hir, decl->var_decl.init, func);   
-    instr->var.is_init = 1;
-    instr->a = func->next_temp_id;
+  if (decl->var_decl.ident.type.kind == TYPE_CUSTOM) {
+      HIR_instruction_t* alloc = calloc(
+          1, sizeof(HIR_instruction_t));   
+      if (!alloc) {
+        error_report_general(
+            ERROR_SEVERITY_ERROR, "out of memory"); 
+        return -1;
+      }
+      alloc->kind = HIR_ALLOC;
+      alloc->alloc_size = decl->var_decl.ident.type.size;
+
+      da_append(func->code, alloc);
+      instr->var.is_init = 1;
+      instr->a = -1;
+
+      da_append(func->code, instr);
+      if (decl->var_decl.init && 
+          decl->var_decl.init->composite_literal.is_initializer) {
+        int err = 
+          HIR_lower_composite_literal_expression(hir, decl, func);
+        if (err)
+          return 1;
+      }
+      func->stack_reserve_size += 8;
   } else {
-    instr->var.is_init = 0; 
+    if (decl->var_decl.init) {
+      instr->var.is_init = 1;
+      HIR_lower_expression(hir, decl->var_decl.init, func);   
+      instr->a = func->next_temp_id;
+    } else {
+      if (decl->var_decl.ident.type.kind == TYPE_INT) {
+        instr->var.is_init = 0; 
+      }
+    } 
+    da_append(func->code, instr);
+    func->stack_reserve_size += 8;
   }
 
-  da_append(func->code, instr);
+  return 0;
+}
 
-  // TODO: this only works if we only store int
-  // Must change as we add more base types and custom types
-  func->stack_reserve_size += 8;
+int HIR_lower_composite_literal_expression(
+    HIR_parser_t* hir, 
+    declaration_t* decl, 
+    HIR_function_t* func)
+{
+  HIR_instruction_t* load = calloc(1, sizeof(HIR_instruction_t));
+  if (!load) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return 1;
+  }
+  load->kind = HIR_LOAD_VAR;
+  load->dest = func->next_temp_id;
+  load->var.is_init = 1;
+  load->var.name = strdup(decl->var_decl.ident.ident_name);
+  if (!load->var.name) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return 1;
+  }
+
+  da_append(func->code, load);
+
+  struct_symbol_t* sym = hashmap_get(hir->struct_symbols,
+      decl->var_decl.ident.type.name);
+  expression_t* e = decl->var_decl.init;
+
+  HIR_temp_id save = func->next_temp_id;
+
+  for (size_t i = 0; i < e->composite_literal.count; ++i) {
+    HIR_lower_expression(
+        hir, e->composite_literal.values[i]->assign.rhs, func);
+    size_t computed_place = 0;
+    HIR_instruction_t* mov_offset =
+      calloc(1, sizeof(HIR_instruction_t));
+    if (!mov_offset) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return 1;
+    }
+    mov_offset->kind = HIR_MOV_OFFSET;
+    mov_offset->offset.timing = HIR_PRE_OFFSET;
+    mov_offset->dest = save;
+    mov_offset->a = func->next_temp_id;
+
+    for (size_t j = 0; j < sym->members_count; ++j) {
+      if (strcmp(
+            e->composite_literal.values[i]->assign.lhs->var.ident.ident_name,
+            sym->members_name[j]) == 0) {
+        break ; 
+      } else {
+        // TODO: maybe find a way to get kind size
+        computed_place += 8;
+      }
+    } 
+    mov_offset->offset.size = computed_place;
+    da_append(func->code, mov_offset);
+  }
+
   return 0;
 }
 
@@ -107,7 +188,8 @@ int HIR_lower_unary_expression(HIR_parser_t* hir,
     }
 
     load->kind = HIR_LOAD_VAR;
-    load->var.name = strdup(expr->unary.operand->var.name);
+    load->var.name = strdup(
+        expr->unary.operand->var.ident.ident_name);
     load->dest = ++(func->next_temp_id);
     if (!load->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
@@ -153,7 +235,8 @@ int HIR_lower_unary_expression(HIR_parser_t* hir,
 
     str->kind = HIR_STORE_VAR;
     str->a = func->next_temp_id + 1; 
-    str->var.name = strdup(expr->unary.operand->var.name);
+    str->var.name = strdup(
+        expr->unary.operand->var.ident.ident_name);
     str->var.is_init = 1;
     if (!str->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
@@ -174,7 +257,8 @@ int HIR_lower_unary_expression(HIR_parser_t* hir,
 
     load->kind = HIR_LOAD_VAR;
     load->dest = ++(func->next_temp_id);
-    load->var.name = strdup(expr->unary.operand->var.name);
+    load->var.name = strdup(
+        expr->unary.operand->var.ident.ident_name);
     if (!load->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
       return 1;
@@ -208,7 +292,8 @@ int HIR_lower_unary_expression(HIR_parser_t* hir,
 
     str->kind = HIR_STORE_VAR;
     str->a = func->next_temp_id;
-    str->var.name = strdup(expr->unary.operand->var.name);
+    str->var.name = 
+      strdup(expr->unary.operand->var.ident.ident_name);
     if (!str->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
       return 1; 
@@ -336,13 +421,49 @@ int HIR_lower_expression(HIR_parser_t* hir,
 
     instr->kind = HIR_LOAD_VAR;
     instr->dest = ++(func->next_temp_id);
-    instr->var.name = strdup(expr->var.name);
+    instr->var.name = 
+      strdup(expr->var.ident.ident_name);
     if (!instr->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
       return -1;
     }
-
     da_append(func->code, instr);
+
+    while (expr->var.member) {
+      HIR_instruction_t* instr = 
+        calloc(1, sizeof(HIR_instruction_t));
+      if (!instr) {
+        error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+        return -1;
+      }
+      instr->kind = HIR_MOV_OFFSET;
+      instr->offset.timing = HIR_POST_OFFSET;
+
+      // sym should never be NULL after semantic
+      // hence, we don't check and error report this but this is important to keep in mind in case it segfaults here
+      struct_symbol_t* sym = 
+        hashmap_get(hir->struct_symbols, expr->var.ident.type.name);
+      
+      size_t offset = 0;
+      for (size_t i = 0; i < sym->members_count; ++i) {
+        if (strcmp(
+              expr->var.member->var.ident.ident_name,
+              sym->members_name[i]) == 0) {
+            goto insert_member;
+        }
+
+        offset += sym->members_type[i].size;
+      } 
+
+insert_member:
+      instr->offset.size = offset;
+      instr->a = func->next_temp_id;
+      instr->dest = ++func->next_temp_id;
+      da_append(func->code, instr);
+
+      expr = expr->var.member;
+    } 
+
     return 0;
   }
 
@@ -383,7 +504,8 @@ int HIR_lower_expression(HIR_parser_t* hir,
     instr->a = func->next_temp_id;
     // This works only if lhs in assign is a var
     // TODO: make sure this won't break as the compiler evolve
-    instr->var.name = strdup(expr->assign.lhs->var.name);
+    instr->var.name = 
+      strdup(expr->assign.lhs->var.ident.ident_name);
     instr->var.is_init = 1;
     if (!instr->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
@@ -749,6 +871,10 @@ int HIR_lower_statement(HIR_parser_t* hir,
 int HIR_lower_function(HIR_parser_t* hir, 
     declaration_t* function) 
 {
+  if (function->type != DECLARATION_FUNC) {
+    return 0;  
+  }
+
   HIR_function_t* func = calloc(1, sizeof(HIR_function_t));
   if (!func) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
@@ -788,7 +914,7 @@ int HIR_lower_function(HIR_parser_t* hir,
       return -1;
     }
     str->kind = HIR_STORE_VAR;
-    str->var.name = strdup(function->func.params.items[i].name);
+    str->var.name = strdup(function->func.params.items[i].ident_name);
     if (!str->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
       return -1;
@@ -928,6 +1054,19 @@ char* HIR_generate_string_program(HIR_function_t* function)
     if (instr->kind == HIR_CALL) {
       sb_append_fmt(&sb, "CALL %s\n", instr->func_name); 
       continue;
+    }
+
+    if (instr->kind == HIR_ALLOC) {
+      sb_append_fmt(&sb, "ALLOC %zu\n", instr->alloc_size);
+      continue;
+    }
+
+    if (instr->kind == HIR_MOV_OFFSET) {
+      if (instr->offset.timing == HIR_PRE_OFFSET) {
+        sb_append_fmt(&sb, "MOV [t%d + %zu], t%d\n", instr->dest, instr->offset.size, instr->a);
+      } else {
+        sb_append_fmt(&sb, "MOV t%d, [t%d + %zu]\n", instr->dest, instr->a, instr->offset.size);
+      }
     }
   }
 

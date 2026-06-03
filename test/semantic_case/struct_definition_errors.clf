@@ -1,0 +1,16 @@
+struct v2 {
+}
+
+struct v2 {
+  int a;
+  int b;
+}
+
+struct v3 {
+  int a;
+  int a;
+}
+
+fn main(): int {
+  return 0;
+}

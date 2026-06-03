@@ -26,6 +26,14 @@ typedef struct {
 
 static void compiler_resources_free(compiler_resources_t* res)
 {
+  da_foreach(known_type_t, it, res->parser.types) {
+    if (it->kind == TYPE_CUSTOM)
+      if (it->name)
+        free(it->name);
+  }
+  da_free(res->parser.types);
+  free(res->parser.types);
+
   if (res->hir_program) {
     da_foreach(HIR_function_t*, it, res->hir_program) {
       HIR_free_function(*it);
@@ -119,11 +127,21 @@ int main(int argc, char** argv)
       return 1;
     }
     token_t t = lexer_copy_token(&lex);
+    lexer_print_token(&lex);
+    printf("  ");
     da_append(&res.parser, t);
   }
   free(lex.string_storage);
 
   log_phase("lexing", "%zu tokens", res.parser.count);
+
+  res.parser.types = calloc(1, sizeof(known_type_array));
+  if (!res.parser.types) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
+    return 1;
+  }
+
+  populate_parser_known_type(res.parser.types);
 
   while ((size_t) res.parser.pos < res.parser.count) {
     declaration_t* decl = parse_declaration(&res.parser);
@@ -149,16 +167,22 @@ int main(int argc, char** argv)
   analyzer.error_count = 0;
 
   semantic_analyze(&analyzer);
-  semantic_free_function_definition(&analyzer);
 
   if (analyzer.error_count > 0) {
     log_phase("semantic", "%d error(s)", analyzer.error_count);
     error_report_general(ERROR_SEVERITY_NOTE,
         "%d error(s) during semantic analysis, aborting", analyzer.error_count);
+    semantic_free_program_definition(&analyzer);
     compiler_resources_free(&res);
     return 1;
   }
   log_phase("semantic", "ok");
+
+  if (log_is_dump()) {
+    log_section_begin("AST after semantic");
+    ast_print_program(&res.program);
+    log_section_end();
+  }
 
   res.hir_program = calloc(1, sizeof(HIR_function_array));
   if (!res.hir_program) {
@@ -171,11 +195,15 @@ int main(int argc, char** argv)
   hir_parser.error_ctx = &error_ctx;
   hir_parser.error_count = 0;
   hir_parser.hir_program = res.hir_program;
+  hir_parser.struct_symbols = analyzer.struct_symbols;
   rand_t rng;
   rand_init(&rng);
   HIR_PARSER_USE_RNG(hir_parser, &rng);
 
   da_foreach(declaration_t*, it, &res.program) {
+    if ((*it)->type != DECLARATION_FUNC)
+      continue;
+
     int lowering_result = HIR_lower_function(&hir_parser, *it);
     if (lowering_result != 0) {
       error_report_general(ERROR_SEVERITY_ERROR, "HIR lowering error");
@@ -186,6 +214,7 @@ int main(int argc, char** argv)
 
   log_phase("HIR lowering", "%zu function(s)", res.hir_program->count);
 
+  semantic_free_program_definition(&analyzer);
   if (log_is_dump()) {
     log_section_begin("HIR");
     da_foreach(HIR_function_t*, it, hir_parser.hir_program) {
