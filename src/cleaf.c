@@ -168,6 +168,12 @@ int main(int argc, char** argv)
 
   semantic_analyze(&analyzer);
 
+  if (log_is_dump()) {
+    log_section_begin("AST after semantic");
+    ast_print_program(&res.program);
+    log_section_end();
+  }
+
   if (analyzer.error_count > 0) {
     log_phase("semantic", "%d error(s)", analyzer.error_count);
     error_report_general(ERROR_SEVERITY_NOTE,
@@ -177,12 +183,6 @@ int main(int argc, char** argv)
     return 1;
   }
   log_phase("semantic", "ok");
-
-  if (log_is_dump()) {
-    log_section_begin("AST after semantic");
-    ast_print_program(&res.program);
-    log_section_end();
-  }
 
   res.hir_program = calloc(1, sizeof(HIR_function_array));
   if (!res.hir_program) {
