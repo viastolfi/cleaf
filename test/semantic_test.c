@@ -458,6 +458,144 @@ ct_test(semantic_case, struct_symbol_total_size, "test/semantic_case/struct_defi
   free_analyzer(&analyzer);
 }
 
+// --- Precise integer type tests ---
+
+ct_test(semantic_case, var_decl_u8, "test/semantic_case/var_decl_u8.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for u8 variable declaration");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, var_decl_u16, "test/semantic_case/var_decl_u16.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for u16 variable declaration");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, var_decl_u64, "test/semantic_case/var_decl_u64.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for u64 variable declaration");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, int_literal_too_large, "test/semantic_case/int_literal_too_large.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for integer literal > 65535");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, assign_overflow_u8, "test/semantic_case/assign_overflow_u8.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error when assigning u16 value into u8 variable");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, return_exceeds_u8, "test/semantic_case/return_exceeds_u8.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error when returning u16 value from u8 function");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, return_smaller_fits_u16, "test/semantic_case/return_smaller_fits_u16.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors when returning u8 value from u16 function");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, fn_call_arg_overflow, "test/semantic_case/fn_call_arg_overflow.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error when passing u16 arg to u8 parameter");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, fn_call_arg_narrower_ok, "test/semantic_case/fn_call_arg_narrower_ok.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors when passing u8 arg to u16 parameter");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, binary_promotion_return_exceeds, "test/semantic_case/binary_promotion_return_exceeds.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error: u8+u16 binary result (u16) exceeds u8 return type");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, binary_promotion_return_ok, "test/semantic_case/binary_promotion_return_ok.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors: u8+u16 binary result (u16) fits u16 return type");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, fn_ret_type_u8, "test/semantic_case/fn_ret_type_u8.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for u8 return type function");
+
+  function_symbol_t* fs = (function_symbol_t*) hashmap_get(analyzer.function_symbols, "main");
+  ct_assert_not_null(fs, "Function symbol should be in symbol table");
+  ct_assert_eq(fs->return_type.kind, TYPE_U8, "Return type should be TYPE_U8");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, fn_params_u8_u16, "test/semantic_case/fn_params_u8_u16.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for u8/u16 parameters");
+
+  function_symbol_t* fs = (function_symbol_t*) hashmap_get(analyzer.function_symbols, "main");
+  ct_assert_not_null(fs, "Function symbol should be in symbol table");
+  ct_assert_eq((int)fs->params_count, 2, "Function should have 2 parameters");
+  ct_assert_eq(fs->params_type[0].kind, TYPE_U8, "First param type should be TYPE_U8");
+  ct_assert_eq((int)fs->params_type[0].size, 1, "First param size should be 1 byte");
+  ct_assert_eq(fs->params_type[1].kind, TYPE_U16, "Second param type should be TYPE_U16");
+  ct_assert_eq((int)fs->params_type[1].size, 2, "Second param size should be 2 bytes");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, fn_def_return_type_u16, "test/semantic_case/fn_def_with_return_type.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  function_symbol_t* fs = (function_symbol_t*) hashmap_get(analyzer.function_symbols, "foo");
+  ct_assert_not_null(fs, "Function symbol 'foo' should be in symbol table");
+  ct_assert_eq(fs->return_type.kind, TYPE_U16, "Return type of foo should be TYPE_U16");
+
+  free_analyzer(&analyzer);
+}
+
+// --- Type write-back for precise integer types ---
+
+ct_test(semantic_case, type_writeback_u8_var, "test/semantic_case/var_decl_u8.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  declaration_t* func_decl = analyzer.ast->items[0];
+  statement_t* stmt = func_decl->func.body->items[0];
+  declaration_t* var_decl = stmt->decl_stmt.decl;
+
+  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_U8,
+      "Explicit u8 var type should be TYPE_U8 after write-back");
+  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 1,
+      "Explicit u8 var size should be 1 byte");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, type_writeback_u16_var, "test/semantic_case/var_decl_u16.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  declaration_t* func_decl = analyzer.ast->items[0];
+  statement_t* stmt = func_decl->func.body->items[0];
+  declaration_t* var_decl = stmt->decl_stmt.decl;
+
+  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_U16,
+      "Explicit u16 var type should be TYPE_U16 after write-back");
+  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 2,
+      "Explicit u16 var size should be 2 bytes");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, type_writeback_u64_var, "test/semantic_case/var_decl_u64.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  declaration_t* func_decl = analyzer.ast->items[0];
+  statement_t* stmt = func_decl->func.body->items[0];
+  declaration_t* var_decl = stmt->decl_stmt.decl;
+
+  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_U64,
+      "Explicit u64 var type should be TYPE_U64 after write-back");
+  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 8,
+      "Explicit u64 var size should be 8 bytes");
+
+  free_analyzer(&analyzer);
+}
+
 ct_test(semantic_case, struct_inference_if_while_condition, "test/semantic_case/struct_inference_if_while_condition.clf") {
   ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
 
