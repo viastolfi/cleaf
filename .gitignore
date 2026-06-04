@@ -3,3 +3,4 @@ build/
 *.log
 a.out
 vgcore.*
+inbox.txt.tuxedo-lock
