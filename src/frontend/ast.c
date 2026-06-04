@@ -322,10 +322,13 @@ expression_t* ast_parse_expr_var(parser_t* p)
   if (check(p, '.')) {
     // consume '.'
     advance(p);  
-    e->var.member = parse_expression(p);
+    e->var.member = ast_parse_expr_var(p);
 
-    if (!e->var.member)
+    if (!e->var.member) {
+      error_report_at_token(p->error_ctx, peek(p),
+          ERROR_SEVERITY_ERROR, "error while member parsing");
       return NULL;
+    }
   }
 
   return e;
@@ -443,8 +446,7 @@ expression_t* ast_parse_expr_binary(parser_t* p, int min_bp)
     return NULL;
   }
 
-  while ((tok = peek(p))->type != ';' &&
-         (tok = peek(p))->type != ')') {
+  while ((tok = peek(p)) != NULL && tok->type != ';' && tok->type != ')') {
     int lbp, rbp;
     switch (tok->type) {
       case '+': case '-':
@@ -464,6 +466,12 @@ expression_t* ast_parse_expr_binary(parser_t* p, int min_bp)
         lbp = 4;
         rbp = 5;
         break;
+      case LEXER_token_plusplus:
+      case LEXER_token_minusminus:
+        lbp = 30; rbp = -1;
+        break;
+      default:
+        goto binary_done;
     }
 
     if (lbp < min_bp) break;
@@ -476,6 +484,15 @@ expression_t* ast_parse_expr_binary(parser_t* p, int min_bp)
     }
 
     advance(p);
+
+    if (tok->type == LEXER_token_plusplus || tok->type == LEXER_token_minusminus) {
+      e->type = EXPRESSION_UNARY;
+      e->source_pos = tok->source_pos;
+      e->unary.op = (tok->type == LEXER_token_plusplus) ? UNARY_POST_INC : UNARY_POST_DEC;
+      e->unary.operand = expr;
+      expr = e;
+      continue;
+    }
 
     e->type = EXPRESSION_BINARY;
     e->source_pos = tok->source_pos;
@@ -514,12 +531,20 @@ expression_t* ast_parse_expr_binary(parser_t* p, int min_bp)
     }
 
     expression_t* right = ast_parse_expr_binary(p, rbp);
+    if (!right) {
+      error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+                            "expected expression after binary operator");
+      free_expression(e);
+      free_expression(expr);
+      return NULL;
+    }
 
     e->binary.left = expr;
     e->binary.right = right;
     expr = e; 
   }
- 
+
+binary_done:
   return expr;
 }
 
@@ -678,47 +703,14 @@ expression_t* ast_parse_expr_unary(parser_t* p)
 
 expression_t* parse_primary(parser_t* p) 
 {
-  if (check(p, LEXER_token_id) && check_next(p, '(', 1)) {
-    return ast_parse_expr_call(p);
-  }
-
-  if (check(p, LEXER_token_id)) 
-    return ast_parse_expr_var(p);
-
-  if (check(p, LEXER_token_intlit))
-      return ast_parse_expr_int_lit(p);
-
-  return NULL;
-}
-
-expression_t* parse_expression(parser_t* p) 
-{
-  if (check_next(p, '=', 1)) 
-    return ast_parse_expr_assign(p);
-
   if (check(p, LEXER_token_plusplus) ||
       check(p, LEXER_token_minusminus) ||
-      check_next(p, LEXER_token_plusplus, 1) ||
-      check_next(p, LEXER_token_minusminus, 1) ||
       check(p, '-') ||
       check(p, '!'))
     return ast_parse_expr_unary(p);
 
-  if (check_next(p, '+', 1) ||
-      check_next(p, '-', 1) ||
-      check_next(p, '*', 1) ||
-      check_next(p, '/', 1) ||
-      check_next(p, '<', 1) ||
-      check_next(p, '>', 1) ||
-      check_next(p, LEXER_token_gteq, 1) ||
-      check_next(p, LEXER_token_lseq, 1) ||
-      check_next(p, LEXER_token_eq, 1)   ||
-      check_next(p, LEXER_token_neq, 1))
-    return ast_parse_expr_binary(p, 0);
-
-  if (check(p, LEXER_token_id) && check_next(p, '(', 1)) {
+  if (check(p, LEXER_token_id) && check_next(p, '(', 1))
     return ast_parse_expr_call(p);
-  }
 
   if (check(p, LEXER_token_id)) 
     return ast_parse_expr_var(p);
@@ -726,10 +718,47 @@ expression_t* parse_expression(parser_t* p)
   if (check(p, LEXER_token_intlit))
     return ast_parse_expr_int_lit(p);
 
+  return NULL;
+}
+
+expression_t* parse_expression(parser_t* p) 
+{
   if (check(p, '{'))
     return ast_parse_expr_composite_literal(p);
 
-  return NULL;
+  if (check(p, LEXER_token_plusplus) ||
+      check(p, LEXER_token_minusminus) ||
+      check(p, '-') ||
+      check(p, '!'))
+    return ast_parse_expr_unary(p);
+
+  expression_t* expr = ast_parse_expr_binary(p, 0);
+  if (!expr) return NULL;
+
+  if (check(p, '=')) {
+    advance(p);
+    expression_t* rhs = parse_expression(p);
+    if (!rhs) {
+      error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+                            "expected expression on right side of assignment");
+      free_expression(expr);
+      return NULL;
+    }
+    expression_t* assign = calloc(1, sizeof(expression_t));
+    if (!assign) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+      free_expression(expr);
+      free_expression(rhs);
+      return NULL;
+    }
+    assign->type = EXPRESSION_ASSIGN;
+    assign->source_pos = expr->source_pos;
+    assign->assign.lhs = expr;
+    assign->assign.rhs = rhs;
+    return assign;
+  }
+
+  return expr;
 }
 
 declaration_t* ast_parse_function(parser_t* p)

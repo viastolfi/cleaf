@@ -485,6 +485,7 @@ var_def_put:
     }
 
     if (stmt->type == STATEMENT_IF) {
+      semantic_check_expression(analyzer, stmt->if_stmt.condition, local_scope);
       if (stmt->if_stmt.then_branch)
         semantic_check_scope(analyzer, stmt->if_stmt.then_branch, local_scope); 
       if (stmt->if_stmt.else_branch)
@@ -492,6 +493,7 @@ var_def_put:
     } 
 
     if (stmt->type == STATEMENT_WHILE) {
+      semantic_check_expression(analyzer, stmt->while_stmt.condition, local_scope);
       if (stmt->while_stmt.body) 
         semantic_check_scope(analyzer, stmt->while_stmt.body, local_scope); 
     }

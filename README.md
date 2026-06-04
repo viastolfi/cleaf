@@ -144,7 +144,7 @@ plus around 20 additional fixtures used for memory safety validation with Valgri
 | Suite    | Test cases | Assertions |
 |----------|-----------|------------|
 | Parser   | 26        | 129        |
-| Semantic | 55        | 80         |
+| Semantic | 56        | 85         |
 | HIR      | 20        | 20         |
 | Codegen  | 19        | 19         |
 | **Total**| **120**   | **248**    |

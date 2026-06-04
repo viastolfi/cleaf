@@ -457,3 +457,22 @@ ct_test(semantic_case, struct_symbol_total_size, "test/semantic_case/struct_defi
 
   free_analyzer(&analyzer);
 }
+
+ct_test(semantic_case, struct_inference_if_while_condition, "test/semantic_case/struct_inference_if_while_condition.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  declaration_t* func_decl = analyzer.ast->items[1];
+  statement_t* while_stmt = func_decl->func.body->items[3];
+  expression_t* expr = while_stmt->while_stmt.condition;
+
+  ct_assert_eq(expr->binary.left->var.ident.type.name, "v2", "type infence should have been applied");
+  ct_assert_eq(expr->binary.left->var.member->var.ident.type.name, "int", "type inference should have been applied to function member");
+
+  statement_t* if_stmt = func_decl->func.body->items[2];
+  expr = if_stmt->if_stmt.condition;
+
+  ct_assert_eq(expr->binary.right->var.ident.type.name, "v2", "type infence should have been applied");
+  ct_assert_eq(expr->binary.right->var.member->var.ident.type.name, "int", "type inference should have been applied to function member");
+
+  free_analyzer(&analyzer);
+}
