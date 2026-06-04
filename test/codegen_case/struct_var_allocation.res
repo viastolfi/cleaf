@@ -6,7 +6,7 @@ _start:
     sub rsp, 8
     mov rax, 9
     mov rdi, 0
-    mov rsi, 16
+    mov rsi, 8
     mov rdx, 0x01 | 0x02
     mov r10, 0x22
     mov r8, -1
