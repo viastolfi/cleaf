@@ -1,0 +1,19 @@
+struct v2 {
+  int x;
+  int y;
+}
+
+fn main(): int {
+  var a = 1;
+  v2 b = { .x = 1, .y = 2 };
+
+  if (a == b.x) {
+    return 1; 
+  }
+
+  while (b.y != 3) {
+    b.y = b.y + b.x; 
+  }
+
+  return 0;
+}
