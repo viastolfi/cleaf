@@ -266,13 +266,24 @@ known_type_t semantic_check_expression(
     known_type_t lhs_type = semantic_check_expression(analyzer, lhs, scope);
     known_type_t rhs_type = semantic_check_expression(analyzer, rhs, scope);
 
-    if (lhs_type.kind == TYPE_ERROR && rhs_type.kind != TYPE_ERROR) {
+    if (lhs_type.kind == TYPE_ERROR && 
+        rhs_type.kind != TYPE_ERROR) {
       return rhs_type; 
-    } else if (lhs_type.kind != TYPE_ERROR && rhs_type.kind == TYPE_ERROR) {
+    } 
+    else if (lhs_type.kind != TYPE_ERROR && 
+        rhs_type.kind == TYPE_ERROR) {
       return lhs_type; 
-    } else if (lhs_type.kind == rhs_type.kind) {
+    } 
+    else if (lhs_type.kind == rhs_type.kind) {
       return lhs_type;
-    } else {
+    } 
+    else if (lhs_type.kind < rhs_type.kind) {
+      return rhs_type; 
+    }
+    else if (lhs_type.kind > rhs_type.kind) {
+      return lhs_type; 
+    }
+    else {
       semantic_error_register(analyzer, 
           rhs->source_pos - 1,
           "wrong type conversion");
@@ -312,7 +323,12 @@ known_type_t semantic_check_expression(
           scope);
       if (t.kind == TYPE_ERROR)
         return t;
-      if (t.kind != TYPE_INT) {
+      if (t.kind != TYPE_INT &&
+          t.kind != TYPE_U1  &&
+          t.kind != TYPE_U8  &&
+          t.kind != TYPE_U16 &&
+          t.kind != TYPE_U32 &&
+          t.kind != TYPE_U64) {
         semantic_error_register(analyzer,
            expr->unary.operand->source_pos - 1,
            "expression is not assignable"); 
@@ -497,10 +513,21 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
 var_def_put:
           known_type_t* t = calloc(1, sizeof(known_type_t));
           if (actual_type.kind == TYPE_ERROR && 
-              expected_type.kind != TYPE_UNTYPE)
+              expected_type.kind != TYPE_UNTYPE) {
             *t = expected_type;
-          else
-            *t = actual_type;
+          }
+          else {
+            if (expected_type.kind == TYPE_VAR) {
+              *t = (known_type_t) {
+                .kind = TYPE_INT,
+                .name = types_description[TYPE_INT].name,
+                .size = types_description[TYPE_INT].size,
+              };
+            } 
+            else {
+              *t = actual_type;
+            }
+          }
           semantic_resolve_type_size(analyzer, t);
           decl->var_decl.ident.type = *t;
           hashmap_put(
