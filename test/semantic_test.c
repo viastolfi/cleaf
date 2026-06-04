@@ -359,6 +359,21 @@ ct_test(semantic_case, struct_member_access_valid, "test/semantic_case/struct_me
   free_analyzer(&analyzer);
 }
 
+ct_test(semantic_case, struct_designated_init_type_valid, "test/semantic_case/struct_designated_init_type_valid.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have 0 errors when u8 fields are assigned values that fit in u8");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_designated_init_type_overflow, "test/semantic_case/struct_designated_init_type_overflow.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error when a u8 field is assigned a value > 255");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, struct_designated_init_type_overflow_multi, "test/semantic_case/struct_designated_init_type_overflow_multi.clf") {
+  ct_assert_eq(analyzer.error_count, 2, "Should have 2 errors when two u8 fields are assigned values > 255");
+  free_analyzer(&analyzer);
+}
+
 // --- Type write-back and size resolution tests ---
 
 ct_test(semantic_case, type_writeback_inferred_var, "test/semantic_case/var_decl_untyped.clf") {

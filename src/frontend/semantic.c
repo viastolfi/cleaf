@@ -156,6 +156,7 @@ int analyze_declaration(semantic_analyzer_t* analyzer,
               assign->assign.lhs->var.ident.ident_name, 
               struc_sym->members_name[i]) == 0) {
           for (size_t x = 0; x < struc_sym->members_count; ++x) {
+
             if (!founds[x])
               break;
 
@@ -168,6 +169,18 @@ int analyze_declaration(semantic_analyzer_t* analyzer,
               return 0;
             }
           }
+
+          known_type_t actual = 
+            semantic_check_expression(
+                analyzer, assign->assign.rhs, scope);
+          
+          if (struc_sym->members_type[i].kind != actual.kind &&
+              struc_sym->members_type[i].kind < actual.kind) {
+            semantic_error_register(
+                analyzer, assign->assign.rhs->source_pos - 1,
+                "wrong type converstion");
+          }
+
           founds[total_found++] = struc_sym->members_name[i];
           found = 1;
         }
