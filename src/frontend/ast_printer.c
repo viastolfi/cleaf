@@ -6,20 +6,9 @@
 
 #define PREFIX_MAX 512
 
-static const char* type_str(type_kind t)
-{
-  switch (t) {
-    case TYPE_INT:    return "int";
-    case TYPE_UNTYPE: return "untyped";
-    case TYPE_ERROR:  return "<error>";
-    case TYPE_CUSTOM: return "<custom>";
-    default:          return "?";
-  }
-}
-
 static void print_known_type(const known_type_t* t)
 {
-  const char* name = (t->kind == TYPE_CUSTOM && t->name) ? t->name : type_str(t->kind);
+  const char* name = t->name ? t->name : "?";
   printf(CLR_TYPE "%s" CLR_RESET " " CLR_SIZE "(%zu)" CLR_RESET, name, t->size);
 }
 
@@ -268,8 +257,10 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
       }
       printf(")");
 
-      if (d->func.return_type != TYPE_UNTYPE)
-        printf(" -> " CLR_TYPE "%s" CLR_RESET, type_str(d->func.return_type));
+      if (d->func.return_type.kind != TYPE_UNTYPE) {
+        printf(" -> ");
+        print_known_type(&d->func.return_type);
+      }
 
       printf("\n");
 

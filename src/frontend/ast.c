@@ -174,13 +174,15 @@ void free_declaration(declaration_t* d)
 
 void populate_parser_known_type(known_type_array* types) 
 {
-  // TODO: maybe find a way  to registers type in an enum before hand
-  known_type_t int_t = { .name = "int", .size = 8, TYPE_INT };
-  // -1 so the size is computed afterward
-  known_type_t var_t = { .name = "var", .size = -1, TYPE_UNTYPE };
-
-  da_append(types, int_t);
-  da_append(types, var_t);
+  for (size_t i = 0; i < TYPE_COUNT; ++i) {
+    types_ident desc = types_description[i];
+    known_type_t t = { 
+      .name = desc.name, 
+      .size = desc.size, 
+      .kind = i
+    };
+    da_append(types, t);
+  }
 }
 
 token_t* peek(parser_t* p)
@@ -252,16 +254,6 @@ bool expect(parser_t* p, long kind, char* err)
     }
   }
   return false;
-}
-
-type_kind get_type_kind_from_string(parser_t* p, char* type_string) 
-{
-  da_foreach(known_type_t, it, p->types) {
-    if (strcmp(type_string, it->name) == 0)  
-      return it->kind;
-  }
-
-  return TYPE_CUSTOM;
 }
 
 known_type_t* get_type_info_from_string(
@@ -771,7 +763,7 @@ declaration_t* ast_parse_function(parser_t* p)
   memset(decl, 0, sizeof(declaration_t));
 
   decl->type = DECLARATION_FUNC;
-  decl->func.return_type = TYPE_UNTYPE;
+  decl->func.return_type = p->types->items[TYPE_UNTYPE];
   decl->source_pos = peek(p)->source_pos;
 
   // consume 'fn'
@@ -911,8 +903,16 @@ declaration_t* ast_parse_function(parser_t* p)
       return NULL;
     }
 
-    decl->func.return_type = get_type_kind_from_string(
-        p, ret_tok->string_value);
+    known_type_t* t = 
+      get_type_info_from_string(p, ret_tok->string_value);
+    if (!t) {
+      error_report_at_token(
+          p->error_ctx, ret_tok, ERROR_SEVERITY_ERROR,
+          "unknown return type");
+      return NULL;
+    }
+
+    decl->func.return_type = *t;
   }
 
   if (!expect(p, '{', "expected '{' to start function body")) {

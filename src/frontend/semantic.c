@@ -191,8 +191,26 @@ known_type_t semantic_check_expression(
     expression_t* expr,
     scope_t* scope)
 {
-  if (expr->type == EXPRESSION_INT_LIT) 
-    return (known_type_t){.kind = TYPE_INT};
+  if (expr->type == EXPRESSION_INT_LIT) {
+    int v = expr->int_lit.value;
+    types_t kind;
+    if (v <= 1)
+      kind = TYPE_U1;
+    else if (v <= 255)
+      kind = TYPE_U8;
+    else if (v <= 65535)
+      kind = TYPE_U16;
+    else {
+      semantic_error_register(analyzer, expr->source_pos - 1,
+          "long intergers are not implemented yet");
+      return (known_type_t){.kind = TYPE_ERROR};
+    }
+    return (known_type_t){
+      .kind = kind,
+      .name = types_description[kind].name,
+      .size = types_description[kind].size,
+    };
+  }
   
   if (expr->type == EXPRESSION_VAR) {
     known_type_t* k = 
@@ -455,11 +473,18 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
             goto var_def_put;
           }
 
-          actual_type = semantic_check_expression(analyzer,
-              decl->var_decl.init,
-              local_scope);
+          actual_type = 
+            semantic_check_expression(
+                analyzer, 
+                decl->var_decl.init,
+                local_scope);
+
           if (expected_type.kind != actual_type.kind && 
-              expected_type.kind != TYPE_UNTYPE) {
+              expected_type.kind != TYPE_UNTYPE &&
+              expected_type.kind != TYPE_VAR) {
+
+            if (expected_type.kind >= actual_type.kind)
+              goto var_def_put;
 
             if (actual_type.kind != TYPE_ERROR) {
               semantic_error_register(
@@ -471,7 +496,8 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
 
 var_def_put:
           known_type_t* t = calloc(1, sizeof(known_type_t));
-          if (actual_type.kind == TYPE_ERROR && expected_type.kind != TYPE_UNTYPE)
+          if (actual_type.kind == TYPE_ERROR && 
+              expected_type.kind != TYPE_UNTYPE)
             *t = expected_type;
           else
             *t = actual_type;
@@ -553,7 +579,7 @@ void semantic_load_program_definition(semantic_analyzer_t* analyzer)
       }
       memset(value, 0, sizeof(function_symbol_t));
 
-      value->return_type.kind = (*it)->func.return_type;
+      value->return_type.kind = (*it)->func.return_type.kind;
 
       if ((*it)->func.params.count <= 0) {
         goto hash_func_put; 
