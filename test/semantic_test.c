@@ -370,8 +370,8 @@ ct_test(semantic_case, type_writeback_inferred_var, "test/semantic_case/var_decl
 
   ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_INT,
       "Inferred var type should be TYPE_INT after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 32,
-      "Inferred int var size should be 32 bi32 bitss");
+  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 4,
+      "Inferred int var size should be 4 bytes");
 
   free_analyzer(&analyzer);
 }
@@ -385,8 +385,8 @@ ct_test(semantic_case, type_writeback_explicit_var, "test/semantic_case/var_decl
 
   ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_INT,
       "Explicit int var type should be TYPE_INT after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 32,
-      "Explicit int var size should be 32 bits");
+  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 4,
+      "Explicit int var size should be 4 bytes");
 
   free_analyzer(&analyzer);
 }
@@ -401,8 +401,8 @@ ct_test(semantic_case, struct_var_type_and_size, "test/semantic_case/struct_memb
 
   ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_CUSTOM,
       "Struct var type should be TYPE_CUSTOM after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 64,
-      "Struct var size should be 64 (2 ints x 32 bits)");
+  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 8,
+      "Struct var size should be 8 bytes (2 ints x 8 bytes)");
 
   free_analyzer(&analyzer);
 }
@@ -417,8 +417,8 @@ ct_test(semantic_case, for_init_type_writeback, "test/semantic_case/var_for_init
   ct_assert_not_null(init_decl, "For-init decl should not be null");
   ct_assert_eq(init_decl->var_decl.ident.type.kind, TYPE_INT,
       "For-init inferred var type should be TYPE_INT after write-back");
-  ct_assert_eq((int)init_decl->var_decl.ident.type.size, 32,
-      "For-init inferred int var size should be 32 bits");
+  ct_assert_eq((int)init_decl->var_decl.ident.type.size, 4,
+      "For-init inferred int var size should be 4 bytes");
 
   free_analyzer(&analyzer);
 }
@@ -436,12 +436,12 @@ ct_test(semantic_case, member_access_type_annotation, "test/semantic_case/struct
 
   ct_assert_eq(expr->var.ident.type.kind, TYPE_CUSTOM,
       "Member access base 'a' should be annotated as TYPE_CUSTOM (struct)");
-  ct_assert_eq((int)expr->var.ident.type.size, 64,
-      "Member access base 'a' should have size 64 bits");
+  ct_assert_eq((int)expr->var.ident.type.size, 8,
+      "Member access base 'a' should have size 8 bytes");
   ct_assert_eq(expr->var.member->var.ident.type.kind, TYPE_INT,
       "Member access '.x' should be annotated as TYPE_INT");
-  ct_assert_eq((int)expr->var.member->var.ident.type.size, 32,
-      "Member access '.x' should have size 32 bits");
+  ct_assert_eq((int)expr->var.member->var.ident.type.size, 4,
+      "Member access '.x' should have size 4 bytes");
 
   free_analyzer(&analyzer);
 }
@@ -452,8 +452,8 @@ ct_test(semantic_case, struct_symbol_total_size, "test/semantic_case/struct_defi
   struct_symbol_t* sym =
       (struct_symbol_t*) hashmap_get(analyzer.struct_symbols, "v2");
   ct_assert_not_null(sym, "Struct symbol 'v2' should be in symbol table");
-  ct_assert_eq((int)sym->total_size, 64,
-      "Struct v2 total_size should be 64 (2 int fields x 32 bits each)");
+  ct_assert_eq((int)sym->total_size, 8,
+      "Struct v2 total_size should be 8 (2 int fields x 4 bytes each)");
 
   free_analyzer(&analyzer);
 }

@@ -194,9 +194,7 @@ known_type_t semantic_check_expression(
   if (expr->type == EXPRESSION_INT_LIT) {
     int v = expr->int_lit.value;
     types_t kind;
-    if (v <= 1)
-      kind = TYPE_U1;
-    else if (v <= 255)
+    if (v <= 255)
       kind = TYPE_U8;
     else if (v <= 65535)
       kind = TYPE_U16;
@@ -337,7 +335,6 @@ known_type_t semantic_check_expression(
       if (t.kind == TYPE_ERROR)
         return t;
       if (t.kind != TYPE_INT &&
-          t.kind != TYPE_U1  &&
           t.kind != TYPE_U8  &&
           t.kind != TYPE_U16 &&
           t.kind != TYPE_U32 &&

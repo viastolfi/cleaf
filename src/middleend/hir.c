@@ -163,8 +163,7 @@ int HIR_lower_composite_literal_expression(
             sym->members_name[j]) == 0) {
         break ; 
       } else {
-        // TODO: maybe find a way to get kind size
-        computed_place += 8;
+        computed_place += sym->members_type[i].size;
       }
     } 
     mov_offset->offset.size = computed_place;
