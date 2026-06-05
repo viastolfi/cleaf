@@ -909,6 +909,7 @@ declaration_t* ast_parse_function(parser_t* p)
       error_report_at_token(
           p->error_ctx, ret_tok, ERROR_SEVERITY_ERROR,
           "unknown return type");
+      free_declaration(decl);
       return NULL;
     }
 
@@ -937,6 +938,7 @@ declaration_t* ast_parse_function(parser_t* p)
     free_declaration(decl);
     return NULL; 
   }
+
   return decl;
 }
 
