@@ -70,8 +70,7 @@ typedef struct
 {
   IR_instruction_kind kind;
 
-  IR_temp_id dest;
-  IR_temp_id a, b;
+  IR_temp_id dest, src;
 
   union {
     int int_value;

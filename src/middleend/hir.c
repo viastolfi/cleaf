@@ -87,7 +87,7 @@ int IR_lower_declaration(
 
       da_append(func->code, alloc);
       instr->var.is_init = 1;
-      instr->a = -1;
+      instr->src = -1;
 
       da_append(func->code, instr);
       if (decl->var_decl.init && 
@@ -102,7 +102,7 @@ int IR_lower_declaration(
     if (decl->var_decl.init) {
       instr->var.is_init = 1;
       IR_lower_expression(hir, decl->var_decl.init, func);   
-      instr->a = func->next_temp_id;
+      instr->src = func->next_temp_id;
     } else {
       if (decl->var_decl.ident.type.kind == TYPE_INT) {
         instr->var.is_init = 0; 
@@ -155,7 +155,7 @@ int IR_lower_composite_literal_expression(
     mov_offset->kind = IR_MOV_OFFSET;
     mov_offset->offset.timing = IR_PRE_OFFSET;
     mov_offset->dest = save;
-    mov_offset->a = func->next_temp_id;
+    mov_offset->src = func->next_temp_id;
 
     for (size_t j = 0; j < sym->members_count; ++j) {
       if (strcmp(
@@ -205,7 +205,7 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
 
     mov->kind = IR_MOV;
     mov->dest = func->next_temp_id + 1;
-    mov->a = func->next_temp_id;
+    mov->src = func->next_temp_id;
     da_append(func->code, mov);
 
     IR_instruction_t* op = calloc(1, sizeof(IR_instruction_t));
@@ -233,7 +233,7 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
     }
 
     str->kind = IR_STORE_VAR;
-    str->a = func->next_temp_id + 1; 
+    str->src = func->next_temp_id + 1; 
     str->var.name = strdup(
         expr->unary.operand->var.ident.ident_name);
     str->var.is_init = 1;
@@ -290,7 +290,7 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
     }
 
     str->kind = IR_STORE_VAR;
-    str->a = func->next_temp_id;
+    str->src = func->next_temp_id;
     str->var.name = 
       strdup(expr->unary.operand->var.ident.ident_name);
     if (!str->var.name) {
@@ -325,7 +325,7 @@ int IR_lower_call_expression(HIR_parser_t* hir,
     if (IR_lower_expression(hir, expr->call.args[i], func) != 0)
       return 1;
 
-    set_arg->a = func->next_temp_id;
+    set_arg->src = func->next_temp_id;
     
     da_append(func->code, set_arg);
   } 
@@ -350,7 +350,7 @@ int IR_lower_call_expression(HIR_parser_t* hir,
   }
   result->kind = IR_MOV;
   result->dest = ++(func->next_temp_id);
-  result->a = -1;
+  result->src = -1;
   da_append(func->code, result);
 
   return 0;
@@ -385,11 +385,11 @@ int IR_lower_binary_expression(expression_t* expr,
 
   if (IR_lower_expression(hir, expr->binary.left, func) != 0)
     return -1;
-  instr->a = func->next_temp_id;
+  instr->src = func->next_temp_id;
 
   if (IR_lower_expression(hir, expr->binary.right, func) != 0)
     return -1;
-  instr->b = func->next_temp_id;
+  instr->dest = func->next_temp_id;
 
   return 0;
 }
@@ -456,7 +456,7 @@ int IR_lower_expression(HIR_parser_t* hir,
 
 insert_member:
       instr->offset.size = offset;
-      instr->a = func->next_temp_id;
+      instr->src = func->next_temp_id;
       instr->dest = ++func->next_temp_id;
       da_append(func->code, instr);
 
@@ -500,8 +500,8 @@ insert_member:
     }
 
     instr->kind = IR_STORE_VAR;
-    instr->a = func->next_temp_id;
-    // This works only if lhs in assign is a var
+    instr->src = func->next_temp_id;
+    // This works only if lhs in assign is src var
     // TODO: make sure this won't break as the compiler evolve
     instr->var.name = 
       strdup(expr->assign.lhs->var.ident.ident_name);
@@ -693,7 +693,7 @@ int IR_lower_while_statement(
   return 0;
 }
 
-// TODO: this needs a lot of memory management to avoid leaks
+// TODO: this needs src lot of memory management to avoid leaks
 int IR_lower_if_statement(HIR_parser_t* hir,
     statement_t* stmt,
     IR_function_t* func)
@@ -716,7 +716,7 @@ int IR_lower_if_statement(HIR_parser_t* hir,
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
     return 1;
   }
-  // TODO: this is a bit ugly but whatever for now
+  // TODO: this is src bit ugly but whatever for now
   if (stmt->if_stmt.else_branch) {
     hir->gen_chunk(hir->chunk_ctx, else_chunk); 
   }
@@ -840,7 +840,7 @@ int IR_lower_statement(HIR_parser_t* hir,
       }
       return_var->kind = IR_MOV;
       return_var->dest = -1;
-      return_var->a = func->next_temp_id;
+      return_var->src = func->next_temp_id;
       da_append(func->code, return_var);
 
       instr->kind = IR_RETURN;
@@ -904,7 +904,7 @@ int IR_lower_function(HIR_parser_t* hir,
     }
     mov->kind = IR_MOV;
     mov->dest = func->next_temp_id;
-    mov->a = -i - 1;
+    mov->src = -i - 1;
     da_append(func->code, mov);
 
     IR_instruction_t* str = calloc(1, sizeof(IR_instruction_t));
@@ -919,7 +919,7 @@ int IR_lower_function(HIR_parser_t* hir,
       return -1;
     }
     str->var.is_init = 1;
-    str->a = func->next_temp_id++;
+    str->src = func->next_temp_id++;
     da_append(func->code, str);
   }
 
@@ -962,16 +962,16 @@ char* IR_generate_string_program(IR_function_t* function)
     if (instr->kind == IR_BINARY) {
       switch (instr->binary_op) {
         case IR_BINARY_ADD: 
-          sb_append_fmt(&sb, "ADD t%d t%d\n", instr->b, instr->a); 
+          sb_append_fmt(&sb, "ADD t%d t%d\n", instr->dest, instr->src); 
         continue;
         case IR_BINARY_SUB:
-          sb_append_fmt(&sb, "SUB t%d t%d\n", instr->b, instr->a);          
+          sb_append_fmt(&sb, "SUB t%d t%d\n", instr->dest, instr->src);          
           continue;
         case IR_BINARY_MUL:
-          sb_append_fmt(&sb, "MUL t%d t%d\n", instr->b, instr->a);          
+          sb_append_fmt(&sb, "MUL t%d t%d\n", instr->dest, instr->src);          
           continue;
         case IR_BINARY_CMP:
-          sb_append_fmt(&sb, "CMP t%d t%d\n", instr->b, instr->a);
+          sb_append_fmt(&sb, "CMP t%d t%d\n", instr->dest, instr->src);
           continue;
         default:
           sb_append_fmt(&sb, "unknow binary op\n");
@@ -981,7 +981,7 @@ char* IR_generate_string_program(IR_function_t* function)
 
     if (instr->kind == IR_STORE_VAR) {
       if (instr->var.is_init) {
-        sb_append_fmt(&sb, "STR slot(%s), t%d\n", instr->var.name, instr->a);
+        sb_append_fmt(&sb, "STR slot(%s), t%d\n", instr->var.name, instr->src);
         continue; 
       }
       else {
@@ -996,7 +996,7 @@ char* IR_generate_string_program(IR_function_t* function)
     }
 
     if (instr->kind == IR_MOV) {
-      sb_append_fmt(&sb, "MOV t%d t%d\n", instr->dest, instr->a);  
+      sb_append_fmt(&sb, "MOV t%d t%d\n", instr->dest, instr->src);  
       continue;
     }
 
@@ -1062,9 +1062,9 @@ char* IR_generate_string_program(IR_function_t* function)
 
     if (instr->kind == IR_MOV_OFFSET) {
       if (instr->offset.timing == IR_PRE_OFFSET) {
-        sb_append_fmt(&sb, "MOV [t%d + %zu], t%d\n", instr->dest, instr->offset.size, instr->a);
+        sb_append_fmt(&sb, "MOV [t%d + %zu], t%d\n", instr->dest, instr->offset.size, instr->src);
       } else {
-        sb_append_fmt(&sb, "MOV t%d, [t%d + %zu]\n", instr->dest, instr->a, instr->offset.size);
+        sb_append_fmt(&sb, "MOV t%d, [t%d + %zu]\n", instr->dest, instr->src, instr->offset.size);
       }
     }
   }

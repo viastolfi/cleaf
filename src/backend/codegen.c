@@ -57,7 +57,7 @@ int CODEGEN_write_function(
       // TODO: handle uninitialized var
       if ((*it)->var.is_init) {
         target->emit_mov_at_stack(sb, place, 
-            CODEGEN_get_reg(target, (*it)->a));
+            CODEGEN_get_reg(target, (*it)->src));
       }
       break;
     case IR_INC:
@@ -93,20 +93,20 @@ int CODEGEN_write_function(
     case IR_BINARY:
       if ((*it)->binary_op == IR_BINARY_CMP) {
         target->emit_cmp(sb, 
-            CODEGEN_get_reg(target, (*it)->a), 
-            CODEGEN_get_reg(target, (*it)->b));
+            CODEGEN_get_reg(target, (*it)->src), 
+            CODEGEN_get_reg(target, (*it)->dest));
       } else if ((*it)->binary_op == IR_BINARY_ADD) {
         target->emit_add(sb, 
-            CODEGEN_get_reg(target, (*it)->b),
-            CODEGEN_get_reg(target, (*it)->a));
+            CODEGEN_get_reg(target, (*it)->dest),
+            CODEGEN_get_reg(target, (*it)->src));
       } else if ((*it)->binary_op == IR_BINARY_SUB) {
         target->emit_sub(sb,
-            CODEGEN_get_reg(target, (*it)->b),
-            CODEGEN_get_reg(target, (*it)->a));
+            CODEGEN_get_reg(target, (*it)->dest),
+            CODEGEN_get_reg(target, (*it)->src));
       } else if ((*it)->binary_op == IR_BINARY_MUL) {
         target->emit_mul(sb,
-            CODEGEN_get_reg(target, (*it)->b),
-            CODEGEN_get_reg(target, (*it)->a));
+            CODEGEN_get_reg(target, (*it)->dest),
+            CODEGEN_get_reg(target, (*it)->src));
       } else {
         error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED,
             "binary op not yet implemented in codegen");
@@ -120,7 +120,7 @@ int CODEGEN_write_function(
       break;
     case IR_MOV: {
       const char* dst = CODEGEN_get_reg(target, (*it)->dest);
-      const char* src = CODEGEN_get_reg(target, (*it)->a);
+      const char* src = CODEGEN_get_reg(target, (*it)->src);
       target->emit_mov(sb, dst, src);
     }
       break;
@@ -141,13 +141,13 @@ int CODEGEN_write_function(
     case IR_MOV_OFFSET:
       if ((*it)->offset.timing == IR_PRE_OFFSET) {
       const char* dst = CODEGEN_get_reg(target, (*it)->dest);
-      const char* src = CODEGEN_get_reg(target, (*it)->a);
+      const char* src = CODEGEN_get_reg(target, (*it)->src);
         target->emit_mov_offset_pre(
             sb, dst, (*it)->offset.size, src);
         break;
       } else {
         const char* dst = CODEGEN_get_reg(target, (*it)->dest);
-        const char* src = CODEGEN_get_reg(target, (*it)->a);
+        const char* src = CODEGEN_get_reg(target, (*it)->src);
         target->emit_mov_offset_post(
             sb, dst, (*it)->offset.size, src);
         break;
