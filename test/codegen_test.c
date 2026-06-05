@@ -94,7 +94,7 @@ before_each(int, result, char* file_path, char* expected_path)
   }
 
   // --- HIR lowering ---
-  HIR_function_array* hir_program = calloc(1, sizeof(HIR_function_array));
+  IR_function_array* hir_program = calloc(1, sizeof(IR_function_array));
   if (!hir_program) abort();
 
   HIR_parser_t hir_parser = {0};
@@ -106,24 +106,24 @@ before_each(int, result, char* file_path, char* expected_path)
   hir_parser.chunk_ctx = &chunk_counter;
 
   da_foreach(declaration_t*, it, program) {
-    if (HIR_lower_function(&hir_parser, *it) != 0) {
-      fprintf(stderr, "HIR lowering error in: %s\n", file_path);
+    if (IR_lower_function(&hir_parser, *it) != 0) {
+      fprintf(stderr, "IR lowering error in: %s\n", file_path);
       abort();
     }
   }
 
   // --- Codegen ---
   string_builder_t sb = {0};
-  da_foreach(HIR_function_t*, it, hir_parser.hir_program) {
+  da_foreach(IR_function_t*, it, hir_parser.hir_program) {
     if (CODEGEN_write_function(&sb, *it, &x86_64_target) != 0) {
       fprintf(stderr, "codegen error in: %s\n", file_path);
       abort();
     }
   }
 
-  // --- Cleanup HIR & AST ---
-  da_foreach(HIR_function_t*, it, hir_program) {
-    HIR_free_function(*it);
+  // --- Cleanup IR & AST ---
+  da_foreach(IR_function_t*, it, hir_program) {
+    IR_free_function(*it);
   }
   da_free(hir_program);
   free(hir_program);
@@ -236,4 +236,12 @@ ct_test(codegen_test, struct_member_access_first, "test/codegen_case/struct_memb
 
 ct_test(codegen_test, struct_member_access_second, "test/codegen_case/struct_member_access_second.clf", "test/codegen_case/struct_member_access_second.asm") {
   ct_assert_eq(result, 0, "codegen gives right output for struct member access return (second member, offset 8)");
+}
+
+ct_test(codegen_test, int_binary_typed, "test/codegen_case/int_binary_typed.clf", "test/codegen_case/int_binary_typed.asm") {
+  ct_assert_eq(result, 0, "codegen uses 32-bit registers (r11d) for int binary ops");
+}
+
+ct_test(codegen_test, u8_u16_u64_vars, "test/codegen_case/u8_u16_u64_vars.clf", "test/codegen_case/u8_u16_u64_vars.asm") {
+  ct_assert_eq(result, 0, "codegen falls back to 64-bit registers for u8/u16/u64");
 }

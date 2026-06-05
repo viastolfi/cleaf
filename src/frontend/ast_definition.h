@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#include "types.h"
+
 // ----------------- Enums ------------------
 
 typedef enum 
@@ -33,14 +35,6 @@ typedef enum
   EXPRESSION_UNARY,
   EXPRESSION_COMPOSITE_LITERAL
 } expression_kind;
-
-typedef enum
-{
-  TYPE_INT,
-  TYPE_UNTYPE,
-  TYPE_CUSTOM,
-  TYPE_ERROR
-} type_kind;
 
 typedef enum
 {
@@ -82,8 +76,8 @@ typedef struct expression_t expression_t;
 
 typedef struct {
   char* name;
-  size_t size; // in bytes
-  type_kind kind;
+  size_t size; // in bits
+  types_t kind;
 } known_type_t;
 
 typedef struct 
@@ -137,7 +131,7 @@ struct declaration_t
 
     struct { 
       char* name;  
-      type_kind return_type; 
+      known_type_t return_type; 
       typed_identifier_array params; 
       statement_block_t* body;
     } func;

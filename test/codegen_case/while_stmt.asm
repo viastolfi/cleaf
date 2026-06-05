@@ -3,22 +3,22 @@ global _start
 _start:
     push rbp
     mov rbp, rsp
-    sub rsp, 8
+    sub rsp, 4
     mov r11, 0
-    mov [rbp - 8], r11
+    mov [rbp - 8], r11d
 .c0:
-    mov r12, [rbp - 8]
+    mov r12d, [rbp - 8]
     mov r13, 10
     cmp r12, r13
     je .c1
-    mov r14, [rbp - 8]
+    mov r14d, [rbp - 8]
     mov r15, 1
     add r15, r14
-    mov [rbp - 8], r15
+    mov [rbp - 8], r15d
     jmp .c0
 .c1:
-    mov rbx, [rbp - 8]
-    add rsp, 8
+    mov ebx, [rbp - 8]
+    add rsp, 4
     pop rbp
     mov rax, 60
     mov rdi, rbx

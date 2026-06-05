@@ -156,6 +156,7 @@ int analyze_declaration(semantic_analyzer_t* analyzer,
               assign->assign.lhs->var.ident.ident_name, 
               struc_sym->members_name[i]) == 0) {
           for (size_t x = 0; x < struc_sym->members_count; ++x) {
+
             if (!founds[x])
               break;
 
@@ -168,6 +169,18 @@ int analyze_declaration(semantic_analyzer_t* analyzer,
               return 0;
             }
           }
+
+          known_type_t actual = 
+            semantic_check_expression(
+                analyzer, assign->assign.rhs, scope);
+          
+          if (struc_sym->members_type[i].kind != actual.kind &&
+              struc_sym->members_type[i].kind < actual.kind) {
+            semantic_error_register(
+                analyzer, assign->assign.rhs->source_pos - 1,
+                "wrong type converstion");
+          }
+
           founds[total_found++] = struc_sym->members_name[i];
           found = 1;
         }
@@ -191,8 +204,24 @@ known_type_t semantic_check_expression(
     expression_t* expr,
     scope_t* scope)
 {
-  if (expr->type == EXPRESSION_INT_LIT) 
-    return (known_type_t){.kind = TYPE_INT};
+  if (expr->type == EXPRESSION_INT_LIT) {
+    int v = expr->int_lit.value;
+    types_t kind;
+    if (v <= 255)
+      kind = TYPE_U8;
+    else if (v <= 65535)
+      kind = TYPE_U16;
+    else {
+      semantic_error_register(analyzer, expr->source_pos - 1,
+          "long intergers are not implemented yet");
+      return (known_type_t){.kind = TYPE_ERROR};
+    }
+    return (known_type_t){
+      .kind = kind,
+      .name = types_description[kind].name,
+      .size = types_description[kind].size,
+    };
+  }
   
   if (expr->type == EXPRESSION_VAR) {
     known_type_t* k = 
@@ -248,13 +277,24 @@ known_type_t semantic_check_expression(
     known_type_t lhs_type = semantic_check_expression(analyzer, lhs, scope);
     known_type_t rhs_type = semantic_check_expression(analyzer, rhs, scope);
 
-    if (lhs_type.kind == TYPE_ERROR && rhs_type.kind != TYPE_ERROR) {
+    if (lhs_type.kind == TYPE_ERROR && 
+        rhs_type.kind != TYPE_ERROR) {
       return rhs_type; 
-    } else if (lhs_type.kind != TYPE_ERROR && rhs_type.kind == TYPE_ERROR) {
+    } 
+    else if (lhs_type.kind != TYPE_ERROR && 
+        rhs_type.kind == TYPE_ERROR) {
       return lhs_type; 
-    } else if (lhs_type.kind == rhs_type.kind) {
+    } 
+    else if (lhs_type.kind == rhs_type.kind) {
       return lhs_type;
-    } else {
+    } 
+    else if (lhs_type.kind < rhs_type.kind) {
+      return rhs_type; 
+    }
+    else if (lhs_type.kind > rhs_type.kind) {
+      return lhs_type; 
+    }
+    else {
       semantic_error_register(analyzer, 
           rhs->source_pos - 1,
           "wrong type conversion");
@@ -269,14 +309,27 @@ known_type_t semantic_check_expression(
     known_type_t lhs_type = semantic_check_expression(analyzer, lhs, scope);
     known_type_t rhs_type = semantic_check_expression(analyzer, rhs, scope);
 
-    if (lhs_type.kind == TYPE_ERROR && rhs_type.kind != TYPE_ERROR) {
+    if (lhs_type.kind == TYPE_ERROR && 
+        rhs_type.kind != TYPE_ERROR) {
       return rhs_type; 
-    } else if (lhs_type.kind != TYPE_ERROR && rhs_type.kind == TYPE_ERROR) {
+    } 
+    else if (lhs_type.kind != TYPE_ERROR && 
+        rhs_type.kind == TYPE_ERROR) {
       return lhs_type; 
-    } else if (lhs_type.kind == rhs_type.kind) {
+    } 
+    else if (lhs_type.kind == rhs_type.kind) {
       return lhs_type;
-    } else if (lhs_type.kind == TYPE_UNTYPE) {
+    } 
+    else if (lhs_type.kind == TYPE_UNTYPE) {
       return rhs_type; 
+    }
+    else if (lhs_type.kind < rhs_type.kind) {
+      semantic_error_register(
+          analyzer, rhs->source_pos - 1,
+          "value exceed lhs max accepting integer value");
+      return (known_type_t){.kind = TYPE_ERROR};
+    } else if (lhs_type.kind > rhs_type.kind) {
+      return lhs_type; 
     }
     
     else {
@@ -294,7 +347,11 @@ known_type_t semantic_check_expression(
           scope);
       if (t.kind == TYPE_ERROR)
         return t;
-      if (t.kind != TYPE_INT) {
+      if (t.kind != TYPE_INT &&
+          t.kind != TYPE_U8  &&
+          t.kind != TYPE_U16 &&
+          t.kind != TYPE_U32 &&
+          t.kind != TYPE_U64) {
         semantic_error_register(analyzer,
            expr->unary.operand->source_pos - 1,
            "expression is not assignable"); 
@@ -354,7 +411,8 @@ known_type_t semantic_check_expression(
       if (arg_type.kind == TYPE_UNTYPE)
         continue;
 
-      if (arg_type.kind != fs->params_type[i].kind) {
+      if (arg_type.kind != fs->params_type[i].kind &&
+          fs->params_type[i].kind < arg_type.kind) {
         semantic_error_register(analyzer,
             expr->call.args[i]->source_pos - 1,
             "wrong type conversion");
@@ -363,6 +421,10 @@ known_type_t semantic_check_expression(
     }
 
     return fs->return_type;
+  }
+
+  if (expr->type == EXPRESSION_COMPOSITE_LITERAL) {
+    return (known_type_t){.kind = TYPE_CUSTOM}; 
   }
 
   return (known_type_t){.kind = TYPE_ERROR};
@@ -384,9 +446,19 @@ void semantic_check_return_statement(semantic_analyzer_t* analyzer,
 
   if (rt.kind == TYPE_ERROR) return;
 
-  if (rt.kind != fs->return_type.kind && fs->return_type.kind != TYPE_UNTYPE) {
+  if (rt.kind < fs->return_type.kind) return;
+
+  if (rt.kind > fs->return_type.kind) {
+    semantic_error_register(
+       analyzer, e->source_pos - 1,
+       "returned value exceed expected value");
+    return;
+  }
+
+  if (rt.kind != fs->return_type.kind && 
+      fs->return_type.kind != TYPE_UNTYPE) {
     semantic_error_register(analyzer,
-       e->source_pos,
+       e->source_pos - 1,
        "wrong type conversion"); 
     return;
   }
@@ -398,20 +470,38 @@ void semantic_check_for_statement(semantic_analyzer_t* analyzer,
 {
   scope_t* for_scope = scope_enter(scope);
 
-  if (stmt->for_stmt.init_kind == FOR_INIT_DECL && stmt->for_stmt.decl_init) {
+  if (stmt->for_stmt.init_kind == FOR_INIT_DECL && 
+      stmt->for_stmt.decl_init) {
+
     declaration_t* decl = stmt->for_stmt.decl_init;
+
     if (analyze_declaration(analyzer, decl, for_scope)) {
-      known_type_t inferred = semantic_check_expression(analyzer, decl->var_decl.init, for_scope);
+      known_type_t inferred = 
+        semantic_check_expression(
+            analyzer, decl->var_decl.init, for_scope);
+
       known_type_t* t = calloc(1, sizeof(known_type_t));
-      if (t) {
+
+      if (t && decl->var_decl.ident.type.kind != TYPE_VAR) {
         *t = inferred;
         semantic_resolve_type_size(analyzer, t);
-        decl->var_decl.ident.type = *t;
-        hashmap_put(for_scope->symbols, decl->var_decl.ident.ident_name, t);
+      } else {
+        *t = (known_type_t) {
+          .kind = TYPE_INT,
+          .name = types_description[TYPE_INT].name,
+          .size = types_description[TYPE_INT].size,
+        };
       }
+      decl->var_decl.ident.type = *t;
+      hashmap_put(
+          for_scope->symbols, decl->var_decl.ident.ident_name, t);
     }
-  } else if (stmt->for_stmt.init_kind == FOR_INIT_EXPR && stmt->for_stmt.expr_init) {
-    semantic_check_expression(analyzer, stmt->for_stmt.expr_init, for_scope);
+  } 
+
+  else if (stmt->for_stmt.init_kind == FOR_INIT_EXPR && 
+      stmt->for_stmt.expr_init) {
+    semantic_check_expression(
+        analyzer, stmt->for_stmt.expr_init, for_scope);
   }
 
   if (stmt->for_stmt.condition)
@@ -454,12 +544,24 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
             actual_type = decl->var_decl.ident.type;
             goto var_def_put;
           }
+  
+          actual_type = 
+            semantic_check_expression(
+                analyzer, 
+                decl->var_decl.init,
+                local_scope);
 
-          actual_type = semantic_check_expression(analyzer,
-              decl->var_decl.init,
-              local_scope);
           if (expected_type.kind != actual_type.kind && 
-              expected_type.kind != TYPE_UNTYPE) {
+              expected_type.kind != TYPE_UNTYPE &&
+              expected_type.kind != TYPE_VAR) {
+
+            if (expected_type.kind < actual_type.kind) {
+              semantic_error_register(
+                  analyzer, decl->source_pos -1,
+                  "can't store value. Exceeding max type accetping value");
+            }
+            if (expected_type.kind >= actual_type.kind)
+              goto var_def_put;
 
             if (actual_type.kind != TYPE_ERROR) {
               semantic_error_register(
@@ -471,10 +573,16 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
 
 var_def_put:
           known_type_t* t = calloc(1, sizeof(known_type_t));
-          if (actual_type.kind == TYPE_ERROR && expected_type.kind != TYPE_UNTYPE)
+          if (expected_type.kind == TYPE_VAR) {
+            *t = (known_type_t) {
+              .kind = TYPE_INT,
+              .name = types_description[TYPE_INT].name,
+              .size = types_description[TYPE_INT].size,
+            };
+          } 
+          else {
             *t = expected_type;
-          else
-            *t = actual_type;
+          }
           semantic_resolve_type_size(analyzer, t);
           decl->var_decl.ident.type = *t;
           hashmap_put(
@@ -553,7 +661,7 @@ void semantic_load_program_definition(semantic_analyzer_t* analyzer)
       }
       memset(value, 0, sizeof(function_symbol_t));
 
-      value->return_type.kind = (*it)->func.return_type;
+      value->return_type.kind = (*it)->func.return_type.kind;
 
       if ((*it)->func.params.count <= 0) {
         goto hash_func_put; 

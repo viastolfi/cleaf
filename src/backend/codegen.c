@@ -10,16 +10,27 @@ static int CODEGEN_get_var_pos(var_array* vars, const char* name)
   return -1;
 }
 
-static const char* CODEGEN_get_reg(const target_t* target, int id)
+static const char* CODEGEN_get_reg(
+    const target_t* target, 
+    IR_temp_id ir_temp_id,
+    bool force_8_register) // we use this to ensure we use 8 bytes registers when used on known workflow like exit syscall
+                           // this is pretty ugly
+                           // TODO: find a better way of doing this
 {
-  if (id < 0)
-    return target->reserved_regs[-1 - id];
-  return target->regs[id % target->reg_count];
+  if (ir_temp_id.id < 0)
+    return target->reserved_regs[-1 - ir_temp_id.id];
+  if (ir_temp_id.size == 8 || force_8_register) 
+    return target->regs_8[ir_temp_id.id % target->reg_8_count];
+  else if (ir_temp_id.size == 4) 
+    return target->regs_4[ir_temp_id.id % target->reg_4_count];
+
+  // some kind of fallback
+  return target->regs_8[ir_temp_id.id % target->reg_8_count];
 }
 
 int CODEGEN_write_function(
     string_builder_t* sb,
-    HIR_function_t* func,
+    IR_function_t* func,
     const target_t* target)
 {
   var_array vars = {0};
@@ -36,17 +47,17 @@ int CODEGEN_write_function(
   // stack prep
   target->emit_stack_setup(sb, func->stack_reserve_size);
 
-  da_foreach(HIR_instruction_t*, it, func->code) {
+  da_foreach(IR_instruction_t*, it, func->code) {
     switch ((*it)->kind) {
-    case HIR_LOAD_VAR:
+    case IR_LOAD_VAR:
       {
         // since this append after semantic analyze this can't fail
         int place = CODEGEN_get_var_pos(&vars, (*it)->var.name);
         target->emit_mov_from_stack(sb, 
-            CODEGEN_get_reg(target, (*it)->dest), place);
+            CODEGEN_get_reg(target, (*it)->dest, false), place);
       }
       break;
-    case HIR_STORE_VAR:
+    case IR_STORE_VAR:
       int place = CODEGEN_get_var_pos(&vars, (*it)->var.name);
       if (place == -1) {
         char* name = strdup((*it)->var.name);  
@@ -57,104 +68,110 @@ int CODEGEN_write_function(
       // TODO: handle uninitialized var
       if ((*it)->var.is_init) {
         target->emit_mov_at_stack(sb, place, 
-            CODEGEN_get_reg(target, (*it)->a));
+            CODEGEN_get_reg(target, (*it)->src, false));
       }
       break;
-    case HIR_INC:
-      target->emit_inc(sb, CODEGEN_get_reg(target, (*it)->dest));
+    case IR_INC:
+      target->emit_inc(
+          sb, CODEGEN_get_reg(target, (*it)->dest, false));
       break;
-    case HIR_DEC:
-      target->emit_dec(sb, CODEGEN_get_reg(target, (*it)->dest));
+    case IR_DEC:
+      target->emit_dec(
+          sb, CODEGEN_get_reg(target, (*it)->dest, false));
       break;
-    case HIR_CHUNK:
+    case IR_CHUNK:
       target->chunk_write(sb, (*it)->chunk_name);
       break;
-    case HIR_JMP:
+    case IR_JMP:
       target->emit_jmp(sb, (*it)->chunk_name);
       break;
-    case HIR_JMP_EQUAL:
+    case IR_JMP_EQUAL:
       target->emit_jmp_equal(sb, (*it)->chunk_name);
       break;
-    case HIR_JMP_NOT_EQUAL:
+    case IR_JMP_NOT_EQUAL:
       target->emit_jmp_not_equal(sb, (*it)->chunk_name);
       break;
-    case HIR_JMP_GREATER_THAN:
+    case IR_JMP_GREATER_THAN:
       target->emit_jmp_greater_than(sb, (*it)->chunk_name);
       break;
-    case HIR_JMP_GREATER_THAN_EQUAL:
+    case IR_JMP_GREATER_THAN_EQUAL:
       target->emit_jmp_greater_than_equal(sb, (*it)->chunk_name);
       break;
-    case HIR_JMP_LOWER_THAN:
+    case IR_JMP_LOWER_THAN:
       target->emit_jmp_lower_than(sb, (*it)->chunk_name);
       break;
-    case HIR_JMP_LOWER_THAN_EQUAL:
+    case IR_JMP_LOWER_THAN_EQUAL:
       target->emit_jmp_lower_than_equal(sb, (*it)->chunk_name);
       break;
-    case HIR_BINARY:
-      if ((*it)->binary_op == HIR_BINARY_CMP) {
+    case IR_BINARY:
+      if ((*it)->binary_op == IR_BINARY_CMP) {
         target->emit_cmp(sb, 
-            CODEGEN_get_reg(target, (*it)->a), 
-            CODEGEN_get_reg(target, (*it)->b));
-      } else if ((*it)->binary_op == HIR_BINARY_ADD) {
+            CODEGEN_get_reg(target, (*it)->src, false), 
+            CODEGEN_get_reg(target, (*it)->dest, false));
+      } else if ((*it)->binary_op == IR_BINARY_ADD) {
         target->emit_add(sb, 
-            CODEGEN_get_reg(target, (*it)->b),
-            CODEGEN_get_reg(target, (*it)->a));
-      } else if ((*it)->binary_op == HIR_BINARY_SUB) {
+            CODEGEN_get_reg(target, (*it)->dest, false),
+            CODEGEN_get_reg(target, (*it)->src, false));
+      } else if ((*it)->binary_op == IR_BINARY_SUB) {
         target->emit_sub(sb,
-            CODEGEN_get_reg(target, (*it)->b),
-            CODEGEN_get_reg(target, (*it)->a));
-      } else if ((*it)->binary_op == HIR_BINARY_MUL) {
+            CODEGEN_get_reg(target, (*it)->dest, false),
+            CODEGEN_get_reg(target, (*it)->src, false));
+      } else if ((*it)->binary_op == IR_BINARY_MUL) {
         target->emit_mul(sb,
-            CODEGEN_get_reg(target, (*it)->b),
-            CODEGEN_get_reg(target, (*it)->a));
+            CODEGEN_get_reg(target, (*it)->dest, false),
+            CODEGEN_get_reg(target, (*it)->src, false));
       } else {
         error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED,
             "binary op not yet implemented in codegen");
         return 1;
       }
       break;
-    case HIR_INT_CONST:
+    case IR_INT_CONST:
       target->emit_mov_direct(sb, 
-          CODEGEN_get_reg(target, (*it)->dest),
+          CODEGEN_get_reg(target, (*it)->dest, false),
           (*it)->int_value);
       break;
-    case HIR_MOV: {
-      const char* dst = CODEGEN_get_reg(target, (*it)->dest);
-      const char* src = CODEGEN_get_reg(target, (*it)->a);
+    case IR_MOV: {
+      const char* dst = CODEGEN_get_reg(target, (*it)->dest, false);
+      const char* src = CODEGEN_get_reg(target, (*it)->src, false);
       target->emit_mov(sb, dst, src);
     }
       break;
-    case HIR_CALL:
+    case IR_CALL:
       target->emit_call(sb, (*it)->func_name);
       break;
-    case HIR_RETURN:
+    case IR_RETURN:
       target->emit_stack_restore(sb, func->stack_reserve_size);
       target->emit_ret(sb);
       break;
-    case HIR_EXIT:
+    case IR_EXIT:
       target->emit_stack_restore(sb, func->stack_reserve_size);
-      target->emit_process_exit(sb, CODEGEN_get_reg(target, (*it)->dest));
+      target->emit_process_exit(
+          sb, CODEGEN_get_reg(target, (*it)->dest, true));
       break;
-    case HIR_ALLOC:
+    case IR_ALLOC:
       target->alloc_memory(sb, (*it)->alloc_size);
       break;
-    case HIR_MOV_OFFSET:
-      if ((*it)->offset.timing == HIR_PRE_OFFSET) {
-      const char* dst = CODEGEN_get_reg(target, (*it)->dest);
-      const char* src = CODEGEN_get_reg(target, (*it)->a);
+    case IR_MOV_OFFSET:
+      if ((*it)->offset.timing == IR_PRE_OFFSET) {
+      const char* dst = CODEGEN_get_reg(target, (*it)->dest, false);
+      const char* src = CODEGEN_get_reg(target, (*it)->src, false);
         target->emit_mov_offset_pre(
             sb, dst, (*it)->offset.size, src);
         break;
       } else {
-        const char* dst = CODEGEN_get_reg(target, (*it)->dest);
-        const char* src = CODEGEN_get_reg(target, (*it)->a);
+        const char* dst = 
+          CODEGEN_get_reg(target, (*it)->dest, false);
+        const char* src = 
+          CODEGEN_get_reg(target, (*it)->src, false);
+
         target->emit_mov_offset_post(
             sb, dst, (*it)->offset.size, src);
         break;
       }
     default:
       error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED, 
-          "unknown HIR instruction");
+          "unknown IR instruction");
       return 1;
     } 
   }

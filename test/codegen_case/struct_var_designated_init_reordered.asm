@@ -6,7 +6,7 @@ _start:
     sub rsp, 8
     mov rax, 9
     mov rdi, 0
-    mov rsi, 16
+    mov rsi, 8
     mov rdx, 0x01 | 0x02
     mov r10, 0x22
     mov r8, -1
@@ -15,9 +15,9 @@ _start:
     mov [rbp - 8], rax
     mov rbx, [rbp - 8]
     mov r11, 2
-    mov [rbx + 8], r11
+    mov [rbx + 4], r11d
     mov r12, 1
-    mov [rbx + 0], r12
+    mov [rbx + 0], r12d
     mov r13, 0
     add rsp, 8
     pop rbp

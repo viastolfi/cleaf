@@ -1,50 +1,69 @@
 #include "x86_64_definition.h"
 
 typedef enum {
-    X86_RAX = 0,
-    X86_RDI,
-    X86_RSI,
-    X86_RDX,
-    X86_R8,
-    X86_R9,
-    X86_R10,
-    X86_RESERVED_COUNT,
+  X86_RAX = 0,
+  X86_RDI,
+  X86_RSI,
+  X86_RDX,
+  X86_R8,
+  X86_R9,
+  X86_R10,
+  X86_RESERVED_COUNT,
 } x86_reserved_reg;
 
 typedef enum {
-    X86_RBX = 0,
-    X86_R11,
-    X86_R12,
-    X86_R13,
-    X86_R14,
-    X86_R15,
-    X86_REG_COUNT,
-} x86_reg;
+  X86_RBX = 0,
+  X86_R11,
+  X86_R12,
+  X86_R13,
+  X86_R14,
+  X86_R15,
+  X86_REG_8_COUNT,
+} x86_reg_8;
 
-static const char* x86_regs[] = {
-    [X86_RBX] = "rbx",
-    [X86_R11] = "r11",
-    [X86_R12] = "r12",
-    [X86_R13] = "r13",
-    [X86_R14] = "r14",
-    [X86_R15] = "r15",
+typedef enum {
+  X86_EBX = 0,
+  X86_R11D,
+  X86_R12D,
+  X86_R13D,
+  X86_R14D,
+  X86_R15D,
+  X86_REG_4_COUNT,
+} x86_reg_4;
+
+static const char* x86_regs_8[] = {
+  [X86_RBX] = "rbx",
+  [X86_R11] = "r11",
+  [X86_R12] = "r12",
+  [X86_R13] = "r13",
+  [X86_R14] = "r14",
+  [X86_R15] = "r15",
+};
+
+static const char* x86_regs_4[] = {
+  [X86_EBX]  = "ebx",
+  [X86_R11D] = "r11d",
+  [X86_R12D] = "r12d",
+  [X86_R13D] = "r13d",
+  [X86_R14D] = "r14d",
+  [X86_R15D] = "r15d",
 };
 
 static const char* x86_reserved_regs[] = {
-    [X86_RAX] = "rax",
-    [X86_RDI] = "rdi",
-    [X86_RSI] = "rsi",
-    [X86_RDX] = "rdx",
-    [X86_R8]  = "r8",
-    [X86_R9]  = "r9",
-    [X86_R10] = "r10",
+  [X86_RAX] = "rax",
+  [X86_RDI] = "rdi",
+  [X86_RSI] = "rsi",
+  [X86_RDX] = "rdx",
+  [X86_R8]  = "r8",
+  [X86_R9]  = "r9",
+  [X86_R10] = "r10",
 };
 
 static void x86_emit_mov(
     string_builder_t* sb, 
     const char* dst, 
     const char* src) {
-    sb_append_fmt(sb, "    mov %s, %s\n", dst, src);
+  sb_append_fmt(sb, "    mov %s, %s\n", dst, src);
 }
 
 static void x86_emit_mov_direct(
@@ -56,7 +75,7 @@ static void x86_emit_mov_direct(
 }
 
 static void x86_emit_ret(string_builder_t* sb) {
-    sb_append_fmt(sb, "    ret\n");
+  sb_append_fmt(sb, "    ret\n");
 }
 
 static void x86_emit_sub(
@@ -265,40 +284,42 @@ static void x86_emit_mov_offset_post(string_builder_t* sb,
 }
 
 const target_t x86_64_target = {
-    .setup = x86_setup,
-    .regs = x86_regs,
-    .reg_count = X86_REG_COUNT,
-    .reserved_regs = x86_reserved_regs,
-    .reserved_reg_count = X86_RESERVED_COUNT,
-    .emit_mov = x86_emit_mov,
-    .emit_ret = x86_emit_ret,
-    .emit_sub_direct = x86_emit_sub_direct,
-    .emit_push = x86_emit_push,
-    .emit_pop = x86_emit_pop,
-    .func_write = x86_func_write,
-    .chunk_write = x86_chunk_write,
-    .emit_mov_at_stack = x86_emit_mov_at_stack,
-    .emit_add = x86_emit_add,
-    .emit_mov_direct = x86_emit_mov_direct,
-    .emit_syscall = x86_emit_syscall,
-    .emit_cmp = x86_emit_cmp,
-    .emit_jmp = x86_emit_jmp,
-    .emit_jmp_equal = x86_emit_je,
-    .emit_jmp_not_equal = x86_emit_jne,
-    .emit_jmp_greater_than = x86_emit_jg,
-    .emit_jmp_greater_than_equal = x86_emit_jge,
-    .emit_jmp_lower_than = x86_emit_jl,
-    .emit_jmp_lower_than_equal = x86_emit_jle,
-    .emit_call = x86_emit_call,
-    .emit_inc = x86_emit_inc,
-    .emit_dec = x86_emit_dec,
-    .emit_stack_setup = x86_emit_stack_setup,
-    .emit_stack_restore = x86_emit_stack_restore,
-    .emit_process_exit = x86_emit_process_exit,
-    .emit_mov_from_stack = x86_emit_mov_from_stack,
-    .emit_sub = x86_emit_sub,
-    .emit_mul = x86_emit_mul,
-    .alloc_memory = x86_alloc_memory,
-    .emit_mov_offset_pre = x86_emit_mov_offset_pre,
-    .emit_mov_offset_post = x86_emit_mov_offset_post,
+  .setup = x86_setup,
+  .regs_8 = x86_regs_8,
+  .reg_8_count = X86_REG_8_COUNT,
+  .regs_4 = x86_regs_4,
+  .reg_4_count = X86_REG_4_COUNT,
+  .reserved_regs = x86_reserved_regs,
+  .reserved_reg_count = X86_RESERVED_COUNT,
+  .emit_mov = x86_emit_mov,
+  .emit_ret = x86_emit_ret,
+  .emit_sub_direct = x86_emit_sub_direct,
+  .emit_push = x86_emit_push,
+  .emit_pop = x86_emit_pop,
+  .func_write = x86_func_write,
+  .chunk_write = x86_chunk_write,
+  .emit_mov_at_stack = x86_emit_mov_at_stack,
+  .emit_add = x86_emit_add,
+  .emit_mov_direct = x86_emit_mov_direct,
+  .emit_syscall = x86_emit_syscall,
+  .emit_cmp = x86_emit_cmp,
+  .emit_jmp = x86_emit_jmp,
+  .emit_jmp_equal = x86_emit_je,
+  .emit_jmp_not_equal = x86_emit_jne,
+  .emit_jmp_greater_than = x86_emit_jg,
+  .emit_jmp_greater_than_equal = x86_emit_jge,
+  .emit_jmp_lower_than = x86_emit_jl,
+  .emit_jmp_lower_than_equal = x86_emit_jle,
+  .emit_call = x86_emit_call,
+  .emit_inc = x86_emit_inc,
+  .emit_dec = x86_emit_dec,
+  .emit_stack_setup = x86_emit_stack_setup,
+  .emit_stack_restore = x86_emit_stack_restore,
+  .emit_process_exit = x86_emit_process_exit,
+  .emit_mov_from_stack = x86_emit_mov_from_stack,
+  .emit_sub = x86_emit_sub,
+  .emit_mul = x86_emit_mul,
+  .alloc_memory = x86_alloc_memory,
+  .emit_mov_offset_pre = x86_emit_mov_offset_pre,
+  .emit_mov_offset_post = x86_emit_mov_offset_post,
 };

@@ -1,0 +1,10 @@
+struct pixel {
+  u8 r;
+  u8 g;
+  u8 b;
+}
+
+fn main(): int {
+  pixel p = { .r = 255, .g = 128, .b = 0 };
+  return 0;
+}

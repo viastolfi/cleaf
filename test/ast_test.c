@@ -55,7 +55,7 @@ ct_test(ast, fn_ret_type, "fn main(): int {}")
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_not_null(decl, "Declaration should not be NULL");
-  ct_assert_eq(decl->func.return_type, TYPE_INT, "Return type kind should be TYPE_INT");
+  ct_assert_eq(decl->func.return_type.kind, TYPE_INT, "Return type kind should be TYPE_INT");
 
   free_declaration(decl);
   da_free(&parser);
@@ -102,7 +102,7 @@ ct_test(ast, untyped_var_decl, "var i = 3;")
 
   ct_assert_eq(decl->type, DECLARATION_VAR, "Declaration type should be VAR");
   ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_UNTYPE, "Variable type should be UNTYPE");
+  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_VAR, "Variable type should be VAR");
   ct_assert_eq(decl->var_decl.init->type, EXPRESSION_INT_LIT, "Init expression should be INT literal");
   ct_assert_eq(decl->var_decl.init->int_lit.value, 3, "Init int literal value should be 3");
 
@@ -116,7 +116,7 @@ ct_test(ast, uninitialized_var_decl, "var i;")
 
   ct_assert_eq(decl->type, DECLARATION_VAR, "Declaration type should be VAR");
   ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_UNTYPE, "Variable type should be UNTYPE");
+  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_VAR, "Variable type should be VAR");
   ct_assert(!decl->var_decl.init, "Init expression should be NULL for uninitialized var");
 
   free_declaration(decl);
@@ -405,6 +405,93 @@ ct_test(ast, struct_var_designated_init_single, "struct v1 { int x; } v1 a = { .
   ct_assert_eq(decl->var_decl.init->composite_literal.values[0]->assign.rhs->int_lit.value, 42, "field value should be 42");
 
   free_declaration(struct_decl);
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+// === PRECISE INTEGER TYPES ===
+
+ct_test(ast, typed_u8_var, "u8 i = 5;")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
+  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_U8, "Variable type should be TYPE_U8");
+  ct_assert_eq((int)decl->var_decl.ident.type.size, 1, "Variable size should be 1 byte");
+  ct_assert_not_null(decl->var_decl.init, "Variable init should not be NULL");
+  ct_assert_eq(decl->var_decl.init->int_lit.value, 5, "Init value should be 5");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, typed_u16_var, "u16 i = 300;")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
+  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_U16, "Variable type should be TYPE_U16");
+  ct_assert_eq((int)decl->var_decl.ident.type.size, 2, "Variable size should be 2 bytes");
+  ct_assert_eq(decl->var_decl.init->int_lit.value, 300, "Init value should be 300");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, typed_u32_var, "u32 i = 5;")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
+  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_U32, "Variable type should be TYPE_U32");
+  ct_assert_eq((int)decl->var_decl.ident.type.size, 4, "Variable size should be 4 bytes");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, typed_u64_var, "u64 i = 5;")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
+  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_U64, "Variable type should be TYPE_U64");
+  ct_assert_eq((int)decl->var_decl.ident.type.size, 8, "Variable size should be 8 bytes");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, fn_ret_type_u8, "fn f(): u8 {}")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "Declaration should not be NULL");
+  ct_assert_eq(decl->func.return_type.kind, TYPE_U8, "Return type kind should be TYPE_U8");
+  ct_assert_eq((int)decl->func.return_type.size, 1, "Return type size should be 1 byte");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, fn_params_u8_u16, "fn f(u8 a, u16 b) {}")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "Declaration should not be NULL");
+  ct_assert_eq((int)decl->func.params.count, 2, "Function should have 2 parameters");
+
+  typed_identifier_t p1 = decl->func.params.items[0];
+  typed_identifier_t p2 = decl->func.params.items[1];
+
+  ct_assert_eq(p1.ident_name, "a", "First param name should be 'a'");
+  ct_assert_eq(p1.type.kind, TYPE_U8, "First param type should be TYPE_U8");
+  ct_assert_eq((int)p1.type.size, 1, "First param size should be 1 byte");
+
+  ct_assert_eq(p2.ident_name, "b", "Second param name should be 'b'");
+  ct_assert_eq(p2.type.kind, TYPE_U16, "Second param type should be TYPE_U16");
+  ct_assert_eq((int)p2.type.size, 2, "Second param size should be 2 bytes");
+
   free_declaration(decl);
   da_free(&parser);
 }

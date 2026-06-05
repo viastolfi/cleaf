@@ -85,7 +85,7 @@ before_each(int, result, char* file_path, char* expected_path)
   }
   da_free(&p);
 
-  HIR_function_array* hir_program = calloc(1, sizeof(HIR_function_array));
+  IR_function_array* hir_program = calloc(1, sizeof(IR_function_array));
   if (!hir_program) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
     abort();
@@ -106,7 +106,7 @@ before_each(int, result, char* file_path, char* expected_path)
   hir_parser.gen_chunk = counter_chunk_gen;
   hir_parser.chunk_ctx = &chunk_counter;
   da_foreach(declaration_t*, it, program) {
-    int lowering_result = HIR_lower_function(&hir_parser, *it);
+    int lowering_result = IR_lower_function(&hir_parser, *it);
     if (lowering_result != 0) {
       error_report_general(ERROR_SEVERITY_ERROR,
           "hir parsing error"); 
@@ -115,8 +115,8 @@ before_each(int, result, char* file_path, char* expected_path)
   }
   
   char output[2048] = "\0";
-  da_foreach(HIR_function_t*, it, hir_parser.hir_program) {
-    char* res = HIR_generate_string_program(*it);
+  da_foreach(IR_function_t*, it, hir_parser.hir_program) {
+    char* res = IR_generate_string_program(*it);
     strcat(output, res);
     free(res);
   }
@@ -229,4 +229,12 @@ ct_test(hir_test, struct_member_access_first, "test/hir_case/struct_member_acces
 
 ct_test(hir_test, struct_member_access_second, "test/hir_case/struct_member_access_second.clf", "test/hir_case/struct_member_access_second.res") {
   ct_assert_eq(result, 0, "hir parsing gives right output for struct member access (second member, offset 8)");
+}
+
+ct_test(hir_test, u8_u16_u64_vars, "test/hir_case/u8_u16_u64_vars.clf", "test/hir_case/u8_u16_u64_vars.res") {
+  ct_assert_eq(result, 0, "hir gives b/w/q prefixes for u8/u16/u64 typed variables");
+}
+
+ct_test(hir_test, int_binary_typed, "test/hir_case/int_binary_typed.clf", "test/hir_case/int_binary_typed.res") {
+  ct_assert_eq(result, 0, "hir propagates int size through binary ops and return");
 }

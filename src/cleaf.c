@@ -21,7 +21,7 @@ typedef struct {
   char* text;
   parser_t parser;
   declaration_array program;
-  HIR_function_array* hir_program;
+  IR_function_array* hir_program;
 } compiler_resources_t;
 
 static void compiler_resources_free(compiler_resources_t* res)
@@ -35,8 +35,8 @@ static void compiler_resources_free(compiler_resources_t* res)
   free(res->parser.types);
 
   if (res->hir_program) {
-    da_foreach(HIR_function_t*, it, res->hir_program) {
-      HIR_free_function(*it);
+    da_foreach(IR_function_t*, it, res->hir_program) {
+      IR_free_function(*it);
     }
     da_free(res->hir_program);
     free(res->hir_program);
@@ -168,6 +168,12 @@ int main(int argc, char** argv)
 
   semantic_analyze(&analyzer);
 
+  if (log_is_dump()) {
+    log_section_begin("AST after semantic");
+    ast_print_program(&res.program);
+    log_section_end();
+  }
+
   if (analyzer.error_count > 0) {
     log_phase("semantic", "%d error(s)", analyzer.error_count);
     error_report_general(ERROR_SEVERITY_NOTE,
@@ -178,13 +184,7 @@ int main(int argc, char** argv)
   }
   log_phase("semantic", "ok");
 
-  if (log_is_dump()) {
-    log_section_begin("AST after semantic");
-    ast_print_program(&res.program);
-    log_section_end();
-  }
-
-  res.hir_program = calloc(1, sizeof(HIR_function_array));
+  res.hir_program = calloc(1, sizeof(IR_function_array));
   if (!res.hir_program) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     compiler_resources_free(&res);
@@ -204,7 +204,7 @@ int main(int argc, char** argv)
     if ((*it)->type != DECLARATION_FUNC)
       continue;
 
-    int lowering_result = HIR_lower_function(&hir_parser, *it);
+    int lowering_result = IR_lower_function(&hir_parser, *it);
     if (lowering_result != 0) {
       error_report_general(ERROR_SEVERITY_ERROR, "HIR lowering error");
       compiler_resources_free(&res);
@@ -217,14 +217,14 @@ int main(int argc, char** argv)
   semantic_free_program_definition(&analyzer);
   if (log_is_dump()) {
     log_section_begin("HIR");
-    da_foreach(HIR_function_t*, it, hir_parser.hir_program) {
-      HIR_display_function(*it);
+    da_foreach(IR_function_t*, it, hir_parser.hir_program) {
+      IR_display_function(*it);
     }
     log_section_end();
   }
 
   string_builder_t asm_prog = {0};
-  da_foreach(HIR_function_t*, it, hir_parser.hir_program) {
+  da_foreach(IR_function_t*, it, hir_parser.hir_program) {
     int err = CODEGEN_write_function(&asm_prog, *it, &x86_64_target);
     if (err) {
       da_free(&asm_prog);
