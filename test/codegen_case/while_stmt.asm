@@ -9,15 +9,15 @@ _start:
 .c0:
     mov r12d, [rbp - 8]
     mov r13, 10
-    cmp r12d, r13
+    cmp r12, r13
     je .c1
     mov r14d, [rbp - 8]
     mov r15, 1
-    add r15, r14d
+    add r15, r14
     mov [rbp - 8], r15d
     jmp .c0
 .c1:
-    mov rbx, [rbp - 8]
+    mov ebx, [rbp - 8]
     add rsp, 4
     pop rbp
     mov rax, 60

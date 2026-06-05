@@ -8,7 +8,7 @@ _start:
     mov [rbp - 8], r11d
     mov r12d, [rbp - 8]
     mov r13, 0
-    cmp r12d, r13
+    cmp r12, r13
     jne .c0
     mov r14d, [rbp - 8]
     add rsp, 4
@@ -19,7 +19,7 @@ _start:
 .c0:
     mov r15d, [rbp - 8]
     mov rbx, 0
-    cmp r15d, rbx
+    cmp r15, rbx
     je .c1
     mov r11d, [rbp - 8]
     add rsp, 4
@@ -30,7 +30,7 @@ _start:
 .c1:
     mov r12d, [rbp - 8]
     mov r13, 12
-    cmp r12d, r13
+    cmp r12, r13
     jge .c2
     mov r14d, [rbp - 8]
     add rsp, 4
@@ -41,7 +41,7 @@ _start:
 .c2:
     mov r15d, [rbp - 8]
     mov rbx, 13
-    cmp r15d, rbx
+    cmp r15, rbx
     jg .c3
     mov r11d, [rbp - 8]
     add rsp, 4
@@ -52,7 +52,7 @@ _start:
 .c3:
     mov r12d, [rbp - 8]
     mov r13, 14
-    cmp r12d, r13
+    cmp r12, r13
     jle .c4
     mov r14d, [rbp - 8]
     add rsp, 4
@@ -63,7 +63,7 @@ _start:
 .c4:
     mov r15d, [rbp - 8]
     mov rbx, 14
-    cmp r15d, rbx
+    cmp r15, rbx
     jl .c5
     mov r11d, [rbp - 8]
     add rsp, 4

@@ -22,13 +22,13 @@ _add:
     mov rbp, rsp
     sub rsp, 0
     mov rbx, rax
-    mov [rbp - 8], rbx
-    mov r11d, rdi
+    mov [rbp - 8], ebx
+    mov r11, rdi
     mov [rbp - 16], r11d
     mov r13d, [rbp - 8]
     mov r14d, [rbp - 16]
     add r14d, r13d
-    mov rax, r14d
+    mov rax, r14
     add rsp, 0
     pop rbp
     ret

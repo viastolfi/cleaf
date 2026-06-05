@@ -14,7 +14,7 @@ _start:
     mov [rbp - 8], r13d
     mov r14d, [rbp - 8]
     mov r15, 10
-    cmp r14d, r15
+    cmp r14, r15
     jl .c0
     mov rbx, 0
     add rsp, 8

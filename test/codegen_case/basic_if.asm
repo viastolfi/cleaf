@@ -8,7 +8,7 @@ _start:
     mov [rbp - 8], r11d
     mov r12d, [rbp - 8]
     mov r13, 0
-    cmp r12d, r13
+    cmp r12, r13
     jne .c0
     mov r14, 0
     add rsp, 4
