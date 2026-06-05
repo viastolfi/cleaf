@@ -1,4 +1,8 @@
 #include "hir.h"
+
+static size_t min(size_t a, size_t b) {
+  return a < b ? a : b;
+}
   
 void IR_free_instruction(IR_instruction_t* instr) {
   switch (instr->kind) {
@@ -157,7 +161,7 @@ int IR_lower_composite_literal_expression(
     mov_offset->kind = IR_MOV_OFFSET;
     mov_offset->offset.timing = IR_PRE_OFFSET;
     mov_offset->dest.id = save;
-    mov_offset->dest.size = 8;
+    mov_offset->dest.size = decl->var_decl.ident.type.kind;
     mov_offset->src.id = func->next_temp_id;
 
     size_t j = 0;
@@ -225,7 +229,8 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
       case UNARY_POST_DEC: op->kind = IR_DEC; break;
       default: break;
     }
-    op->dest.id = func->next_temp_id + 1;
+
+    op->dest.id = func->next_temp_id;
     op->dest.size = operand_size;
     da_append(func->code, op);
 
@@ -235,7 +240,7 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
       return 1;
     }
     str->kind = IR_STORE_VAR;
-    str->src.id = func->next_temp_id + 1;
+    str->src.id = func->next_temp_id++;
     str->src.size = operand_size;
     str->var.name = strdup(expr->unary.operand->var.ident.ident_name);
     str->var.is_init = 1;
@@ -385,6 +390,13 @@ int IR_lower_binary_expression(expression_t* expr,
     return -1;
   instr->dest.id = func->next_temp_id;
   instr->dest.size = func->code->items[func->code->count - 1]->dest.size;
+
+  // promote register to the biggest one to avoid nasm compiler error
+  if (instr->src.size != instr->dest.size) {
+    size_t s = min(instr->src.size, instr->dest.size); 
+    instr->src.size = s;
+    instr->dest.size = s;
+  }
 
   return 0;
 }
@@ -842,6 +854,14 @@ int IR_lower_statement(HIR_parser_t* hir,
       return_var->dest.id = -1;
       return_var->src.id = func->next_temp_id;
       return_var->src.size = func->code->items[func->code->count - 1]->dest.size;
+
+      if (return_var->src.size != return_var->dest.size) {
+        size_t s = 
+          min(return_var->src.size, return_var->dest.size);
+        return_var->src.size = s;
+        return_var->dest.size = s;
+      }
+
       da_append(func->code, return_var);
 
       instr->kind = IR_RETURN;
@@ -907,6 +927,17 @@ int IR_lower_function(HIR_parser_t* hir,
     mov->dest.id = func->next_temp_id;
     mov->dest.size = function->func.params.items[i].type.size;
     mov->src.id = -i - 1;
+
+    // This is done here and in the function return handling
+    // We do this since we always store return values in `rax`
+    // This might be pretty poor design and lead to bugs in the future
+    // TODO: fin a better way to handle function param and return value handling
+    if (mov->dest.size != mov->src.size) {
+      size_t s = min(mov->dest.size, mov->src.size); 
+      mov->dest.size = s;
+      mov->src.size  = s;
+    }
+
     da_append(func->code, mov);
 
     IR_instruction_t* str = calloc(1, sizeof(IR_instruction_t));
@@ -923,6 +954,7 @@ int IR_lower_function(HIR_parser_t* hir,
     str->var.is_init = 1;
     str->src.id = func->next_temp_id++;
     str->src.size = function->func.params.items[i].type.size;
+
     da_append(func->code, str);
   }
 

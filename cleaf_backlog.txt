@@ -7,3 +7,4 @@
 (D) Add "char" type @global
 (B) Add Array type @global
 (B) Add signed type @global
+(B) Choose between mutable or const for var by default and change compiler behavior depending on this choice @global

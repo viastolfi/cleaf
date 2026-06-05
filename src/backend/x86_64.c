@@ -41,7 +41,7 @@ static const char* x86_regs_8[] = {
 };
 
 static const char* x86_regs_4[] = {
-  [X86_EBX] = "rbx",
+  [X86_EBX]  = "ebx",
   [X86_R11D] = "r11d",
   [X86_R12D] = "r12d",
   [X86_R13D] = "r13d",

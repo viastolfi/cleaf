@@ -9,7 +9,7 @@ Function main
 7: STR slot(a), d3
 8: LOAD d4, slot(a)
 9: t5 = INT_CONST 10
-10: CMP t5 d4
+10: CMP t5 t4
 11: JL .c0
 12: t6 = INT_CONST 0
 13: EXIT t6

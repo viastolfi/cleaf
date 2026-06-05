@@ -8,6 +8,7 @@ Function main
 6: STR slot(a), d3
 7: LOAD d4, slot(a)
 8: EXIT d4
+
 Function add
 0: MOV t0 t-1
 1: STR slot(a), d0

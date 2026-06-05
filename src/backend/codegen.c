@@ -24,7 +24,6 @@ static const char* CODEGEN_get_reg(
   else if (ir_temp_id.size == 4) 
     return target->regs_4[ir_temp_id.id % target->reg_4_count];
 
-
   // some kind of fallback
   return target->regs_8[ir_temp_id.id % target->reg_8_count];
 }
