@@ -5,16 +5,16 @@ Function main
 3: MOV t-2 t2
 4: CALL add
 5: MOV t3 t-1
-6: STR slot(a), t3
-7: LOAD t4, slot(a)
-8: EXIT t4
+6: STR slot(a), d3
+7: LOAD d4, slot(a)
+8: EXIT d4
 Function add
-0: MOV t0 t-1
-1: STR slot(a), t0
-2: MOV t1 t-2
-3: STR slot(b), t1
-4: LOAD t3, slot(a)
-5: LOAD t4, slot(b)
-6: ADD t4 t3
-7: MOV t-1 t4
+0: MOV d0 t-1
+1: STR slot(a), d0
+2: MOV d1 t-2
+3: STR slot(b), d1
+4: LOAD d3, slot(a)
+5: LOAD d4, slot(b)
+6: ADD d4 d3
+7: MOV t-1 d4
 8: RETURN

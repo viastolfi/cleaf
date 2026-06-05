@@ -69,6 +69,7 @@ int IR_lower_declaration(
 
   instr->kind = IR_STORE_VAR;
   instr->var.name = strdup(decl->var_decl.ident.ident_name);
+  instr->src.size = decl->var_decl.ident.type.size;
   if (!instr->var.name) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return -1;
@@ -87,7 +88,7 @@ int IR_lower_declaration(
 
       da_append(func->code, alloc);
       instr->var.is_init = 1;
-      instr->src = -1;
+      instr->src.id = -1;
 
       da_append(func->code, instr);
       if (decl->var_decl.init && 
@@ -102,14 +103,14 @@ int IR_lower_declaration(
     if (decl->var_decl.init) {
       instr->var.is_init = 1;
       IR_lower_expression(hir, decl->var_decl.init, func);   
-      instr->src = func->next_temp_id;
+      instr->src.id = func->next_temp_id;
     } else {
       if (decl->var_decl.ident.type.kind == TYPE_INT) {
         instr->var.is_init = 0; 
       }
     } 
     da_append(func->code, instr);
-    func->stack_reserve_size += 8;
+    func->stack_reserve_size += decl->var_decl.ident.type.size;
   }
 
   return 0;
@@ -126,7 +127,8 @@ int IR_lower_composite_literal_expression(
     return 1;
   }
   load->kind = IR_LOAD_VAR;
-  load->dest = func->next_temp_id;
+  load->dest.id = func->next_temp_id;
+  load->dest.size = decl->var_decl.ident.type.size;
   load->var.is_init = 1;
   load->var.name = strdup(decl->var_decl.ident.ident_name);
   if (!load->var.name) {
@@ -140,7 +142,7 @@ int IR_lower_composite_literal_expression(
       decl->var_decl.ident.type.name);
   expression_t* e = decl->var_decl.init;
 
-  IR_temp_id save = func->next_temp_id;
+  int save = func->next_temp_id;
 
   for (size_t i = 0; i < e->composite_literal.count; ++i) {
     IR_lower_expression(
@@ -154,18 +156,21 @@ int IR_lower_composite_literal_expression(
     }
     mov_offset->kind = IR_MOV_OFFSET;
     mov_offset->offset.timing = IR_PRE_OFFSET;
-    mov_offset->dest = save;
-    mov_offset->src = func->next_temp_id;
+    mov_offset->dest.id = save;
+    mov_offset->dest.size = 8;
+    mov_offset->src.id = func->next_temp_id;
 
-    for (size_t j = 0; j < sym->members_count; ++j) {
+    size_t j = 0;
+    for (; j < sym->members_count; ++j) {
       if (strcmp(
             e->composite_literal.values[i]->assign.lhs->var.ident.ident_name,
             sym->members_name[j]) == 0) {
         break ; 
       } else {
-        computed_place += sym->members_type[i].size;
+        computed_place += sym->members_type[j].size;
       }
     } 
+    mov_offset->src.size = sym->members_type[j].size;
     mov_offset->offset.size = computed_place;
     da_append(func->code, mov_offset);
   }
@@ -178,6 +183,8 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
     IR_function_t* func)
 {
   (void)hir;
+  size_t operand_size = expr->unary.operand->var.ident.type.size;
+
   if (expr->unary.op == UNARY_POST_INC ||
       expr->unary.op == UNARY_POST_DEC) {
     IR_instruction_t* load = calloc(1, sizeof(IR_instruction_t)); 
@@ -187,14 +194,13 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
     }
 
     load->kind = IR_LOAD_VAR;
-    load->var.name = strdup(
-        expr->unary.operand->var.ident.ident_name);
-    load->dest = ++(func->next_temp_id);
+    load->var.name = strdup(expr->unary.operand->var.ident.ident_name);
+    load->dest.id = ++(func->next_temp_id);
+    load->dest.size = operand_size;
     if (!load->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
       return 1;
     }
-
     da_append(func->code, load);  
 
     IR_instruction_t* mov = calloc(1, sizeof(IR_instruction_t));
@@ -202,10 +208,11 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
       return 1;
     }
-
     mov->kind = IR_MOV;
-    mov->dest = func->next_temp_id + 1;
-    mov->src = func->next_temp_id;
+    mov->dest.id = func->next_temp_id + 1;
+    mov->dest.size = operand_size;
+    mov->src.id = func->next_temp_id;
+    mov->src.size = operand_size;
     da_append(func->code, mov);
 
     IR_instruction_t* op = calloc(1, sizeof(IR_instruction_t));
@@ -213,17 +220,13 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
       return 1;
     }
-    
     switch (expr->unary.op) {
-      case UNARY_POST_INC: 
-        op->kind = IR_INC;
-        break;
-      case UNARY_POST_DEC:
-        op->kind = IR_DEC;
-        break;
+      case UNARY_POST_INC: op->kind = IR_INC; break;
+      case UNARY_POST_DEC: op->kind = IR_DEC; break;
       default: break;
     }
-    op->dest = func->next_temp_id + 1;
+    op->dest.id = func->next_temp_id + 1;
+    op->dest.size = operand_size;
     da_append(func->code, op);
 
     IR_instruction_t* str = calloc(1, sizeof(IR_instruction_t));
@@ -231,17 +234,15 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
       return 1;
     }
-
     str->kind = IR_STORE_VAR;
-    str->src = func->next_temp_id + 1; 
-    str->var.name = strdup(
-        expr->unary.operand->var.ident.ident_name);
+    str->src.id = func->next_temp_id + 1;
+    str->src.size = operand_size;
+    str->var.name = strdup(expr->unary.operand->var.ident.ident_name);
     str->var.is_init = 1;
     if (!str->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
       return 1;
     }
-
     da_append(func->code, str);
     return 0;
   }
@@ -253,11 +254,10 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
       return 1;   
     }
-
     load->kind = IR_LOAD_VAR;
-    load->dest = ++(func->next_temp_id);
-    load->var.name = strdup(
-        expr->unary.operand->var.ident.ident_name);
+    load->dest.id = ++(func->next_temp_id);
+    load->dest.size = operand_size;
+    load->var.name = strdup(expr->unary.operand->var.ident.ident_name);
     if (!load->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
       return 1;
@@ -269,18 +269,13 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
       return 1;
     }
-
     switch (expr->unary.op) {
-      case UNARY_PRE_INC:
-        op->kind = IR_INC;
-        break;
-      case UNARY_PRE_DEC:
-        op->kind = IR_DEC;
-        break;
-      default:
-        break;  
+      case UNARY_PRE_INC: op->kind = IR_INC; break;
+      case UNARY_PRE_DEC: op->kind = IR_DEC; break;
+      default: break;  
     }
-    op->dest = func->next_temp_id;
+    op->dest.id = func->next_temp_id;
+    op->dest.size = operand_size;
     da_append(func->code, op);
 
     IR_instruction_t* str = calloc(1, sizeof(IR_instruction_t));
@@ -288,17 +283,15 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
       return 1;
     }
-
     str->kind = IR_STORE_VAR;
-    str->src = func->next_temp_id;
-    str->var.name = 
-      strdup(expr->unary.operand->var.ident.ident_name);
+    str->src.id = func->next_temp_id;
+    str->src.size = operand_size;
+    str->var.name = strdup(expr->unary.operand->var.ident.ident_name);
     if (!str->var.name) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
       return 1; 
     }
     str->var.is_init = 1;
-
     da_append(func->code, str);
     return 0;
   }
@@ -320,12 +313,12 @@ int IR_lower_call_expression(HIR_parser_t* hir,
       return 1;
     }
     set_arg->kind = IR_MOV;
-    set_arg->dest = -i - 1;
+    set_arg->dest.id = -i - 1;
 
     if (IR_lower_expression(hir, expr->call.args[i], func) != 0)
       return 1;
 
-    set_arg->src = func->next_temp_id;
+    set_arg->src.id = func->next_temp_id;
     
     da_append(func->code, set_arg);
   } 
@@ -349,8 +342,8 @@ int IR_lower_call_expression(HIR_parser_t* hir,
     return 1;
   }
   result->kind = IR_MOV;
-  result->dest = ++(func->next_temp_id);
-  result->src = -1;
+  result->dest.id = ++(func->next_temp_id);
+  result->src.id = -1;
   da_append(func->code, result);
 
   return 0;
@@ -385,11 +378,13 @@ int IR_lower_binary_expression(expression_t* expr,
 
   if (IR_lower_expression(hir, expr->binary.left, func) != 0)
     return -1;
-  instr->src = func->next_temp_id;
+  instr->src.id = func->next_temp_id;
+  instr->src.size = func->code->items[func->code->count - 1]->dest.size;
 
   if (IR_lower_expression(hir, expr->binary.right, func) != 0)
     return -1;
-  instr->dest = func->next_temp_id;
+  instr->dest.id = func->next_temp_id;
+  instr->dest.size = func->code->items[func->code->count - 1]->dest.size;
 
   return 0;
 }
@@ -405,7 +400,7 @@ int IR_lower_expression(HIR_parser_t* hir,
       return -1;
     }
     instr->kind = IR_INT_CONST;
-    instr->dest = ++(func->next_temp_id);
+    instr->dest.id = ++(func->next_temp_id);
     instr->int_value = expr->int_lit.value;
     da_append(func->code, instr);
     return 0;
@@ -419,7 +414,8 @@ int IR_lower_expression(HIR_parser_t* hir,
     }
 
     instr->kind = IR_LOAD_VAR;
-    instr->dest = ++(func->next_temp_id);
+    instr->dest.id = ++(func->next_temp_id);
+    instr->dest.size = expr->var.ident.type.size;
     instr->var.name = 
       strdup(expr->var.ident.ident_name);
     if (!instr->var.name) {
@@ -456,8 +452,10 @@ int IR_lower_expression(HIR_parser_t* hir,
 
 insert_member:
       instr->offset.size = offset;
-      instr->src = func->next_temp_id;
-      instr->dest = ++func->next_temp_id;
+      instr->src.id = func->next_temp_id;
+      instr->src.size = expr->var.ident.type.size;
+      instr->dest.id = ++func->next_temp_id;
+      instr->dest.size = expr->var.member->var.ident.type.size;
       da_append(func->code, instr);
 
       expr = expr->var.member;
@@ -500,8 +498,9 @@ insert_member:
     }
 
     instr->kind = IR_STORE_VAR;
-    instr->src = func->next_temp_id;
-    // This works only if lhs in assign is src var
+    instr->src.id = func->next_temp_id;
+    instr->src.size = expr->assign.lhs->var.ident.type.size;
+    // This works only if lhs in assign is src.id var
     // TODO: make sure this won't break as the compiler evolve
     instr->var.name = 
       strdup(expr->assign.lhs->var.ident.ident_name);
@@ -693,7 +692,7 @@ int IR_lower_while_statement(
   return 0;
 }
 
-// TODO: this needs src lot of memory management to avoid leaks
+// TODO: this needs src.id lot of memory management to avoid leaks
 int IR_lower_if_statement(HIR_parser_t* hir,
     statement_t* stmt,
     IR_function_t* func)
@@ -716,7 +715,7 @@ int IR_lower_if_statement(HIR_parser_t* hir,
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
     return 1;
   }
-  // TODO: this is src bit ugly but whatever for now
+  // TODO: this is src.id bit ugly but whatever for now
   if (stmt->if_stmt.else_branch) {
     hir->gen_chunk(hir->chunk_ctx, else_chunk); 
   }
@@ -829,7 +828,8 @@ int IR_lower_statement(HIR_parser_t* hir,
     }
     if (strcmp(func->name, "main") == 0) {
       instr->kind = IR_EXIT;     
-      instr->dest = func->next_temp_id; 
+      instr->dest.id = func->next_temp_id;
+      instr->dest.size = func->code->items[func->code->count - 1]->dest.size;
     }
     else {
       // TODO: what append if we return void ?
@@ -839,8 +839,9 @@ int IR_lower_statement(HIR_parser_t* hir,
         return 1;
       }
       return_var->kind = IR_MOV;
-      return_var->dest = -1;
-      return_var->src = func->next_temp_id;
+      return_var->dest.id = -1;
+      return_var->src.id = func->next_temp_id;
+      return_var->src.size = func->code->items[func->code->count - 1]->dest.size;
       da_append(func->code, return_var);
 
       instr->kind = IR_RETURN;
@@ -903,8 +904,9 @@ int IR_lower_function(HIR_parser_t* hir,
       return -1; 
     }
     mov->kind = IR_MOV;
-    mov->dest = func->next_temp_id;
-    mov->src = -i - 1;
+    mov->dest.id = func->next_temp_id;
+    mov->dest.size = function->func.params.items[i].type.size;
+    mov->src.id = -i - 1;
     da_append(func->code, mov);
 
     IR_instruction_t* str = calloc(1, sizeof(IR_instruction_t));
@@ -919,7 +921,8 @@ int IR_lower_function(HIR_parser_t* hir,
       return -1;
     }
     str->var.is_init = 1;
-    str->src = func->next_temp_id++;
+    str->src.id = func->next_temp_id++;
+    str->src.size = function->func.params.items[i].type.size;
     da_append(func->code, str);
   }
 
@@ -936,6 +939,18 @@ int IR_lower_function(HIR_parser_t* hir,
   return 0;
 }
 
+static char IR_temp_letter(size_t size) {
+  switch (size) {
+    case 1: return 'b';
+    case 2: return 'w';
+    case 4: return 'd';
+    case 8: return 'q';
+    default: return 't';
+  }
+}
+
+#define TEMP_STR(t) IR_temp_letter((t).size), (t).id
+
 char* IR_generate_string_program(IR_function_t* function) 
 {
   string_builder_t sb = {0};
@@ -945,7 +960,7 @@ char* IR_generate_string_program(IR_function_t* function)
     sb_append_fmt(&sb, "%zu: ", i);
 
     if (instr->kind == IR_INT_CONST) {
-      sb_append_fmt(&sb, "t%d = INT_CONST %d\n", instr->dest, instr->int_value);
+      sb_append_fmt(&sb, "%c%d = INT_CONST %d\n", TEMP_STR(instr->dest), instr->int_value);
       continue;
     }
 
@@ -955,23 +970,23 @@ char* IR_generate_string_program(IR_function_t* function)
     }
 
     if (instr->kind == IR_EXIT) {
-      sb_append_fmt(&sb, "EXIT t%d\n", instr->dest); 
+      sb_append_fmt(&sb, "EXIT %c%d\n", TEMP_STR(instr->dest)); 
       continue;
     }
 
     if (instr->kind == IR_BINARY) {
       switch (instr->binary_op) {
         case IR_BINARY_ADD: 
-          sb_append_fmt(&sb, "ADD t%d t%d\n", instr->dest, instr->src); 
+          sb_append_fmt(&sb, "ADD %c%d %c%d\n", TEMP_STR(instr->dest), TEMP_STR(instr->src)); 
         continue;
         case IR_BINARY_SUB:
-          sb_append_fmt(&sb, "SUB t%d t%d\n", instr->dest, instr->src);          
+          sb_append_fmt(&sb, "SUB %c%d %c%d\n", TEMP_STR(instr->dest), TEMP_STR(instr->src));          
           continue;
         case IR_BINARY_MUL:
-          sb_append_fmt(&sb, "MUL t%d t%d\n", instr->dest, instr->src);          
+          sb_append_fmt(&sb, "MUL %c%d %c%d\n", TEMP_STR(instr->dest), TEMP_STR(instr->src));          
           continue;
         case IR_BINARY_CMP:
-          sb_append_fmt(&sb, "CMP t%d t%d\n", instr->dest, instr->src);
+          sb_append_fmt(&sb, "CMP %c%d %c%d\n", TEMP_STR(instr->dest), TEMP_STR(instr->src));
           continue;
         default:
           sb_append_fmt(&sb, "unknow binary op\n");
@@ -981,7 +996,7 @@ char* IR_generate_string_program(IR_function_t* function)
 
     if (instr->kind == IR_STORE_VAR) {
       if (instr->var.is_init) {
-        sb_append_fmt(&sb, "STR slot(%s), t%d\n", instr->var.name, instr->src);
+        sb_append_fmt(&sb, "STR slot(%s), %c%d\n", instr->var.name, TEMP_STR(instr->src));
         continue; 
       }
       else {
@@ -991,22 +1006,22 @@ char* IR_generate_string_program(IR_function_t* function)
     }
 
     if (instr->kind == IR_LOAD_VAR) {
-      sb_append_fmt(&sb, "LOAD t%d, slot(%s)\n", instr->dest, instr->var.name); 
+      sb_append_fmt(&sb, "LOAD %c%d, slot(%s)\n", TEMP_STR(instr->dest), instr->var.name); 
       continue;
     }
 
     if (instr->kind == IR_MOV) {
-      sb_append_fmt(&sb, "MOV t%d t%d\n", instr->dest, instr->src);  
+      sb_append_fmt(&sb, "MOV %c%d %c%d\n", TEMP_STR(instr->dest), TEMP_STR(instr->src));  
       continue;
     }
 
     if (instr->kind == IR_INC) {
-      sb_append_fmt(&sb, "INC t%d\n", instr->dest);  
+      sb_append_fmt(&sb, "INC %c%d\n", TEMP_STR(instr->dest));  
       continue;
     }
 
     if (instr->kind == IR_DEC) {
-      sb_append_fmt(&sb, "DEC t%d\n", instr->dest);  
+      sb_append_fmt(&sb, "DEC %c%d\n", TEMP_STR(instr->dest));  
       continue;
     }
 
@@ -1062,9 +1077,9 @@ char* IR_generate_string_program(IR_function_t* function)
 
     if (instr->kind == IR_MOV_OFFSET) {
       if (instr->offset.timing == IR_PRE_OFFSET) {
-        sb_append_fmt(&sb, "MOV [t%d + %zu], t%d\n", instr->dest, instr->offset.size, instr->src);
+        sb_append_fmt(&sb, "MOV [%c%d + %zu], %c%d\n", TEMP_STR(instr->dest), instr->offset.size, TEMP_STR(instr->src));
       } else {
-        sb_append_fmt(&sb, "MOV t%d, [t%d + %zu]\n", instr->dest, instr->src, instr->offset.size);
+        sb_append_fmt(&sb, "MOV %c%d, [%c%d + %zu]\n", TEMP_STR(instr->dest), TEMP_STR(instr->src), instr->offset.size);
       }
     }
   }

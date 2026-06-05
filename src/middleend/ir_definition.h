@@ -64,7 +64,10 @@ typedef enum
   IR_POST_OFFSET,
 } IR_offset_timing;
 
-typedef int IR_temp_id;
+typedef struct {
+  int id;
+  size_t size;
+} IR_temp_id;
 
 typedef struct 
 {
@@ -106,7 +109,7 @@ typedef struct
 
   IR_instruction_block* code;
 
-  IR_temp_id next_temp_id;
+  int next_temp_id;
 
   size_t stack_reserve_size;
 } IR_function_t;
