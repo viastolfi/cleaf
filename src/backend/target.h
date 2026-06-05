@@ -6,8 +6,11 @@
 typedef struct {
     void (*setup)(string_builder_t*);
 
-    const char** regs;
-    int reg_count;
+    const char** regs_8;
+    int reg_8_count;
+
+    const char** regs_4;
+    int reg_4_count;
 
     const char** reserved_regs;
     int reserved_reg_count;

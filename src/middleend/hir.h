@@ -1,5 +1,5 @@
-#ifndef HIR_H
-#define HIR_H
+#ifndef IR_H
+#define IR_H
 
 #include <string.h>
 
@@ -7,46 +7,58 @@
 #include "../thirdparty/da.h"
 #include "../frontend/ast_definition.h"
 #include "../thirdparty/string_builder.h"
-#include "hir_definition.h"
+#include "ir_definition.h"
 
-int HIR_lower_function(HIR_parser_t* hir, 
+typedef struct 
+{
+  error_context_t* error_ctx;
+  int error_count;
+
+  chunk_name_gen_t gen_chunk;
+  void* chunk_ctx;
+
+  hashmap_t* struct_symbols;
+  IR_function_array* hir_program;
+} HIR_parser_t;
+
+int IR_lower_function(HIR_parser_t* hir, 
     declaration_t* function);
-int HIR_lower_statement(HIR_parser_t* hir, 
+int IR_lower_statement(HIR_parser_t* hir, 
     statement_t* stmt,
-    HIR_function_t* func);
-int HIR_lower_expression(HIR_parser_t* hir,
+    IR_function_t* func);
+int IR_lower_expression(HIR_parser_t* hir,
     expression_t* expr,
-    HIR_function_t* func);
-void HIR_display_function(HIR_function_t* function);
-void HIR_free_function(HIR_function_t* func);
-void HIR_free_instruction(HIR_instruction_t* instr);
-char* HIR_generate_string_program(HIR_function_t* function);
-int HIR_lower_binary_expression(expression_t* expr,
+    IR_function_t* func);
+void IR_display_function(IR_function_t* function);
+void IR_free_function(IR_function_t* func);
+void IR_free_instruction(IR_instruction_t* instr);
+char* IR_generate_string_program(IR_function_t* function);
+int IR_lower_binary_expression(expression_t* expr,
     HIR_parser_t* hir,
-    HIR_instruction_t* instr,
-    HIR_function_t* func);
-int HIR_lower_declaration(
+    IR_instruction_t* instr,
+    IR_function_t* func);
+int IR_lower_declaration(
     HIR_parser_t* hir,
     declaration_t* decl,
-    HIR_function_t* func);
-int HIR_lower_unary_expression(
+    IR_function_t* func);
+int IR_lower_unary_expression(
     HIR_parser_t* hir,
     expression_t* expr,
-    HIR_function_t* func);
-int HIR_lower_if_statement(
+    IR_function_t* func);
+int IR_lower_if_statement(
     HIR_parser_t* hir,
     statement_t* stmt,
-    HIR_function_t* func);
-int HIR_lower_while_statement(
+    IR_function_t* func);
+int IR_lower_while_statement(
     HIR_parser_t* hir,
     statement_t* stmt,
-    HIR_function_t* func);
-int HIR_lower_for_statement(
+    IR_function_t* func);
+int IR_lower_for_statement(
     HIR_parser_t* hir,
     statement_t* stmt, 
-    HIR_function_t* func);
-int HIR_lower_composite_literal_expression(
+    IR_function_t* func);
+int IR_lower_composite_literal_expression(
     HIR_parser_t* hir, 
     declaration_t* decl, 
-    HIR_function_t* func);
-#endif // HIR_H
+    IR_function_t* func);
+#endif // IR_H

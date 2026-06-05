@@ -85,7 +85,7 @@ before_each(int, result, char* file_path, char* expected_path)
   }
   da_free(&p);
 
-  HIR_function_array* hir_program = calloc(1, sizeof(HIR_function_array));
+  IR_function_array* hir_program = calloc(1, sizeof(IR_function_array));
   if (!hir_program) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
     abort();
@@ -106,7 +106,7 @@ before_each(int, result, char* file_path, char* expected_path)
   hir_parser.gen_chunk = counter_chunk_gen;
   hir_parser.chunk_ctx = &chunk_counter;
   da_foreach(declaration_t*, it, program) {
-    int lowering_result = HIR_lower_function(&hir_parser, *it);
+    int lowering_result = IR_lower_function(&hir_parser, *it);
     if (lowering_result != 0) {
       error_report_general(ERROR_SEVERITY_ERROR,
           "hir parsing error"); 
@@ -115,8 +115,8 @@ before_each(int, result, char* file_path, char* expected_path)
   }
   
   char output[2048] = "\0";
-  da_foreach(HIR_function_t*, it, hir_parser.hir_program) {
-    char* res = HIR_generate_string_program(*it);
+  da_foreach(IR_function_t*, it, hir_parser.hir_program) {
+    char* res = IR_generate_string_program(*it);
     strcat(output, res);
     free(res);
   }

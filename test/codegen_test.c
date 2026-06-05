@@ -94,7 +94,7 @@ before_each(int, result, char* file_path, char* expected_path)
   }
 
   // --- HIR lowering ---
-  HIR_function_array* hir_program = calloc(1, sizeof(HIR_function_array));
+  IR_function_array* hir_program = calloc(1, sizeof(IR_function_array));
   if (!hir_program) abort();
 
   HIR_parser_t hir_parser = {0};
@@ -106,24 +106,24 @@ before_each(int, result, char* file_path, char* expected_path)
   hir_parser.chunk_ctx = &chunk_counter;
 
   da_foreach(declaration_t*, it, program) {
-    if (HIR_lower_function(&hir_parser, *it) != 0) {
-      fprintf(stderr, "HIR lowering error in: %s\n", file_path);
+    if (IR_lower_function(&hir_parser, *it) != 0) {
+      fprintf(stderr, "IR lowering error in: %s\n", file_path);
       abort();
     }
   }
 
   // --- Codegen ---
   string_builder_t sb = {0};
-  da_foreach(HIR_function_t*, it, hir_parser.hir_program) {
+  da_foreach(IR_function_t*, it, hir_parser.hir_program) {
     if (CODEGEN_write_function(&sb, *it, &x86_64_target) != 0) {
       fprintf(stderr, "codegen error in: %s\n", file_path);
       abort();
     }
   }
 
-  // --- Cleanup HIR & AST ---
-  da_foreach(HIR_function_t*, it, hir_program) {
-    HIR_free_function(*it);
+  // --- Cleanup IR & AST ---
+  da_foreach(IR_function_t*, it, hir_program) {
+    IR_free_function(*it);
   }
   da_free(hir_program);
   free(hir_program);

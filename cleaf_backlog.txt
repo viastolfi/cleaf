@@ -4,5 +4,6 @@
 (B) Add "sizeof" compiler function @global
 (C) Add "type" keyword to create types at compile time @global
 (A) Import workflow for multiple file and std compilation @global
-(D) Add "char" type
-(B) Add Array type
+(D) Add "char" type @global
+(B) Add Array type @global
+(B) Add signed type @global

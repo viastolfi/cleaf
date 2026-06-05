@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-#include "../middleend/hir_definition.h"
+#include "../middleend/ir_definition.h"
 #include "../thirdparty/string_builder.h"
 #include "target.h"
 #include "../thirdparty/da.h"
@@ -22,7 +22,7 @@ typedef struct {
 
 int CODEGEN_write_function(
     string_builder_t* sb,
-    HIR_function_t* func,
+    IR_function_t* func,
     const target_t* target);
 
 #endif //CODEGEN_H
