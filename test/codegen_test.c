@@ -237,3 +237,11 @@ ct_test(codegen_test, struct_member_access_first, "test/codegen_case/struct_memb
 ct_test(codegen_test, struct_member_access_second, "test/codegen_case/struct_member_access_second.clf", "test/codegen_case/struct_member_access_second.asm") {
   ct_assert_eq(result, 0, "codegen gives right output for struct member access return (second member, offset 8)");
 }
+
+ct_test(codegen_test, int_binary_typed, "test/codegen_case/int_binary_typed.clf", "test/codegen_case/int_binary_typed.asm") {
+  ct_assert_eq(result, 0, "codegen uses 32-bit registers (r11d) for int binary ops");
+}
+
+ct_test(codegen_test, u8_u16_u64_vars, "test/codegen_case/u8_u16_u64_vars.clf", "test/codegen_case/u8_u16_u64_vars.asm") {
+  ct_assert_eq(result, 0, "codegen falls back to 64-bit registers for u8/u16/u64");
+}

@@ -10,11 +10,23 @@ static int CODEGEN_get_var_pos(var_array* vars, const char* name)
   return -1;
 }
 
-static const char* CODEGEN_get_reg(const target_t* target, int id)
+static const char* CODEGEN_get_reg(
+    const target_t* target, 
+    IR_temp_id ir_temp_id,
+    bool force_8_register) // we use this to ensure we use 8 bytes registers when used on known workflow like exit syscall
+                           // this is pretty ugly
+                           // TODO: find a better way of doing this
 {
-  if (id < 0)
-    return target->reserved_regs[-1 - id];
-  return target->regs_8[id % target->reg_8_count];
+  if (ir_temp_id.id < 0)
+    return target->reserved_regs[-1 - ir_temp_id.id];
+  if (ir_temp_id.size == 8 || force_8_register) 
+    return target->regs_8[ir_temp_id.id % target->reg_8_count];
+  else if (ir_temp_id.size == 4) 
+    return target->regs_4[ir_temp_id.id % target->reg_4_count];
+
+
+  // some kind of fallback
+  return target->regs_8[ir_temp_id.id % target->reg_8_count];
 }
 
 int CODEGEN_write_function(
@@ -43,7 +55,7 @@ int CODEGEN_write_function(
         // since this append after semantic analyze this can't fail
         int place = CODEGEN_get_var_pos(&vars, (*it)->var.name);
         target->emit_mov_from_stack(sb, 
-            CODEGEN_get_reg(target, (*it)->dest.id), place);
+            CODEGEN_get_reg(target, (*it)->dest, false), place);
       }
       break;
     case IR_STORE_VAR:
@@ -57,14 +69,16 @@ int CODEGEN_write_function(
       // TODO: handle uninitialized var
       if ((*it)->var.is_init) {
         target->emit_mov_at_stack(sb, place, 
-            CODEGEN_get_reg(target, (*it)->src.id));
+            CODEGEN_get_reg(target, (*it)->src, false));
       }
       break;
     case IR_INC:
-      target->emit_inc(sb, CODEGEN_get_reg(target, (*it)->dest.id));
+      target->emit_inc(
+          sb, CODEGEN_get_reg(target, (*it)->dest, false));
       break;
     case IR_DEC:
-      target->emit_dec(sb, CODEGEN_get_reg(target, (*it)->dest.id));
+      target->emit_dec(
+          sb, CODEGEN_get_reg(target, (*it)->dest, false));
       break;
     case IR_CHUNK:
       target->chunk_write(sb, (*it)->chunk_name);
@@ -93,20 +107,20 @@ int CODEGEN_write_function(
     case IR_BINARY:
       if ((*it)->binary_op == IR_BINARY_CMP) {
         target->emit_cmp(sb, 
-            CODEGEN_get_reg(target, (*it)->src.id), 
-            CODEGEN_get_reg(target, (*it)->dest.id));
+            CODEGEN_get_reg(target, (*it)->src, false), 
+            CODEGEN_get_reg(target, (*it)->dest, false));
       } else if ((*it)->binary_op == IR_BINARY_ADD) {
         target->emit_add(sb, 
-            CODEGEN_get_reg(target, (*it)->dest.id),
-            CODEGEN_get_reg(target, (*it)->src.id));
+            CODEGEN_get_reg(target, (*it)->dest, false),
+            CODEGEN_get_reg(target, (*it)->src, false));
       } else if ((*it)->binary_op == IR_BINARY_SUB) {
         target->emit_sub(sb,
-            CODEGEN_get_reg(target, (*it)->dest.id),
-            CODEGEN_get_reg(target, (*it)->src.id));
+            CODEGEN_get_reg(target, (*it)->dest, false),
+            CODEGEN_get_reg(target, (*it)->src, false));
       } else if ((*it)->binary_op == IR_BINARY_MUL) {
         target->emit_mul(sb,
-            CODEGEN_get_reg(target, (*it)->dest.id),
-            CODEGEN_get_reg(target, (*it)->src.id));
+            CODEGEN_get_reg(target, (*it)->dest, false),
+            CODEGEN_get_reg(target, (*it)->src, false));
       } else {
         error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED,
             "binary op not yet implemented in codegen");
@@ -115,12 +129,12 @@ int CODEGEN_write_function(
       break;
     case IR_INT_CONST:
       target->emit_mov_direct(sb, 
-          CODEGEN_get_reg(target, (*it)->dest.id),
+          CODEGEN_get_reg(target, (*it)->dest, false),
           (*it)->int_value);
       break;
     case IR_MOV: {
-      const char* dst = CODEGEN_get_reg(target, (*it)->dest.id);
-      const char* src = CODEGEN_get_reg(target, (*it)->src.id);
+      const char* dst = CODEGEN_get_reg(target, (*it)->dest, false);
+      const char* src = CODEGEN_get_reg(target, (*it)->src, false);
       target->emit_mov(sb, dst, src);
     }
       break;
@@ -133,21 +147,25 @@ int CODEGEN_write_function(
       break;
     case IR_EXIT:
       target->emit_stack_restore(sb, func->stack_reserve_size);
-      target->emit_process_exit(sb, CODEGEN_get_reg(target, (*it)->dest.id));
+      target->emit_process_exit(
+          sb, CODEGEN_get_reg(target, (*it)->dest, true));
       break;
     case IR_ALLOC:
       target->alloc_memory(sb, (*it)->alloc_size);
       break;
     case IR_MOV_OFFSET:
       if ((*it)->offset.timing == IR_PRE_OFFSET) {
-      const char* dst = CODEGEN_get_reg(target, (*it)->dest.id);
-      const char* src = CODEGEN_get_reg(target, (*it)->src.id);
+      const char* dst = CODEGEN_get_reg(target, (*it)->dest, false);
+      const char* src = CODEGEN_get_reg(target, (*it)->src, false);
         target->emit_mov_offset_pre(
             sb, dst, (*it)->offset.size, src);
         break;
       } else {
-        const char* dst = CODEGEN_get_reg(target, (*it)->dest.id);
-        const char* src = CODEGEN_get_reg(target, (*it)->src.id);
+        const char* dst = 
+          CODEGEN_get_reg(target, (*it)->dest, false);
+        const char* src = 
+          CODEGEN_get_reg(target, (*it)->src, false);
+
         target->emit_mov_offset_post(
             sb, dst, (*it)->offset.size, src);
         break;

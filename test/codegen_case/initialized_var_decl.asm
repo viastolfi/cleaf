@@ -3,10 +3,10 @@ global _start
 _start:
     push rbp
     mov rbp, rsp
-    sub rsp, 24
+    sub rsp, 12
     mov r11, 1
-    mov [rbp - 8], r11
+    mov [rbp - 8], r11d
     mov r12, 2
-    mov [rbp - 16], r12
+    mov [rbp - 16], r12d
     mov r13, 3
-    mov [rbp - 24], r13
+    mov [rbp - 24], r13d
