@@ -1284,6 +1284,7 @@ declaration_t* parse_declaration(parser_t* p)
             "unexpected token: expected declaration");
     }
   }
+
   return NULL;
 }
 
@@ -1637,25 +1638,30 @@ statement_t* ast_parse_for_stmt(parser_t* p)
 
 statement_t* parse_statement(parser_t* p) 
 {
-  if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "return") == 0) {
+  if (check(p, LEXER_token_id) && 
+      strcmp(peek(p)->string_value, "return") == 0) {
     return ast_parse_return_stmt(p);
   } 
 
-  if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "if") == 0) {
+  if (check(p, LEXER_token_id) && 
+      strcmp(peek(p)->string_value, "if") == 0) {
     return ast_parse_if_stmt(p);
   }
 
-  if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "while") == 0) {
+  if (check(p, LEXER_token_id) && 
+      strcmp(peek(p)->string_value, "while") == 0) {
     return ast_parse_while_stmt(p);
   }
 
-  if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "for") == 0) {
+  if (check(p, LEXER_token_id) && 
+      strcmp(peek(p)->string_value, "for") == 0) {
     return ast_parse_for_stmt(p); 
   }
 
   // WARNING: this can be unsafe if string_value is NULL
   // TODO: keep an eye on this
-  if (check(p, LEXER_token_id) && ((check_is_type(p)) || strcmp(peek(p)->string_value, "var") == 0)) {
+  if (check(p, LEXER_token_id) && ((check_is_type(p)) || 
+      strcmp(peek(p)->string_value, "var") == 0)) {
     return ast_parse_decl_stmt(p);
   } 
 

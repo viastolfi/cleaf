@@ -1,4 +1,4 @@
-(A) Add multiple int related types for better register usage @global
+x 2026-06-08 2026-06-08 Add multiple int related types for better register usage @global
 (A) Add MIR @middleend
 (B) Add "asm" function for inline assembly in the code base @global
 (B) Add "sizeof" compiler function @global
@@ -8,3 +8,4 @@
 (B) Add Array type @global
 (B) Add signed type @global
 (B) Choose between mutable or const for var by default and change compiler behavior depending on this choice @global
+(A) Enhance error reporting @thirdparty

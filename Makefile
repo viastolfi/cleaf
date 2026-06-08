@@ -11,6 +11,7 @@ CS = \
 				$(SRC)/frontend/ast_printer.c \
 				$(SRC)/backend/x86_64.c \
 				$(SRC)/backend/codegen.c \
+				$(SRC)/compiler/definition/compiler_definition.c \
 
 OBJ = \
         $(BUILD)/cleaf.o \
@@ -21,9 +22,10 @@ OBJ = \
 				$(BUILD)/frontend/ast_printer.o \
 				$(BUILD)/backend/x86_64.o \
 				$(BUILD)/backend/codegen.o \
+				$(BUILD)/compiler/definition/compiler_definition.o \
 
 CC = gcc
-CFLAGS = -Wall -Wextra -g
+CFLAGS = -Wall -Wextra -g -Isrc
 VALGRIND = valgrind --error-exitcode=42 --leak-check=full --show-leak-kinds=all
 
 .PRECIOUS: build/cleaf
@@ -41,6 +43,7 @@ $(BUILD)/%.o: $(SRC)/%.c
 	@mkdir -p $(BUILD)/thirdparty
 	@mkdir -p $(BUILD)/middleend
 	@mkdir -p $(BUILD)/backend
+	@mkdir -p $(BUILD)/compiler/definition
 	$(CC) $(CFLAGS) -c $< -o $@
 
 AST_TEST_SRC = $(TEST)/ast_test.c

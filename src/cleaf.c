@@ -16,47 +16,7 @@
 #include "middleend/hir.h"
 #include "backend/codegen.h"
 #include "backend/x86_64_definition.h"
-
-typedef struct {
-  char* text;
-  parser_t parser;
-  declaration_array program;
-  IR_function_array* hir_program;
-} compiler_resources_t;
-
-static void compiler_resources_free(compiler_resources_t* res)
-{
-  da_foreach(known_type_t, it, res->parser.types) {
-    if (it->kind == TYPE_CUSTOM)
-      if (it->name)
-        free(it->name);
-  }
-  da_free(res->parser.types);
-  free(res->parser.types);
-
-  if (res->hir_program) {
-    da_foreach(IR_function_t*, it, res->hir_program) {
-      IR_free_function(*it);
-    }
-    da_free(res->hir_program);
-    free(res->hir_program);
-    res->hir_program = NULL;
-  }
-
-  da_foreach(declaration_t*, it, &res->program) {
-    free_declaration(*it);
-  }
-  da_free(&res->program);
-
-  for (size_t i = 0; i < res->parser.count; i++) {
-    if (res->parser.items[i].string_value)
-      free(res->parser.items[i].string_value);
-  }
-  da_free(&res->parser);
-
-  free(res->text);
-  res->text = NULL;
-}
+#include "compiler/definition/compiler_definition.h"
 
 int main(int argc, char** argv) 
 {
@@ -71,7 +31,8 @@ int main(int argc, char** argv)
       verbosity = LOG_DUMP;
     else if (strcmp(argv[i], "-o") == 0) {
       if (++i >= argc) {
-        error_report_general(ERROR_SEVERITY_ERROR, "missing argument for '-o'");
+        error_report_general(
+            ERROR_SEVERITY_ERROR, "missing argument for '-o'");
         return 1;
       }
       output = argv[i];
@@ -79,8 +40,11 @@ int main(int argc, char** argv)
     else if (argv[i][0] != '-')
       filename = argv[i];
     else {
-      error_report_general(ERROR_SEVERITY_ERROR, "unknown flag '%s'", argv[i]);
-      fprintf(stderr, "usage: %s [-v|-V] [-o <output>] <file.clf>\n", argv[0]);
+      error_report_general(
+          ERROR_SEVERITY_ERROR, "unknown flag '%s'", argv[i]);
+      fprintf(
+          stderr, "usage: %s [-v|-V] [-o <output>] <file.clf>\n", 
+          argv[0]);
       return 1;
     }
   }
@@ -88,8 +52,11 @@ int main(int argc, char** argv)
   log_set_verbosity(verbosity);
 
   if (!filename) {
-    error_report_general(ERROR_SEVERITY_ERROR, "no input file provided");
-    fprintf(stderr, "usage: %s [-v|-V] [-o <output>] <file.clf>\n", argv[0]);
+    error_report_general(
+        ERROR_SEVERITY_ERROR, "no input file provided");
+    fprintf(
+        stderr, "usage: %s [-v|-V] [-o <output>] <file.clf>\n", 
+        argv[0]);
     return 1;
   }
 
@@ -97,7 +64,8 @@ int main(int argc, char** argv)
 
   FILE *f = fopen(filename, "rb");
   if (f == NULL) {
-    error_report_general(ERROR_SEVERITY_ERROR, "cannot open file '%s'", filename);
+    error_report_general(
+        ERROR_SEVERITY_ERROR, "cannot open file '%s'", filename);
     return 1;
   }
 
@@ -106,7 +74,8 @@ int main(int argc, char** argv)
   int len = (int) fread(res.text, 1, 1 << 20, f);
   fclose(f);
   if (len < 0) {
-    error_report_general(ERROR_SEVERITY_ERROR, "failed to read file '%s'", filename);
+    error_report_general(
+        ERROR_SEVERITY_ERROR, "failed to read file '%s'", filename);
     compiler_resources_free(&res);
     return 1;
   }
@@ -117,11 +86,13 @@ int main(int argc, char** argv)
   lexer_t lex;
   res.parser.error_ctx = &error_ctx;
 
-  lexer_init_lexer(&lex, res.text, res.text + len, (char*) malloc(4096), 4096);
+  lexer_init_lexer(
+      &lex, res.text, res.text + len, (char*) malloc(4096), 4096);
 
   while (lexer_get_token(&lex)) {
     if (lex.token == LEXER_token_parse_error) {
-      error_report_general(ERROR_SEVERITY_ERROR, "lexer parse error");
+      error_report_general(
+          ERROR_SEVERITY_ERROR, "lexer parse error");
       free(lex.string_storage);
       compiler_resources_free(&res);
       return 1;
@@ -176,8 +147,10 @@ int main(int argc, char** argv)
 
   if (analyzer.error_count > 0) {
     log_phase("semantic", "%d error(s)", analyzer.error_count);
-    error_report_general(ERROR_SEVERITY_NOTE,
-        "%d error(s) during semantic analysis, aborting", analyzer.error_count);
+    error_report_general(
+        ERROR_SEVERITY_NOTE, 
+        "%d error(s) during semantic analysis, aborting", 
+        analyzer.error_count);
     semantic_free_program_definition(&analyzer);
     compiler_resources_free(&res);
     return 1;
@@ -206,13 +179,15 @@ int main(int argc, char** argv)
 
     int lowering_result = IR_lower_function(&hir_parser, *it);
     if (lowering_result != 0) {
-      error_report_general(ERROR_SEVERITY_ERROR, "HIR lowering error");
+      error_report_general(
+          ERROR_SEVERITY_ERROR, "HIR lowering error");
       compiler_resources_free(&res);
       return 1;
     }
   }
 
-  log_phase("HIR lowering", "%zu function(s)", res.hir_program->count);
+  log_phase(
+      "HIR lowering", "%zu function(s)", res.hir_program->count);
 
   semantic_free_program_definition(&analyzer);
   if (log_is_dump()) {
@@ -241,14 +216,11 @@ int main(int argc, char** argv)
     log_section_end();
   }
 
-  // Use -o name if given, otherwise default to a.out
   const char* output_name = output ? output : "a.out";
 
-  // Derive a safe basename for the temp .o (strip path from output_name)
   const char* obj_base = strrchr(output_name, '/');
   obj_base = obj_base ? obj_base + 1 : output_name;
 
-  // Step 1: write asm to a temp file, then assemble with nasm
   char asm_path[512];
   snprintf(asm_path, sizeof(asm_path), "/tmp/%s.asm", obj_base);
   FILE* asm_file = fopen(asm_path, "w");
@@ -274,16 +246,17 @@ int main(int argc, char** argv)
 
   log_phase("nasm", "ok");
 
-  // Step 2: link
   char ld_cmd[1024];
-  snprintf(ld_cmd, sizeof(ld_cmd), "ld -o %s /tmp/%s.o", output_name, obj_base);
+  snprintf(
+      ld_cmd, sizeof(ld_cmd), "ld -o %s /tmp/%s.o", 
+      output_name, obj_base);
+
   if (system(ld_cmd) != 0) {
     error_report_general(ERROR_SEVERITY_ERROR, "ld failed");
     compiler_resources_free(&res);
     return 1;
   }
 
-  // Clean up temp object file
   char rm_cmd[512];
   snprintf(rm_cmd, sizeof(rm_cmd), "rm /tmp/%s.o", obj_base);
   system(rm_cmd);
