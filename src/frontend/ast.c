@@ -121,6 +121,14 @@ void free_statement(statement_t* s)
     }
   }
 
+  if (s->type == STATEMENT_ASM) {
+    for (size_t i = 0; i < s->asm_stmt.instr_count; ++i) 
+      free(s->asm_stmt.instr[i]); 
+
+    for (size_t i = 0; i < s->asm_stmt.arg_count; ++i) 
+      free_expression(s->asm_stmt.args[i]);
+  }
+
   free(s);
 }
 

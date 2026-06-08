@@ -9,6 +9,11 @@ fn main(): int {
   v2 x;
   v2 z = { .x = 3, . y = 4 };
 
+  asm(
+    "mov rax, 60",
+    "mov rdi, %", z.x
+  );
+
   var d = a + b;
 
   for (var i = 0; i < a + 10; ++i) {
