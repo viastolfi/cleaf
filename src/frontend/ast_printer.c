@@ -231,6 +231,24 @@ static void print_statement(statement_t* s, const char* prefix, bool is_last)
         print_compound_stmt(s->for_stmt.body, cp, true);
       break;
     }
+
+    case STATEMENT_ASM: {
+      printf(CLR_STMT "AsmStmt" CLR_RESET " (%zu instr%s)\n",
+             s->asm_stmt.instr_count,
+             s->asm_stmt.instr_count != 1 ? "s" : "");
+      bool has_args = s->asm_stmt.arg_count > 0;
+
+      for (size_t i = 0; i < s->asm_stmt.instr_count; i++) {
+        bool last = (i == s->asm_stmt.instr_count - 1) && !has_args;
+        print_branch(cp, last);
+        printf(CLR_LIT "Instr" CLR_RESET " \"%s\"\n",
+               s->asm_stmt.instr[i] ? s->asm_stmt.instr[i] : "");
+      }
+
+      for (size_t i = 0; i < s->asm_stmt.arg_count; i++)
+        print_expression(s->asm_stmt.args[i], cp, i == s->asm_stmt.arg_count - 1);
+      break;
+    }
   }
 }
 

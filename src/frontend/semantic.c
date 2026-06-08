@@ -61,7 +61,7 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
 {
   if (analyzer->ast) {
     semantic_load_program_definition(analyzer);
-    da_foreach(declaration_t*, it, analyzer->ast) 
+    da_foreach(declaration_t*, it, analyzer->ast) {
       if ((*it)->type == DECLARATION_FUNC) {
         scope_t* function_scope = scope_enter(NULL);
 
@@ -75,7 +75,8 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
           known_type_t* t = calloc(1, sizeof(known_type_t));
           if (t) {
             *t = fs->params_type[i];
-            hashmap_put(function_scope->symbols, fs->params_name[i], t);
+            hashmap_put(
+                function_scope->symbols, fs->params_name[i], t);
           }
         }
 
@@ -84,6 +85,7 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
 
         scope_exit(function_scope);
       }
+    }
   }
 
   semantic_error_display(analyzer); 
@@ -772,7 +774,8 @@ hash_func_put:
           (*it)->struc.members.items[i].ident_name;
         value->members_type[i] =
           (*it)->struc.members.items[i].type;
-        value->total_size += (*it)->struc.members.items[i].type.size;
+        value->total_size += 
+          (*it)->struc.members.items[i].type.size;
         actual_count++;
       }
 
