@@ -1,0 +1,15 @@
+fn main() {
+  asm(
+    "mov rax, 60",
+    "mov rdi, 1",
+    "syscall"    
+  );  
+
+  var a = 1;
+
+  asm(
+    "mov rax, 60",
+    "mov rdi, %", a,
+    "syscall"    
+  );
+}
