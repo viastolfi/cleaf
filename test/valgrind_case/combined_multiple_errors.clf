@@ -13,6 +13,9 @@ fn main() {
   int x = missing_func(1, 2);
   var y = test(5
   string z = x + "text";
+
+  int! const = 3;
+  const = 4;
   
   for (var i = 0; undef_var < 10; ++i) {
     int i = 0;

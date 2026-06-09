@@ -989,12 +989,20 @@ declaration_t* ast_parse_var_decl(parser_t* p)
   }
 
   d->var_decl.ident.type = *type_info;
+  d->var_decl.ident.is_constant = false;
+
+  if (check(p, '!')) {
+    // consume '!'
+    advance(p);
+    d->var_decl.ident.is_constant = true;
+  }
 
   if (!check(p, LEXER_token_id)) {
     token_t* tok = peek(p);
     if (p->error_ctx && tok) {
-      error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR,
-                           "expected variable name");
+      error_report_at_token(
+          p->error_ctx, tok, ERROR_SEVERITY_ERROR,
+          "expected variable name");
     }
     free_declaration(d);
     return NULL;
@@ -1003,8 +1011,9 @@ declaration_t* ast_parse_var_decl(parser_t* p)
   token_t* name_tok = advance(p);
   if (!name_tok->string_value) {
     if (p->error_ctx) {
-      error_report_at_token(p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
-                           "variable name has no value");
+      error_report_at_token(
+          p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
+          "variable name has no value");
     }
     free_declaration(d);
     return NULL;
@@ -1203,6 +1212,13 @@ declaration_t* ast_parse_struct_decl(parser_t* p)
       free_declaration(decl);
       return NULL;
     }
+
+    if (check(p, '!')) {
+      // consume '!'
+      advance(p);
+      member.is_constant = true;     
+    }
+
     member.type = *type_info;
   
     if (!check(p, LEXER_token_id)) {

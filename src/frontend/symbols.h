@@ -1,7 +1,13 @@
 #ifndef SYMBOLS_H
 #define SYMBOLS_H
 
+#include <stdbool.h>
 #include "ast_definition.h"
+
+typedef struct {
+  known_type_t type;
+  bool is_constant;
+} variable_symbol_t;
 
 typedef struct 
 {
@@ -14,7 +20,7 @@ typedef struct
 
 typedef struct {
   char** members_name;
-  known_type_t* members_type;
+  variable_symbol_t* members_type;
   size_t members_count;
   size_t total_size;
 } struct_symbol_t;

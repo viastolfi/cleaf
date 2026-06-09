@@ -96,6 +96,11 @@ void semantic_check_asm_statement(
     statement_t* stmt,
     scope_t* scope);
 
+void semantic_check_var_declaration(
+    semantic_analyzer_t* analyzer,
+    declaration_t* decl,
+    scope_t* scope);
+
 void semantic_load_program_definition(
     semantic_analyzer_t* analyzer);
 void semantic_free_program_definition(

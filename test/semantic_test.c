@@ -644,3 +644,43 @@ ct_test(semantic_case, asm_unknown_var, "test/semantic_case/asm_unknown_var.clf"
   ct_assert_eq(analyzer.error_count, 1, "Should have 1 error");
   free_analyzer(&analyzer);
 }
+
+// --- Constant variable tests ---
+
+ct_test(semantic_case, const_var_declaration_ok, "test/semantic_case/const_var_declaration_ok.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for const variable declaration");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, const_var_reassign_error, "test/semantic_case/const_var_reassign_error.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error when reassigning a const variable");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, const_var_multiple_reassign_errors, "test/semantic_case/const_var_multiple_reassign_errors.clf") {
+  ct_assert_eq(analyzer.error_count, 2, "Should have 2 errors when reassigning two const variables");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, const_struct_member_ok, "test/semantic_case/const_struct_member_ok.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors when only non-const struct members are reassigned");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, const_struct_member_reassign_error, "test/semantic_case/const_struct_member_reassign_error.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error when reassigning a const struct member");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, const_var_is_constant_flag, "test/semantic_case/const_var_declaration_ok.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  declaration_t* func_decl = analyzer.ast->items[0];
+  statement_t* stmt = func_decl->func.body->items[0];
+  declaration_t* var_decl = stmt->decl_stmt.decl;
+
+  ct_assert_eq((int)var_decl->var_decl.ident.is_constant, 1,
+      "Const variable should have is_constant set to true after semantic analysis");
+
+  free_analyzer(&analyzer);
+}

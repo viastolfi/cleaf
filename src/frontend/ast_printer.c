@@ -292,6 +292,9 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
              d->var_decl.ident.ident_name ? 
               d->var_decl.ident.ident_name : "");
       print_known_type(&d->var_decl.ident.type);
+      if (d->var_decl.ident.is_constant) {
+        printf(" : " CLR_CONST "const" CLR_RESET);
+      }
       printf("\n");
       if (d->var_decl.init)
         print_expression(d->var_decl.init, cp, true);
@@ -307,6 +310,9 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
         printf(CLR_DECL "FieldDecl" CLR_RESET " '%s': ",
                m->ident_name ? m->ident_name : "");
         print_known_type(&m->type);
+        if (m->is_constant) {
+          printf(" : " CLR_CONST "const" CLR_RESET);
+        }
         printf("\n");
       }
       break;
