@@ -238,3 +238,11 @@ ct_test(hir_test, u8_u16_u64_vars, "test/hir_case/u8_u16_u64_vars.clf", "test/hi
 ct_test(hir_test, int_binary_typed, "test/hir_case/int_binary_typed.clf", "test/hir_case/int_binary_typed.res") {
   ct_assert_eq(result, 0, "hir propagates int size through binary ops and return");
 }
+
+ct_test(hir_test, asm_no_args, "test/hir_case/asm_no_args.clf", "test/hir_case/asm_no_args.res") {
+  ct_assert_eq(result, 0, "hir gives right output for asm with no args");
+}
+
+ct_test(hir_test, asm_with_arg, "test/hir_case/asm_with_arg.clf", "test/hir_case/asm_with_arg.res") {
+  ct_assert_eq(result, 0, "hir gives right output for asm with variable interpolation");
+}

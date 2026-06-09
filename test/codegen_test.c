@@ -245,3 +245,11 @@ ct_test(codegen_test, int_binary_typed, "test/codegen_case/int_binary_typed.clf"
 ct_test(codegen_test, u8_u16_u64_vars, "test/codegen_case/u8_u16_u64_vars.clf", "test/codegen_case/u8_u16_u64_vars.asm") {
   ct_assert_eq(result, 0, "codegen falls back to 64-bit registers for u8/u16/u64");
 }
+
+ct_test(codegen_test, asm_no_args, "test/codegen_case/asm_no_args.clf", "test/codegen_case/asm_no_args.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for asm with no args");
+}
+
+ct_test(codegen_test, asm_with_arg, "test/codegen_case/asm_with_arg.clf", "test/codegen_case/asm_with_arg.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for asm with variable interpolation");
+}

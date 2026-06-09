@@ -1,0 +1,8 @@
+fn main(): int {
+  var a = 42;
+  asm(
+    "mov rax, 60",
+    "mov rdi, %", a,
+    "syscall"
+  );
+}

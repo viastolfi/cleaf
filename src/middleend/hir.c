@@ -32,6 +32,12 @@ void IR_free_instruction(IR_instruction_t* instr) {
       if (instr->func_name)
         free(instr->func_name);
       break;
+    case IR_ASM:
+      for (size_t i = 0; i < instr->asm_data.string_count; i++)
+        free(instr->asm_data.strings[i]);
+      free(instr->asm_data.strings);
+      free(instr->asm_data.args);
+      break;
     default:
       break;
   }
@@ -537,6 +543,68 @@ insert_member:
   return 1;
 }
 
+int IR_lower_asm_statement(
+     HIR_parser_t* hir,
+     statement_t* stmt,
+     IR_function_t* func)
+{
+  IR_temp_id* temps = NULL;
+  if (stmt->asm_stmt.arg_count > 0) {
+    temps = calloc(stmt->asm_stmt.arg_count, sizeof(IR_temp_id));
+    if (!temps) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+      return 1;
+    }
+    for (size_t i = 0; i < stmt->asm_stmt.arg_count; i++) {
+      if (IR_lower_expression(
+            hir, stmt->asm_stmt.args[i], func) != 0) {
+        free(temps);
+        return 1;
+      }
+      temps[i].id = func->next_temp_id;
+      temps[i].size = 
+        func->code->items[func->code->count - 1]->dest.size;
+    }
+  }
+
+  IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
+  if (!instr) {
+    free(temps);
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return 1;
+  }
+
+  instr->asm_data.strings = 
+    calloc(stmt->asm_stmt.instr_count, sizeof(char*));
+  if (!instr->asm_data.strings) {
+    free(temps);
+    free(instr);
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return 1;
+  }
+
+  instr->kind = IR_ASM;
+  instr->asm_data.string_count = stmt->asm_stmt.instr_count;
+  instr->asm_data.arg_count = stmt->asm_stmt.arg_count;
+  instr->asm_data.args = temps;
+
+  for (size_t i = 0; i < stmt->asm_stmt.instr_count; i++) {
+    instr->asm_data.strings[i] = strdup(stmt->asm_stmt.instr[i]);
+    if (!instr->asm_data.strings[i]) {
+      for (size_t j = 0; j < i; j++)
+        free(instr->asm_data.strings[j]);
+      free(instr->asm_data.strings);
+      free(temps);
+      free(instr);
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+      return 1;
+    }
+  }
+
+  da_append(func->code, instr);
+  return 0;
+}
+
 int IR_lower_for_statement(
     HIR_parser_t* hir,
     statement_t* stmt, 
@@ -881,6 +949,9 @@ int IR_lower_statement(HIR_parser_t* hir,
   if (stmt->type == STATEMENT_FOR) {
     return IR_lower_for_statement(hir, stmt, func); 
   }
+  if (stmt->type == STATEMENT_ASM) {
+    return IR_lower_asm_statement(hir, stmt, func);
+  }
 
   error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED, 
       "unknown statement instruction");
@@ -1104,6 +1175,26 @@ char* IR_generate_string_program(IR_function_t* function)
 
     if (instr->kind == IR_ALLOC) {
       sb_append_fmt(&sb, "ALLOC %zu\n", instr->alloc_size);
+      continue;
+    }
+
+    if (instr->kind == IR_ASM) {
+      sb_append_fmt(&sb, "ASM [");
+      for (size_t j = 0; j < instr->asm_data.string_count; j++) {
+        if (j > 0) sb_append_fmt(&sb, ", ");
+        sb_append_fmt(&sb, "\"%s\"", instr->asm_data.strings[j]);
+      }
+      sb_append_fmt(&sb, "]");
+      if (instr->asm_data.arg_count > 0) {
+        sb_append_fmt(&sb, " (");
+        for (size_t j = 0; j < instr->asm_data.arg_count; j++) {
+          if (j > 0) sb_append_fmt(&sb, ", ");
+          sb_append_fmt(
+              &sb, "%c%d", TEMP_STR(instr->asm_data.args[j]));
+        }
+        sb_append_fmt(&sb, ")");
+      }
+      sb_append_fmt(&sb, "\n");
       continue;
     }
 

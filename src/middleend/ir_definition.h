@@ -47,7 +47,9 @@ typedef enum
 
   IR_ALLOC,
 
-  IR_CALL
+  IR_CALL,
+
+  IR_ASM
 } IR_instruction_kind;
 
 typedef enum 
@@ -93,6 +95,13 @@ typedef struct
 
     char* chunk_name;
     char* func_name;
+
+    struct {
+      char** strings;
+      size_t string_count;
+      IR_temp_id* args;
+      size_t arg_count;
+    } asm_data;
   };
 } IR_instruction_t;
 

@@ -169,6 +169,21 @@ int CODEGEN_write_function(
             sb, dst, (*it)->offset.size, src);
         break;
       }
+    case IR_ASM: {
+      size_t arg_idx = 0;
+      for (size_t i = 0; i < (*it)->asm_data.string_count; i++) {
+        const char* s = (*it)->asm_data.strings[i];
+        const char* pct = strchr(s, '%');
+        if (pct && arg_idx < (*it)->asm_data.arg_count) {
+          const char* reg = 
+            CODEGEN_get_reg(target, (*it)->asm_data.args[arg_idx++], true);
+          sb_append_fmt(sb, "    %.*s%s\n", (int)(pct - s), s, reg);
+        } else {
+          sb_append_fmt(sb, "    %s\n", s);
+        }
+      }
+    }
+      break;
     default:
       error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED, 
           "unknown IR instruction");

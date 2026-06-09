@@ -61,4 +61,9 @@ int IR_lower_composite_literal_expression(
     HIR_parser_t* hir, 
     declaration_t* decl, 
     IR_function_t* func);
+int IR_lower_asm_statement(
+     HIR_parser_t* hir,
+     statement_t* stmt,
+     IR_function_t* func);
+
 #endif // IR_H
