@@ -22,7 +22,8 @@ typedef enum
   STATEMENT_DECL,
   STATEMENT_IF,
   STATEMENT_WHILE,
-  STATEMENT_FOR
+  STATEMENT_FOR,
+  STATEMENT_ASM,
 } statement_kind;
 
 typedef enum 
@@ -154,6 +155,12 @@ struct statement_t
     struct { expression_t* value; } ret;
     struct { expression_t* expr; } expr_stmt;
     struct { declaration_t* decl; } decl_stmt;
+    struct {
+      char** instr; 
+      expression_t** args;
+      size_t instr_count;
+      size_t arg_count;
+    } asm_stmt;
     struct {
       expression_t* condition;  
       statement_block_t* then_branch;

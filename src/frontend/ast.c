@@ -121,6 +121,16 @@ void free_statement(statement_t* s)
     }
   }
 
+  if (s->type == STATEMENT_ASM) {
+    for (size_t i = 0; i < s->asm_stmt.instr_count; ++i) 
+      free(s->asm_stmt.instr[i]); 
+    free(s->asm_stmt.instr);
+
+    for (size_t i = 0; i < s->asm_stmt.arg_count; ++i) 
+      free_expression(s->asm_stmt.args[i]);
+    free(s->asm_stmt.args);
+  }
+
   free(s);
 }
 
@@ -1636,6 +1646,75 @@ statement_t* ast_parse_for_stmt(parser_t* p)
   return s;
 }
 
+statement_t* ast_parse_asm_stmt(parser_t* p)
+{
+  statement_t* stmt = calloc(1, sizeof(statement_t));
+  if (!stmt) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return NULL;
+  }
+  stmt->type = STATEMENT_ASM;
+  stmt->source_pos = peek(p)->source_pos;
+
+  stmt->asm_stmt.instr_count = 0;
+  stmt->asm_stmt.arg_count = 0;
+
+  // consume 'asm'
+  advance(p);
+
+  expect(p, '(', "expect function body after `asm` keyword");
+
+  size_t counter = 0;
+  while (!check_next(p, ')', counter)) {
+    if (check_next(p, ',', counter)) {
+      counter++;
+      continue; 
+    }
+
+    if (check_next(p, LEXER_token_dqstring, counter)) 
+      stmt->asm_stmt.instr_count++;   
+    else 
+      stmt->asm_stmt.arg_count++;
+
+    counter++;
+  }
+
+  stmt->asm_stmt.instr = 
+    calloc(stmt->asm_stmt.instr_count, sizeof(char*));
+  stmt->asm_stmt.instr_count = 0;
+
+  stmt->asm_stmt.args =
+    calloc(stmt->asm_stmt.arg_count, sizeof(expression_t*));
+  stmt->asm_stmt.arg_count = 0;
+
+  while (!check(p, ')')) {
+    if (check(p, LEXER_token_dqstring)) {
+      stmt->asm_stmt.instr[stmt->asm_stmt.instr_count++] =
+        strdup(peek(p)->string_value);
+      if (!stmt->asm_stmt.instr[stmt->asm_stmt.instr_count - 1]) {
+        error_report_general(
+            ERROR_SEVERITY_ERROR, "out of memory"); 
+      }
+
+      advance(p);
+    } else {
+      stmt->asm_stmt.args[stmt->asm_stmt.arg_count++] =
+       parse_expression(p); 
+    }
+
+    // Awfull double check but whatever
+    if (check(p, ')')) break;
+    
+    expect(p, ',', "expect ',' bewteen asm statement");
+  }
+
+  // consume ')' and ';'
+  advance(p);
+  advance(p);
+
+  return stmt;
+}
+
 statement_t* parse_statement(parser_t* p) 
 {
   if (check(p, LEXER_token_id) && 
@@ -1656,6 +1735,11 @@ statement_t* parse_statement(parser_t* p)
   if (check(p, LEXER_token_id) && 
       strcmp(peek(p)->string_value, "for") == 0) {
     return ast_parse_for_stmt(p); 
+  }
+
+  if (check(p, LEXER_token_id) &&
+      strcmp(peek(p)->string_value, "asm") == 0) {
+    return ast_parse_asm_stmt(p); 
   }
 
   // WARNING: this can be unsafe if string_value is NULL

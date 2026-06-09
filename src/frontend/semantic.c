@@ -61,7 +61,7 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
 {
   if (analyzer->ast) {
     semantic_load_program_definition(analyzer);
-    da_foreach(declaration_t*, it, analyzer->ast) 
+    da_foreach(declaration_t*, it, analyzer->ast) {
       if ((*it)->type == DECLARATION_FUNC) {
         scope_t* function_scope = scope_enter(NULL);
 
@@ -75,7 +75,8 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
           known_type_t* t = calloc(1, sizeof(known_type_t));
           if (t) {
             *t = fs->params_type[i];
-            hashmap_put(function_scope->symbols, fs->params_name[i], t);
+            hashmap_put(
+                function_scope->symbols, fs->params_name[i], t);
           }
         }
 
@@ -84,6 +85,7 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
 
         scope_exit(function_scope);
       }
+    }
   }
 
   semantic_error_display(analyzer); 
@@ -601,9 +603,11 @@ var_def_put:
     } 
 
     if (stmt->type == STATEMENT_WHILE) {
-      semantic_check_expression(analyzer, stmt->while_stmt.condition, local_scope);
+      semantic_check_expression(
+          analyzer, stmt->while_stmt.condition, local_scope);
       if (stmt->while_stmt.body) 
-        semantic_check_scope(analyzer, stmt->while_stmt.body, local_scope); 
+        semantic_check_scope(
+            analyzer, stmt->while_stmt.body, local_scope); 
     }
 
     if (stmt->type == STATEMENT_FOR) 
@@ -612,11 +616,41 @@ var_def_put:
     if (stmt->type == STATEMENT_RETURN) 
       semantic_check_return_statement(analyzer, stmt, local_scope); 
 
+    if (stmt->type == STATEMENT_ASM)
+      semantic_check_asm_statement(analyzer, stmt, local_scope);
+
     if (stmt->type == STATEMENT_EXPR)
-      semantic_check_expression(analyzer, stmt->expr_stmt.expr, local_scope);
+      semantic_check_expression(
+          analyzer, stmt->expr_stmt.expr, local_scope);
   }
 
   scope_exit(local_scope);
+}
+
+void semantic_check_asm_statement(
+    semantic_analyzer_t* analyzer,
+    statement_t* stmt,
+    scope_t* scope)
+{
+  size_t count = 0;
+  for (size_t i = 0; i < stmt->asm_stmt.instr_count; ++i) {
+    char* str = stmt->asm_stmt.instr[i];
+    while ((str = strchr(str, '%')) != NULL) {
+      count++;
+      str++; 
+    } 
+  }
+
+  if (count != stmt->asm_stmt.arg_count) {
+    semantic_error_register( 
+        analyzer, stmt->source_pos - 1,
+        "error in asm statement, please make sure you used as much '%%' symbols in the instructions as argument you are giving to the function");
+  }
+
+  for (size_t i = 0; i < stmt->asm_stmt.arg_count; ++i) {
+    semantic_check_expression(
+        analyzer, stmt->asm_stmt.args[i], scope);
+  }
 }
 
 void semantic_load_program_definition(semantic_analyzer_t* analyzer) 
@@ -772,7 +806,8 @@ hash_func_put:
           (*it)->struc.members.items[i].ident_name;
         value->members_type[i] =
           (*it)->struc.members.items[i].type;
-        value->total_size += (*it)->struc.members.items[i].type.size;
+        value->total_size += 
+          (*it)->struc.members.items[i].type.size;
         actual_count++;
       }
 

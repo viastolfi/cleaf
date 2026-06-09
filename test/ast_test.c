@@ -409,6 +409,72 @@ ct_test(ast, struct_var_designated_init_single, "struct v1 { int x; } v1 a = { .
   da_free(&parser);
 }
 
+// === ASM STATEMENTS ===
+
+ct_test(ast, asm_single_instr, "asm(\"mov rax, 60\");")
+{
+  statement_t* s = parse_statement(&parser);
+
+  ct_assert_not_null(s, "asm statement should not be NULL");
+  ct_assert_eq(s->type, STATEMENT_ASM, "statement type should be STATEMENT_ASM");
+  ct_assert_eq((int)s->asm_stmt.instr_count, 1, "asm statement should have 1 instruction");
+  ct_assert_eq((int)s->asm_stmt.arg_count, 0, "asm statement should have 0 args");
+  ct_assert_eq(s->asm_stmt.instr[0], "mov rax, 60", "instruction string should match");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
+ct_test(ast, asm_multiple_instr, "asm(\"mov rax, 60\", \"xor rdi, rdi\", \"syscall\");")
+{
+  statement_t* s = parse_statement(&parser);
+
+  ct_assert_not_null(s, "asm statement should not be NULL");
+  ct_assert_eq(s->type, STATEMENT_ASM, "statement type should be STATEMENT_ASM");
+  ct_assert_eq((int)s->asm_stmt.instr_count, 3, "asm statement should have 3 instructions");
+  ct_assert_eq((int)s->asm_stmt.arg_count, 0, "asm statement should have 0 args");
+  ct_assert_eq(s->asm_stmt.instr[0], "mov rax, 60", "first instruction should match");
+  ct_assert_eq(s->asm_stmt.instr[1], "xor rdi, rdi", "second instruction should match");
+  ct_assert_eq(s->asm_stmt.instr[2], "syscall", "third instruction should match");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
+ct_test(ast, asm_with_args, "asm(\"mov rdi,\", a);")
+{
+  statement_t* s = parse_statement(&parser);
+
+  ct_assert_not_null(s, "asm statement should not be NULL");
+  ct_assert_eq(s->type, STATEMENT_ASM, "statement type should be STATEMENT_ASM");
+  ct_assert_eq((int)s->asm_stmt.instr_count, 1, "asm statement should have 1 instruction");
+  ct_assert_eq((int)s->asm_stmt.arg_count, 1, "asm statement should have 1 arg");
+  ct_assert_eq(s->asm_stmt.instr[0], "mov rdi,", "instruction string should match");
+  ct_assert_not_null(s->asm_stmt.args[0], "arg expression should not be NULL");
+  ct_assert_eq(s->asm_stmt.args[0]->type, EXPRESSION_VAR, "arg expression should be a variable");
+  ct_assert_eq(s->asm_stmt.args[0]->var.ident.ident_name, "a", "arg variable name should be 'a'");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
+ct_test(ast, asm_only_args, "asm(a, 42);")
+{
+  statement_t* s = parse_statement(&parser);
+
+  ct_assert_not_null(s, "asm statement should not be NULL");
+  ct_assert_eq(s->type, STATEMENT_ASM, "statement type should be STATEMENT_ASM");
+  ct_assert_eq((int)s->asm_stmt.instr_count, 0, "asm statement should have 0 instructions");
+  ct_assert_eq((int)s->asm_stmt.arg_count, 2, "asm statement should have 2 args");
+  ct_assert_eq(s->asm_stmt.args[0]->type, EXPRESSION_VAR, "first arg should be a variable");
+  ct_assert_eq(s->asm_stmt.args[0]->var.ident.ident_name, "a", "first arg name should be 'a'");
+  ct_assert_eq(s->asm_stmt.args[1]->type, EXPRESSION_INT_LIT, "second arg should be INT literal");
+  ct_assert_eq(s->asm_stmt.args[1]->int_lit.value, 42, "second arg value should be 42");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
 // === PRECISE INTEGER TYPES ===
 
 ct_test(ast, typed_u8_var, "u8 i = 5;")

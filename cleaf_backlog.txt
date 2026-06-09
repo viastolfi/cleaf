@@ -1,6 +1,6 @@
 x 2026-06-08 2026-06-08 Add multiple int related types for better register usage @global
 (A) Add MIR @middleend
-(B) Add "asm" function for inline assembly in the code base @global
+x 2026-06-09 2026-06-09 Add "asm" function for inline assembly in the code base @global
 (B) Add "sizeof" compiler function @global
 (C) Add "type" keyword to create types at compile time @global
 (A) Import workflow for multiple file and std compilation @global
@@ -9,3 +9,4 @@ x 2026-06-08 2026-06-08 Add multiple int related types for better register usage
 (B) Add signed type @global
 (B) Choose between mutable or const for var by default and change compiler behavior depending on this choice @global
 (A) Enhance error reporting @thirdparty
+(B) choose if we pass struct var by value or pointer and implement both methods

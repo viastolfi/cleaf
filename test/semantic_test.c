@@ -629,3 +629,18 @@ ct_test(semantic_case, struct_inference_if_while_condition, "test/semantic_case/
 
   free_analyzer(&analyzer);
 }
+
+ct_test(semantic_case, asm_no_error, "test/semantic_case/asm_no_error.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, asm_wrong_arg_count, "test/semantic_case/asm_wrong_arg_count.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, asm_unknown_var, "test/semantic_case/asm_unknown_var.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error");
+  free_analyzer(&analyzer);
+}
