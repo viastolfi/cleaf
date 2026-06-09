@@ -124,9 +124,11 @@ void free_statement(statement_t* s)
   if (s->type == STATEMENT_ASM) {
     for (size_t i = 0; i < s->asm_stmt.instr_count; ++i) 
       free(s->asm_stmt.instr[i]); 
+    free(s->asm_stmt.instr);
 
     for (size_t i = 0; i < s->asm_stmt.arg_count; ++i) 
       free_expression(s->asm_stmt.args[i]);
+    free(s->asm_stmt.args);
   }
 
   free(s);
@@ -1663,7 +1665,7 @@ statement_t* ast_parse_asm_stmt(parser_t* p)
   expect(p, '(', "expect function body after `asm` keyword");
 
   size_t counter = 0;
-  while (check_next(p, ')', counter)) {
+  while (!check_next(p, ')', counter)) {
     if (check_next(p, ',', counter)) {
       counter++;
       continue; 
