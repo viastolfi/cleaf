@@ -14,7 +14,7 @@ typedef struct
   known_type_t return_type;
 
   char** params_name;
-  known_type_t* params_type;
+  variable_symbol_t* params_type;
   size_t params_count;
 } function_symbol_t;
 

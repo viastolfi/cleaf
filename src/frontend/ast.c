@@ -851,6 +851,12 @@ declaration_t* ast_parse_function(parser_t* p)
 
     param.type = *type_info;
 
+    if (check(p, '!')) {
+      // advance '!'
+      advance(p); 
+      param.is_constant = true;
+    }
+
     if (!check(p, LEXER_token_id)) {
       token_t* tok = peek(p);
       if (p->error_ctx && tok) {

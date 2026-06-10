@@ -269,6 +269,9 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
       for (size_t i = 0; i < d->func.params.count; i++) {
         typed_identifier_t* p = &d->func.params.items[i];
         print_known_type(&p->type);
+        if (p->is_constant) {
+          printf(" : " CLR_CONST "const" CLR_RESET); 
+        }
         printf(" %s%s",
                p->ident_name ? p->ident_name : "",
                i < d->func.params.count - 1 ? ", " : "");

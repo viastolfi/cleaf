@@ -74,7 +74,7 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
         for (size_t i = 0; i < fs->params_count; ++i) {
           variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
           if (vs) {
-            vs->type = fs->params_type[i];
+            vs->type = fs->params_type[i].type;
             vs->is_constant = false;
             hashmap_put(
                 function_scope->symbols, fs->params_name[i], vs);
@@ -331,11 +331,17 @@ known_type_t semantic_check_expression(
           analyzer->struct_symbols,
           sym->type.name);
 
-    if (!struct_sym && sym->is_constant) {
+    function_symbol_t* func_sym =
+      (function_symbol_t*) hashmap_get(
+          analyzer->function_symbols,
+          analyzer->current_analyzed_function);
+
+    if (sym->is_constant) {
       semantic_error_register(
           analyzer, lhs->source_pos - 1,
           "you are trying to reassign constant variable, this is not authorized");
-    } else if (struct_sym) {
+    } 
+    else if (struct_sym) {
       // Not sure this could work with nested stuct members
       // This is something I should work on later
       // For now, let's keep this simple
@@ -353,6 +359,20 @@ known_type_t semantic_check_expression(
               "you are trying to reassign constant variable, this is not authorized");
         }
       }       
+    } 
+    else if (func_sym) {
+      for (size_t i = 0; i < func_sym->params_count; ++i) {
+        if (strcmp(
+             func_sym->params_name[i],
+             lhs->var.ident.ident_name) != 0)
+         continue;
+
+        if (func_sym->params_type[i].is_constant) {
+          semantic_error_register(
+              analyzer, lhs->source_pos - 1,
+              "you are trying to reassign constant variable, this is not authorized");
+        } 
+      }
     }
 
 assign_type_check:
@@ -458,8 +478,8 @@ assign_type_check:
       if (arg_type.kind == TYPE_UNTYPE)
         continue;
 
-      if (arg_type.kind != fs->params_type[i].kind &&
-          fs->params_type[i].kind < arg_type.kind) {
+      if (arg_type.kind != fs->params_type[i].type.kind &&
+          fs->params_type[i].type.kind < arg_type.kind) {
         semantic_error_register(analyzer,
             expr->call.args[i]->source_pos - 1,
             "wrong type conversion");
@@ -770,7 +790,7 @@ void semantic_load_program_definition(semantic_analyzer_t* analyzer)
       }
 
       value->params_type = 
-        calloc((*it)->func.params.count, sizeof(known_type_t));
+        calloc((*it)->func.params.count, sizeof(variable_symbol_t));
       if (!value->params_type) {
         error_report_general(ERROR_SEVERITY_ERROR, 
             "out of memory"); 
@@ -791,8 +811,10 @@ void semantic_load_program_definition(semantic_analyzer_t* analyzer)
 
         value->params_name[i] = 
           (*it)->func.params.items[i].ident_name;
-        value->params_type[i] = 
+        value->params_type[i].type = 
           (*it)->func.params.items[i].type;
+        value->params_type[i].is_constant =
+          (*it)->func.params.items[i].is_constant;
         actual_count++;
       }
 

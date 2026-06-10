@@ -1,0 +1,11 @@
+fn main(): int {
+  int a = 12;
+  a = foo(a);
+
+  return a;
+}
+
+fn foo(int! a): int {
+  a = 3;
+  return a;
+}

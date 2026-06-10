@@ -112,9 +112,9 @@ ct_test(semantic_analyze, fn_def_with_params, "test/semantic_case/fn_def_with_pa
   ct_assert_not_null(fs, "Function symbol should be in symbol table");
   ct_assert_eq((int)fs->params_count, 2, "Function should have 2 parameters");
   ct_assert_eq(fs->params_name[0], "a", "First param name should be 'a'");
-  ct_assert_eq(fs->params_type[0].kind, TYPE_INT, "First param type should be TYPE_INT");
+  ct_assert_eq(fs->params_type[0].type.kind, TYPE_INT, "First param type should be TYPE_INT");
   ct_assert_eq(fs->params_name[1], "b", "Second param name should be 'b'");
-  ct_assert_eq(fs->params_type[1].kind, TYPE_INT, "Second param type should be TYPE_STRING");
+  ct_assert_eq(fs->params_type[1].type.kind, TYPE_INT, "Second param type should be TYPE_STRING");
 
   free_analyzer(&analyzer);
 }
@@ -546,10 +546,10 @@ ct_test(semantic_case, fn_params_u8_u16, "test/semantic_case/fn_params_u8_u16.cl
   function_symbol_t* fs = (function_symbol_t*) hashmap_get(analyzer.function_symbols, "main");
   ct_assert_not_null(fs, "Function symbol should be in symbol table");
   ct_assert_eq((int)fs->params_count, 2, "Function should have 2 parameters");
-  ct_assert_eq(fs->params_type[0].kind, TYPE_U8, "First param type should be TYPE_U8");
-  ct_assert_eq((int)fs->params_type[0].size, 1, "First param size should be 1 byte");
-  ct_assert_eq(fs->params_type[1].kind, TYPE_U16, "Second param type should be TYPE_U16");
-  ct_assert_eq((int)fs->params_type[1].size, 2, "Second param size should be 2 bytes");
+  ct_assert_eq(fs->params_type[0].type.kind, TYPE_U8, "First param type should be TYPE_U8");
+  ct_assert_eq((int)fs->params_type[0].type.size, 1, "First param size should be 1 byte");
+  ct_assert_eq(fs->params_type[1].type.kind, TYPE_U16, "Second param type should be TYPE_U16");
+  ct_assert_eq((int)fs->params_type[1].type.size, 2, "Second param size should be 2 bytes");
 
   free_analyzer(&analyzer);
 }
@@ -681,6 +681,12 @@ ct_test(semantic_case, const_var_is_constant_flag, "test/semantic_case/const_var
 
   ct_assert_eq((int)var_decl->var_decl.ident.is_constant, 1,
       "Const variable should have is_constant set to true after semantic analysis");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, const_in_func_parameter_error, "test/semantic_case/const_in_func_parameter_error.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error");
 
   free_analyzer(&analyzer);
 }
