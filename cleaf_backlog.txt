@@ -7,6 +7,7 @@ x 2026-06-09 2026-06-09 Add "asm" function for inline assembly in the code base 
 (D) Add "char" type @global
 (B) Add Array type @global
 (B) Add signed type @global
-(B) Choose between mutable or const for var by default and change compiler behavior depending on this choice @global
+x 2026-06-10 2026-06-10 Choose between mutable or const for var by default and change compiler behavior depending on this choice @global
 (A) Enhance error reporting @thirdparty
 (B) choose if we pass struct var by value or pointer and implement both methods
+(C) make language documentation @docs
