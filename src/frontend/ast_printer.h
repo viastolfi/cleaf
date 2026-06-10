@@ -11,6 +11,7 @@
 #define CLR_STMT    "\033[0;35m"
 #define CLR_LIT     "\033[0;36m"
 #define CLR_SIZE    "\033[38;5;208m"
+#define CLR_CONST   "\033[35m"
 
 void ast_print_program(declaration_array* program);
 

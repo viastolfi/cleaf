@@ -582,3 +582,12 @@ ct_test(ast, struct_var_designated_init_three_fields, "struct v3 { int a; int b;
   da_free(&parser);
 }
 
+ct_test(ast, const_in_func_parameter, "fn main(int! a) { }") {
+  declaration_t* decl = parse_declaration(&parser);
+  ct_assert_not_null(decl, "function decl should not be NULL");
+  ct_assert_eq(decl->func.params.count, 1, "function should have one parameter");
+  ct_assert_eq(decl->func.params.items[0].is_constant, true, "first function parameter should be marked as constant");
+
+  free_declaration(decl);
+  da_free(&parser);
+}

@@ -177,10 +177,10 @@ int IR_lower_composite_literal_expression(
             sym->members_name[j]) == 0) {
         break ; 
       } else {
-        computed_place += sym->members_type[j].size;
+        computed_place += sym->members_type[j].type.size;
       }
     } 
-    mov_offset->src.size = sym->members_type[j].size;
+    mov_offset->src.size = sym->members_type[j].type.size;
     mov_offset->offset.size = computed_place;
     da_append(func->code, mov_offset);
   }
@@ -465,7 +465,7 @@ int IR_lower_expression(HIR_parser_t* hir,
             goto insert_member;
         }
 
-        offset += sym->members_type[i].size;
+        offset += sym->members_type[i].type.size;
       } 
 
 insert_member:

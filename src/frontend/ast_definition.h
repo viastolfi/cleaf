@@ -77,7 +77,7 @@ typedef struct expression_t expression_t;
 
 typedef struct {
   char* name;
-  size_t size; // in bits
+  size_t size; // in bytes
   types_t kind;
 } known_type_t;
 
@@ -86,6 +86,7 @@ typedef struct
   known_type_t type; 
   char* ident_name;
   const char* source_pos;
+  bool is_constant;
 } typed_identifier_t;
 
 // ----------------- Dynamic arrays ------------------
