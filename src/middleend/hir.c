@@ -167,7 +167,7 @@ int IR_lower_composite_literal_expression(
     mov_offset->kind = IR_MOV_OFFSET;
     mov_offset->offset.timing = IR_PRE_OFFSET;
     mov_offset->dest.id = save;
-    mov_offset->dest.size = decl->var_decl.ident.type.kind;
+    mov_offset->dest.size = decl->var_decl.ident.type.size;
     mov_offset->src.id = func->next_temp_id;
 
     size_t j = 0;

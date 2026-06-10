@@ -723,10 +723,28 @@ expression_t* parse_primary(parser_t* p)
   return NULL;
 }
 
+expression_t* ast_parse_expr_char_lit(parser_t* p) 
+{
+  expression_t* expr = calloc(1, sizeof(expression_t));
+  if (!expr) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return NULL;
+  }
+  expr->type = EXPRESSION_CHAR_LIT;
+
+  token_t* char_tok = advance(p);
+
+  expr->char_lit.value = (unsigned char) char_tok->int_value;
+  return expr;
+}
+
 expression_t* parse_expression(parser_t* p) 
 {
   if (check(p, '{'))
     return ast_parse_expr_composite_literal(p);
+
+  if (check(p, LEXER_token_charlit))
+    return ast_parse_expr_char_lit(p);
 
   if (check(p, LEXER_token_plusplus) ||
       check(p, LEXER_token_minusminus) ||

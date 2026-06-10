@@ -29,6 +29,7 @@ typedef enum
 typedef enum 
 {
   EXPRESSION_INT_LIT,
+  EXPRESSION_CHAR_LIT,
   EXPRESSION_VAR,
   EXPRESSION_BINARY,
   EXPRESSION_CALL,
@@ -193,6 +194,7 @@ struct expression_t
 
   union {
     struct { int value; } int_lit;
+    struct { char value; } char_lit;
     struct { 
       typed_identifier_t ident; 
       expression_t* member; 

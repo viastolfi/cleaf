@@ -11,3 +11,4 @@ x 2026-06-10 2026-06-10 Choose between mutable or const for var by default and c
 (A) Enhance error reporting @thirdparty
 (B) choose if we pass struct var by value or pointer and implement both methods
 (C) make language documentation @docs
+(D) add defer keyword @global
