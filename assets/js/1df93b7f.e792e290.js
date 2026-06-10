@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkdocs=self.webpackChunkdocs||[]).push([["452"],{5146(s,c,e){e.r(c),e.d(c,{default:()=>u});var r=e(4848),t=e(6347);function u(){return(0,r.jsx)(t.rd,{to:"/cleaf/docs/intro"})}}}]);
