@@ -1,0 +1,54 @@
+---
+id: intro
+title: Introduction
+sidebar_position: 1
+slug: /intro
+---
+
+# Introduction
+
+:::caution Work in progress
+Cleaf is under active development. The language and compiler are not feature-complete.
+Breaking changes to the syntax or pipeline are expected.
+:::
+
+**Cleaf** is a small, statically typed compiled language targeting x86-64 Linux.
+Source files use the `.clf` extension.
+
+The compiler is written in C and produces native executables via **NASM** and the system linker — no LLVM, no runtime, no garbage collector (yet).
+
+## Motivation
+
+Cleaf is a personal project to explore compiler construction from scratch, covering the full pipeline from lexing to native code generation. The language is intentionally simple and C-like, with a focus on clean, readable syntax compiled directly to machine code.
+
+## Compilation pipeline
+
+```
+source (.clf) → lexer → parser → semantic analysis → HIR lowering → codegen → NASM → ld → executable
+```
+
+## Feature status
+
+| Feature | Status |
+|---|---|
+| Lexer | ✅ |
+| Parser | ✅ |
+| Semantic analysis | ✅ |
+| HIR lowering | ✅ |
+| x86-64 code generation | ✅ |
+| `int`, `u8`, `u16`, `u64` types | ✅ |
+| Type inference (`var`) | ✅ |
+| Constant variables | ✅ |
+| Functions with typed params | ✅ |
+| Structs & designated initializers | ✅ |
+| `if` / `else` | ✅ |
+| `while` / `for` | ✅ |
+| Arithmetic & comparisons | ✅ |
+| Unary operators (`++`, `--`, `-`, `!`) | ✅ |
+| Function calls | ✅ |
+| Inline assembly (`asm`) | ✅ |
+| Arrays | ❌ Planned |
+| Floats / strings / booleans | ❌ Planned |
+| Multiple source files | ❌ Planned |
+| Standard library | ❌ Planned |
+| Memory model | ❌ Not yet decided |

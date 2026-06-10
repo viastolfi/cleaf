@@ -4,3 +4,5 @@ build/
 a.out
 vgcore.*
 inbox.txt.tuxedo-lock
+docs/node_modules
+docs/build
