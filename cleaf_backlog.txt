@@ -14,3 +14,4 @@ x 2026-06-10 2026-06-10 Choose between mutable or const for var by default and c
 (D) add defer keyword @global
 (A) add type casting @global
 (B) add way to get var address @global
+(A) add memory deallocation function @global
