@@ -57,6 +57,28 @@ inline static void* hashmap_get(hashmap_t* map, const char* key)
   return NULL;
 }
 
+inline static int hashmap_remove(hashmap_t* map, const char* key)
+{
+  if (!map || !key) return 0;
+
+  unsigned idx = hashmap_hash(key);
+  hashmap_entry_t* e = map->buckets[idx];
+  hashmap_entry_t* prev = NULL;
+
+  for (; e; prev = e, e = e->next) {
+    if (strcmp(key, e->key) != 0) continue;
+    if (prev)
+      prev->next = e->next;
+    else
+      map->buckets[idx] = e->next;
+    free(e->key);
+    free(e);
+    return 1;
+  }
+
+  return 0;
+}
+
 inline static void hashmap_free(hashmap_t* map, int pointer_value)
 {
   if (!map) return;

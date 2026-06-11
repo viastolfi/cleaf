@@ -1,0 +1,4 @@
+fn main(): int {
+  free(undef_var);
+  return 0;
+}

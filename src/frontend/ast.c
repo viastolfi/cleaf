@@ -131,6 +131,10 @@ void free_statement(statement_t* s)
     free(s->asm_stmt.args);
   }
 
+  if (s->type == STATEMENT_FREE) {
+    free_expression(s->free_stmt.expr); 
+  }
+
   free(s);
 }
 
