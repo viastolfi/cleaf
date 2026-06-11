@@ -424,6 +424,20 @@ int IR_lower_expression(HIR_parser_t* hir,
     return 0;
   }
 
+  if (expr->type == EXPRESSION_CHAR_LIT) {
+    IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t)); 
+    if (!instr) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return -1;
+    }
+
+    instr->kind = IR_INT_CONST;
+    instr->dest.id = ++(func->next_temp_id);
+    instr->int_value = expr->char_lit.value;
+    da_append(func->code, instr);
+    return 0;
+  }
+
   if (expr->type == EXPRESSION_VAR) {
     IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));  
     if (!instr) {

@@ -246,3 +246,7 @@ ct_test(hir_test, asm_no_args, "test/hir_case/asm_no_args.clf", "test/hir_case/a
 ct_test(hir_test, asm_with_arg, "test/hir_case/asm_with_arg.clf", "test/hir_case/asm_with_arg.res") {
   ct_assert_eq(result, 0, "hir gives right output for asm with variable interpolation");
 }
+
+ct_test(hir_test, char_var_declaration, "test/hir_case/char_var_declaration.clf", "test/hir_case/char_var_declaration.res") {
+  ct_assert_eq(result, 0, "hir gives right output for char var declaration");
+}
