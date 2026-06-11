@@ -57,6 +57,7 @@ statement_t*   ast_parse_if_stmt(parser_t* p);
 statement_t*   ast_parse_while_stmt(parser_t* p);
 statement_t*   ast_parse_for_stmt(parser_t* p);
 statement_t*   ast_parse_asm_stmt(parser_t* p);
+statement_t*   ast_parse_free_stmt(parser_t*p);
 statement_t*   parse_statement(parser_t* p);
 
 expression_t*  parse_expression(parser_t* p);

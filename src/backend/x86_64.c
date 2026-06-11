@@ -271,6 +271,15 @@ static void x86_alloc_memory(string_builder_t* sb, int size)
   sb_append_fmt(sb, "    syscall\n");
 }
 
+static void x86_dealloc_memory(
+    string_builder_t* sb, const char* src, size_t size)
+{
+  sb_append_fmt(sb, "    mov rax, 11\n");
+  sb_append_fmt(sb, "    mov rdi, %s\n", src);
+  sb_append_fmt(sb, "    mov rsi, %zu\n", size);
+  sb_append_fmt(sb, "    syscall\n");
+}
+
 static void x86_emit_mov_offset_pre(string_builder_t* sb,
     const char* dst, size_t size, const char* src)
 {
@@ -322,4 +331,5 @@ const target_t x86_64_target = {
   .alloc_memory = x86_alloc_memory,
   .emit_mov_offset_pre = x86_emit_mov_offset_pre,
   .emit_mov_offset_post = x86_emit_mov_offset_post,
+  .dealloc_memory = x86_dealloc_memory,
 };

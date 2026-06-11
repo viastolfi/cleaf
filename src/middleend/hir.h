@@ -21,12 +21,15 @@ typedef struct
   IR_function_array* hir_program;
 } HIR_parser_t;
 
-int IR_lower_function(HIR_parser_t* hir, 
+int IR_lower_function(
+    HIR_parser_t* hir, 
     declaration_t* function);
-int IR_lower_statement(HIR_parser_t* hir, 
+int IR_lower_statement(
+    HIR_parser_t* hir, 
     statement_t* stmt,
     IR_function_t* func);
-int IR_lower_expression(HIR_parser_t* hir,
+int IR_lower_expression(
+    HIR_parser_t* hir,
     expression_t* expr,
     IR_function_t* func);
 void IR_display_function(IR_function_t* function);
@@ -65,5 +68,9 @@ int IR_lower_asm_statement(
      HIR_parser_t* hir,
      statement_t* stmt,
      IR_function_t* func);
+int IR_lower_free_statement(
+    HIR_parser_t* hir,
+    statement_t* stmt,
+    IR_function_t* func);
 
 #endif // IR_H

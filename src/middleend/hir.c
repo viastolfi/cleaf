@@ -557,6 +557,28 @@ insert_member:
   return 1;
 }
 
+int IR_lower_free_statement(
+    HIR_parser_t* hir,
+    statement_t* stmt,
+    IR_function_t* func)
+{
+  IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
+  if (!instr) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out if memory"); 
+    return 1;
+  }
+
+  instr->kind = IR_DEALLOC;
+  
+  IR_lower_expression(hir, stmt->free_stmt.expr, func); 
+
+  instr->src.id = func->next_temp_id;
+  instr->src.size = stmt->free_stmt.expr->var.ident.type.size;
+
+  da_append(func->code, instr);
+  return 0;
+}
+
 int IR_lower_asm_statement(
      HIR_parser_t* hir,
      statement_t* stmt,
@@ -966,6 +988,9 @@ int IR_lower_statement(HIR_parser_t* hir,
   if (stmt->type == STATEMENT_ASM) {
     return IR_lower_asm_statement(hir, stmt, func);
   }
+  if (stmt->type == STATEMENT_FREE) {
+    return IR_lower_free_statement(hir, stmt, func); 
+  }
 
   error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED, 
       "unknown statement instruction");
@@ -1190,6 +1215,10 @@ char* IR_generate_string_program(IR_function_t* function)
     if (instr->kind == IR_ALLOC) {
       sb_append_fmt(&sb, "ALLOC %zu\n", instr->alloc_size);
       continue;
+    }
+
+    if (instr->kind == IR_DEALLOC) {
+      sb_append_fmt(&sb, "DEALLOC %c%d, %zu\n", TEMP_STR(instr->src), instr->src.size); 
     }
 
     if (instr->kind == IR_ASM) {

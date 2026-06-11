@@ -1,0 +1,10 @@
+struct v2 {
+  int x;
+  int y;
+}
+
+fn main(): int {
+  v2 a = { .x = 3, .y = 7 };
+  free(a);
+  return 0;
+}

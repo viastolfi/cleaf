@@ -24,7 +24,8 @@ static inline scope_t* scope_enter(scope_t* parent)
   return s;
 }
 
-static inline void scope_exit(scope_t* scope) {
+static inline void scope_exit(scope_t* scope) 
+{
   if (scope) {
     if (scope->symbols) {
       hashmap_free(scope->symbols, 1);
@@ -34,13 +35,25 @@ static inline void scope_exit(scope_t* scope) {
   }
 }
 
-static inline void* scope_resolve(scope_t* scope, const char* name) {
+static inline void* scope_resolve(scope_t* scope, const char* name) 
+{
   for (scope_t* s = scope; s != NULL; s = s->parent) {
     void* sym = hashmap_get(s->symbols, name);
     if (sym)
       return sym;
   }
   return NULL;
+}
+
+static inline int scope_remove(scope_t* scope, const char* name)
+{
+  for (scope_t* s = scope; s != NULL; s = s->parent) {
+    if (hashmap_remove(s->symbols, name)) {
+      return 1;     
+    }
+  }
+
+  return 0;
 }
 
 #endif // SCOPE_H

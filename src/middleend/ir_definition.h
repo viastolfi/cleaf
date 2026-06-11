@@ -46,6 +46,7 @@ typedef enum
   IR_EXIT,
 
   IR_ALLOC,
+  IR_DEALLOC,
 
   IR_CALL,
 

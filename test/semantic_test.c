@@ -695,3 +695,30 @@ ct_test(semantic_case, char_declaration, "test/semantic_case/char_declaration.cl
   ct_assert_eq(analyzer.error_count, 2, "Should have 2 errors");
   free_analyzer(&analyzer);
 }
+
+// --- free statement tests ---
+
+ct_test(semantic_case, free_struct_ok, "test/semantic_case/free_struct_ok.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors when freeing a struct variable");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, free_int_error, "test/semantic_case/free_int_error.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error when freeing a non-struct (int) variable");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, free_u8_error, "test/semantic_case/free_u8_error.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error when freeing a non-struct (u8) variable");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, free_use_after_free, "test/semantic_case/free_use_after_free.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error when using a variable after it has been freed");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, free_undef_error, "test/semantic_case/free_undef_error.clf") {
+  ct_assert_eq(analyzer.error_count, 2, "Should have 2 errors when freeing an undefined variable (undefined var + free of unallocated)");
+  free_analyzer(&analyzer);
+}

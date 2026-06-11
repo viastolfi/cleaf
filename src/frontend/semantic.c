@@ -704,9 +704,33 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
     if (stmt->type == STATEMENT_EXPR)
       semantic_check_expression(
           analyzer, stmt->expr_stmt.expr, local_scope);
+
+    if (stmt->type == STATEMENT_FREE)
+      semantic_check_free_statement(analyzer, stmt, local_scope);
   }
 
   scope_exit(local_scope);
+}
+
+void semantic_check_free_statement(
+    semantic_analyzer_t* analyzer,
+    statement_t* stmt,
+    scope_t* scope)
+{
+  known_type_t t = 
+    semantic_check_expression(analyzer, stmt->free_stmt.expr, scope);
+
+  if (t.kind != TYPE_CUSTOM) {
+    semantic_error_register(
+        analyzer, stmt->free_stmt.expr->source_pos - 1,
+        "you are tryning to free unallocated memory. Please not that only stuct typed variable and arrays are allocated in the heap");
+    return;
+  }
+
+  variable_symbol_t* sym = (variable_symbol_t*)
+    scope_resolve(scope, stmt->free_stmt.expr->var.ident.ident_name);
+  free(sym);
+  scope_remove(scope, stmt->free_stmt.expr->var.ident.ident_name);
 }
 
 void semantic_check_asm_statement(
