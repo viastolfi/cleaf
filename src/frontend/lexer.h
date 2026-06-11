@@ -172,6 +172,7 @@ static token_t lexer_copy_token(lexer_t* lex)
       }
       break;
     case LEXER_token_intlit:
+    case LEXER_token_charlit:
       token.int_value = lex->int_value;
       break;
     default:

@@ -99,6 +99,10 @@ static void print_expression(expression_t* e, const char* prefix, bool is_last)
       printf(CLR_LIT "IntegerLiteral" CLR_RESET " %d\n", e->int_lit.value);
       break;
 
+    case EXPRESSION_CHAR_LIT:
+      printf(CLR_LIT "CharLiteral" CLR_RESET " %c\n", e->char_lit.value);
+      break;
+
     case EXPRESSION_VAR:
       printf(CLR_LIT "VarRef" CLR_RESET " '%s': ",
              e->var.ident.ident_name ? 

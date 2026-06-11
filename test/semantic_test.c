@@ -690,3 +690,8 @@ ct_test(semantic_case, const_in_func_parameter_error, "test/semantic_case/const_
 
   free_analyzer(&analyzer);
 }
+
+ct_test(semantic_case, char_declaration, "test/semantic_case/char_declaration.clf") {
+  ct_assert_eq(analyzer.error_count, 2, "Should have 2 errors");
+  free_analyzer(&analyzer);
+}

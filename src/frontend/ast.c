@@ -580,8 +580,9 @@ expression_t* ast_parse_expr_call(parser_t* p)
   int l = 0;
   while (!check_next(p, ')', l)) {
     if ((size_t) p->pos + l > p->count) {
-      error_report_at_token(p->error_ctx, peek_next(p, l - 1), ERROR_SEVERITY_ERROR, 
-                            "unexpected EOF, looking for ')' token");
+      error_report_at_token(
+        p->error_ctx, peek_next(p, l - 1), ERROR_SEVERITY_ERROR, 
+        "unexpected EOF, looking for ')' token");
     }
     ++l;
   }
@@ -679,8 +680,9 @@ expression_t* ast_parse_expr_unary(parser_t* p)
     }    
 
     if (!operand) {
-      error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
-                           "expected identifier or literal before postfix operator");
+      error_report_at_token(
+        p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+        "expected identifier or literal before postfix operator");
       free_expression(e);
       return NULL;
     }
@@ -723,10 +725,28 @@ expression_t* parse_primary(parser_t* p)
   return NULL;
 }
 
+expression_t* ast_parse_expr_char_lit(parser_t* p) 
+{
+  expression_t* expr = calloc(1, sizeof(expression_t));
+  if (!expr) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return NULL;
+  }
+  expr->type = EXPRESSION_CHAR_LIT;
+
+  token_t* char_tok = advance(p);
+
+  expr->char_lit.value = (unsigned char) char_tok->int_value;
+  return expr;
+}
+
 expression_t* parse_expression(parser_t* p) 
 {
   if (check(p, '{'))
     return ast_parse_expr_composite_literal(p);
+
+  if (check(p, LEXER_token_charlit))
+    return ast_parse_expr_char_lit(p);
 
   if (check(p, LEXER_token_plusplus) ||
       check(p, LEXER_token_minusminus) ||
@@ -830,8 +850,9 @@ declaration_t* ast_parse_function(parser_t* p)
 
     if (strcmp(type_tok->string_value, "var") == 0) {
       if (p->error_ctx) {
-        error_report_at_token(p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
-                              "`var` cannot be use for functions parameters. Use an explicit type instead");
+        error_report_at_token(
+          p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
+          "`var` cannot be use for functions parameters. Use an explicit type instead");
       }
       free_declaration(decl);
       return NULL;
@@ -1200,8 +1221,9 @@ declaration_t* ast_parse_struct_decl(parser_t* p)
 
     if (strcmp(type_tok->string_value, "var") == 0) {
       if (p->error_ctx) {
-        error_report_at_token(p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
-                              "`var` cannot be use for struct members. Use an explicit type instead");
+        error_report_at_token(
+          p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
+          "`var` cannot be use for struct members. Use an explicit type instead");
       }
       free_declaration(decl);
       return NULL;

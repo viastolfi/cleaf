@@ -71,6 +71,7 @@ expression_t*  ast_parse_expr_comparison_binary(parser_t* p);
 expression_t*  ast_parse_expr_call(parser_t* p);
 expression_t*  ast_parse_expr_unary(parser_t* p);
 expression_t*  ast_parse_expr_composite_literal(parser_t* p);
+expression_t*  ast_parse_expr_char_lit(parser_t* p);
 
 void populate_parser_known_type(known_type_array* types);
 

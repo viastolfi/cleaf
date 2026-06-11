@@ -253,3 +253,7 @@ ct_test(codegen_test, asm_no_args, "test/codegen_case/asm_no_args.clf", "test/co
 ct_test(codegen_test, asm_with_arg, "test/codegen_case/asm_with_arg.clf", "test/codegen_case/asm_with_arg.asm") {
   ct_assert_eq(result, 0, "codegen gives right output for asm with variable interpolation");
 }
+
+ct_test(codegen_test, char_var_declaration, "test/codegen_case/char_var_declaration.clf", "test/codegen_case/char_var_declaration.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for char var declaration");
+}

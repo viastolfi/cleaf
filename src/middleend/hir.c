@@ -167,7 +167,7 @@ int IR_lower_composite_literal_expression(
     mov_offset->kind = IR_MOV_OFFSET;
     mov_offset->offset.timing = IR_PRE_OFFSET;
     mov_offset->dest.id = save;
-    mov_offset->dest.size = decl->var_decl.ident.type.kind;
+    mov_offset->dest.size = decl->var_decl.ident.type.size;
     mov_offset->src.id = func->next_temp_id;
 
     size_t j = 0;
@@ -420,6 +420,20 @@ int IR_lower_expression(HIR_parser_t* hir,
     instr->kind = IR_INT_CONST;
     instr->dest.id = ++(func->next_temp_id);
     instr->int_value = expr->int_lit.value;
+    da_append(func->code, instr);
+    return 0;
+  }
+
+  if (expr->type == EXPRESSION_CHAR_LIT) {
+    IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t)); 
+    if (!instr) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return -1;
+    }
+
+    instr->kind = IR_INT_CONST;
+    instr->dest.id = ++(func->next_temp_id);
+    instr->int_value = expr->char_lit.value;
     da_append(func->code, instr);
     return 0;
   }

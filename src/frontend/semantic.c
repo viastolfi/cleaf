@@ -225,6 +225,10 @@ known_type_t semantic_check_expression(
       .size = types_description[kind].size,
     };
   }
+
+  if (expr->type == EXPRESSION_CHAR_LIT) {
+    return expr->var.ident.type;
+  }
   
   if (expr->type == EXPRESSION_VAR) {
     variable_symbol_t* vs = 
@@ -616,7 +620,8 @@ void semantic_check_var_declaration(
             analyzer, decl->source_pos -1,
             "can't store value. Exceeding max type accetping value");
       }
-      if (expected_type.kind >= actual_type.kind)
+      if (expected_type.kind >= actual_type.kind &&
+          actual_type.kind != TYPE_CHAR)
         goto var_def_put;
 
       if (actual_type.kind != TYPE_ERROR) {

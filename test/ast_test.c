@@ -591,3 +591,18 @@ ct_test(ast, const_in_func_parameter, "fn main(int! a) { }") {
   free_declaration(decl);
   da_free(&parser);
 }
+
+ct_test(ast, char_var_decl, "char a = 'a';") {
+  declaration_t* decl = parse_declaration(&parser);
+  ct_assert_not_null(decl, "char var declaration should not be null");
+  ct_assert_eq(decl->var_decl.ident.type.name, "char", "var type should be char");
+  ct_assert_eq(decl->var_decl.ident.ident_name, "a", "Variable name should be 'a'");
+  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_CHAR, "Variable type should be TYPE_CHAR");
+  ct_assert_not_null(decl->var_decl.init, "Variable init expression should not be NULL");
+  ct_assert_eq(decl->var_decl.init->type, EXPRESSION_CHAR_LIT, "Init expression should be char literal");
+  ct_assert_eq(decl->var_decl.init->char_lit.value, 'a', "Init char value should be 'a'");
+
+
+  free_declaration(decl);
+  da_free(&parser);
+}
