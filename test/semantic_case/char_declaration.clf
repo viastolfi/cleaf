@@ -1,0 +1,11 @@
+fn main() {
+  char a = 'q';
+  char b = 256;
+  char c = 'a';
+  char d = 34;
+  char e = foo('e');
+}
+
+fn foo(char a): char {
+  return a;
+}
