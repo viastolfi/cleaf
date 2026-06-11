@@ -1759,6 +1759,33 @@ statement_t* ast_parse_asm_stmt(parser_t* p)
   return stmt;
 }
 
+statement_t* ast_parse_free_stmt(parser_t* p)
+{
+  statement_t* stmt = calloc(1, sizeof(statement_t));
+  if (!stmt) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return NULL;
+  }
+  stmt->type = STATEMENT_FREE;
+
+  // consume 'free'
+  advance(p);
+
+  expect(p, '(', "expect '(' after 'free' token'");
+
+  stmt->free_stmt.expr = parse_expression(p);
+  if (!stmt->free_stmt.expr) {
+    // TODO: maybe make error stack 
+    free_statement(stmt);
+    return NULL;
+  }
+
+  expect(p, ')', "expect ')' after free statement definition");
+  expect(p, ';', "expect ';' at the and of statement");
+
+  return stmt;
+}
+
 statement_t* parse_statement(parser_t* p) 
 {
   if (check(p, LEXER_token_id) && 
@@ -1784,6 +1811,11 @@ statement_t* parse_statement(parser_t* p)
   if (check(p, LEXER_token_id) &&
       strcmp(peek(p)->string_value, "asm") == 0) {
     return ast_parse_asm_stmt(p); 
+  }
+
+  if (check(p, LEXER_token_id) &&
+      strcmp(peek(p)->string_value, "free") == 0) {
+    return ast_parse_free_stmt(p); 
   }
 
   // WARNING: this can be unsafe if string_value is NULL

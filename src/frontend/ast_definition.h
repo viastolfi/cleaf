@@ -24,6 +24,7 @@ typedef enum
   STATEMENT_WHILE,
   STATEMENT_FOR,
   STATEMENT_ASM,
+  STATEMENT_FREE,
 } statement_kind;
 
 typedef enum 
@@ -157,6 +158,7 @@ struct statement_t
     struct { expression_t* value; } ret;
     struct { expression_t* expr; } expr_stmt;
     struct { declaration_t* decl; } decl_stmt;
+    struct { expression_t* expr; } free_stmt;
     struct {
       char** instr; 
       expression_t** args;
