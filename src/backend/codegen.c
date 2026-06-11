@@ -152,6 +152,10 @@ int CODEGEN_write_function(
     case IR_ALLOC:
       target->alloc_memory(sb, (*it)->alloc_size);
       break;
+    case IR_DEALLOC:
+      const char * src = CODEGEN_get_reg(target, (*it)->src, false);
+      target->dealloc_memory(sb, src, (*it)->src.size);
+      break;
     case IR_MOV_OFFSET:
       if ((*it)->offset.timing == IR_PRE_OFFSET) {
       const char* dst = CODEGEN_get_reg(target, (*it)->dest, false);

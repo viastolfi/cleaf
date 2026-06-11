@@ -140,6 +140,11 @@ typedef struct {
       (*emit_mov_offset_post)
       (string_builder_t*, 
        const char* dst, size_t size, const char* src);
+
+    void
+      (*dealloc_memory)
+      (string_builder_t*,
+       const char* src, size_t size);
 } target_t;
 
 #endif // TARGET_H

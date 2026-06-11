@@ -250,3 +250,7 @@ ct_test(hir_test, asm_with_arg, "test/hir_case/asm_with_arg.clf", "test/hir_case
 ct_test(hir_test, char_var_declaration, "test/hir_case/char_var_declaration.clf", "test/hir_case/char_var_declaration.res") {
   ct_assert_eq(result, 0, "hir gives right output for char var declaration");
 }
+
+ct_test(hir_test, free_stmt, "test/hir_case/free_stmt.clf", "test/hir_case/free_stmt.res") {
+  ct_assert_eq(result, 0, "hir gives right output for free statement");
+}
