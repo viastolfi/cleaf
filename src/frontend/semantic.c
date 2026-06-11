@@ -727,6 +727,9 @@ void semantic_check_free_statement(
     return;
   }
 
+  variable_symbol_t* sym = (variable_symbol_t*)
+    scope_resolve(scope, stmt->free_stmt.expr->var.ident.ident_name);
+  free(sym);
   scope_remove(scope, stmt->free_stmt.expr->var.ident.ident_name);
 }
 
