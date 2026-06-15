@@ -1,7 +1,7 @@
 #include "semantic.h"
 
-static void semantic_resolve_type_size(semantic_analyzer_t* analyzer,
-                                       known_type_t* t)
+static void semantic_resolve_type_size(
+    semantic_analyzer_t* analyzer, known_type_t* t)
 {
   if (t->size != 0)
     return;
@@ -11,13 +11,15 @@ static void semantic_resolve_type_size(semantic_analyzer_t* analyzer,
     t->name = "int";
   } else if (t->kind == TYPE_CUSTOM && t->name) {
     struct_symbol_t* sym =
-      (struct_symbol_t*) hashmap_get(analyzer->struct_symbols, t->name);
+      (struct_symbol_t*) hashmap_get(
+          analyzer->struct_symbols, t->name);
     if (sym)
-      t->size = sym->total_size;
+      t->element_size = sym->total_size;
   }
 }
 
-int string_array_contains(char** source, size_t source_len, const char* name)
+int string_array_contains(
+    char** source, size_t source_len, const char* name)
 {
   for (char** s = source; s < source + source_len; ++s)
     if (*s && strcmp(*s, name) == 0)
@@ -32,7 +34,8 @@ void semantic_free_program_definition(semantic_analyzer_t* analyzer)
     for (size_t i = 0; i < 211; ++i) {
       if (analyzer->function_symbols->buckets[i]) {
         function_symbol_t* v = 
-          (function_symbol_t*) analyzer->function_symbols->buckets[i]->value;
+          (function_symbol_t*) 
+          analyzer->function_symbols->buckets[i]->value;
         free(v->params_name);
         free(v->params_type);
       } 
@@ -45,7 +48,8 @@ void semantic_free_program_definition(semantic_analyzer_t* analyzer)
     for (size_t i = 0; i < 211; ++i) {
       if (analyzer->struct_symbols->buckets[i]) {
         struct_symbol_t* v = 
-          (struct_symbol_t*) analyzer->struct_symbols->buckets[i]->value;
+          (struct_symbol_t*) 
+          analyzer->struct_symbols->buckets[i]->value;
         free(v->members_type);
         free(v->members_name);
       } 
@@ -72,7 +76,8 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
         if (!fs) continue;
 
         for (size_t i = 0; i < fs->params_count; ++i) {
-          variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
+          variable_symbol_t* vs = 
+            calloc(1, sizeof(variable_symbol_t));
           if (vs) {
             vs->type = fs->params_type[i].type;
             vs->is_constant = false;
@@ -82,7 +87,8 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
         }
 
         analyzer->current_analyzed_function = (*it)->func.name; 
-        semantic_check_scope(analyzer, (*it)->func.body, function_scope); 
+        semantic_check_scope(
+            analyzer, (*it)->func.body, function_scope); 
 
         scope_exit(function_scope);
       }
@@ -222,7 +228,7 @@ known_type_t semantic_check_expression(
     return (known_type_t){
       .kind = kind,
       .name = types_description[kind].name,
-      .size = types_description[kind].size,
+      .element_size= types_description[kind].size,
     };
   }
 
@@ -560,7 +566,7 @@ void semantic_check_for_statement(semantic_analyzer_t* analyzer,
         vs->type = (known_type_t) {
           .kind = TYPE_INT,
           .name = types_description[TYPE_INT].name,
-          .size = types_description[TYPE_INT].size,
+          .element_size = types_description[TYPE_INT].size,
         };
       }
       vs->is_constant = false;
@@ -638,7 +644,7 @@ var_def_put:
       vs->type = (known_type_t) {
         .kind = TYPE_INT,
         .name = types_description[TYPE_INT].name,
-        .size = types_description[TYPE_INT].size,
+        .element_size = types_description[TYPE_INT].size,
       };
     } 
     else {
@@ -917,7 +923,7 @@ hash_func_put:
         value->members_type[i].is_constant =
           (*it)->struc.members.items[i].is_constant;
         value->total_size += 
-          (*it)->struc.members.items[i].type.size;
+          (*it)->struc.members.items[i].type.element_size;
         actual_count++;
       }
 

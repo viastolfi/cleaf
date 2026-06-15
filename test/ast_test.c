@@ -483,7 +483,7 @@ ct_test(ast, typed_u8_var, "u8 i = 5;")
 
   ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
   ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_U8, "Variable type should be TYPE_U8");
-  ct_assert_eq((int)decl->var_decl.ident.type.size, 1, "Variable size should be 1 byte");
+  ct_assert_eq((int)decl->var_decl.ident.type.element_size, 1, "Variable size should be 1 byte");
   ct_assert_not_null(decl->var_decl.init, "Variable init should not be NULL");
   ct_assert_eq(decl->var_decl.init->int_lit.value, 5, "Init value should be 5");
 
@@ -497,7 +497,7 @@ ct_test(ast, typed_u16_var, "u16 i = 300;")
 
   ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
   ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_U16, "Variable type should be TYPE_U16");
-  ct_assert_eq((int)decl->var_decl.ident.type.size, 2, "Variable size should be 2 bytes");
+  ct_assert_eq((int)decl->var_decl.ident.type.element_size, 2, "Variable size should be 2 bytes");
   ct_assert_eq(decl->var_decl.init->int_lit.value, 300, "Init value should be 300");
 
   free_declaration(decl);
@@ -510,7 +510,7 @@ ct_test(ast, typed_u32_var, "u32 i = 5;")
 
   ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
   ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_U32, "Variable type should be TYPE_U32");
-  ct_assert_eq((int)decl->var_decl.ident.type.size, 4, "Variable size should be 4 bytes");
+  ct_assert_eq((int)decl->var_decl.ident.type.element_size, 4, "Variable size should be 4 bytes");
 
   free_declaration(decl);
   da_free(&parser);
@@ -522,7 +522,7 @@ ct_test(ast, typed_u64_var, "u64 i = 5;")
 
   ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
   ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_U64, "Variable type should be TYPE_U64");
-  ct_assert_eq((int)decl->var_decl.ident.type.size, 8, "Variable size should be 8 bytes");
+  ct_assert_eq((int)decl->var_decl.ident.type.element_size, 8, "Variable size should be 8 bytes");
 
   free_declaration(decl);
   da_free(&parser);
@@ -534,7 +534,7 @@ ct_test(ast, fn_ret_type_u8, "fn f(): u8 {}")
 
   ct_assert_not_null(decl, "Declaration should not be NULL");
   ct_assert_eq(decl->func.return_type.kind, TYPE_U8, "Return type kind should be TYPE_U8");
-  ct_assert_eq((int)decl->func.return_type.size, 1, "Return type size should be 1 byte");
+  ct_assert_eq((int)decl->func.return_type.element_size, 1, "Return type size should be 1 byte");
 
   free_declaration(decl);
   da_free(&parser);
@@ -552,11 +552,11 @@ ct_test(ast, fn_params_u8_u16, "fn f(u8 a, u16 b) {}")
 
   ct_assert_eq(p1.ident_name, "a", "First param name should be 'a'");
   ct_assert_eq(p1.type.kind, TYPE_U8, "First param type should be TYPE_U8");
-  ct_assert_eq((int)p1.type.size, 1, "First param size should be 1 byte");
+  ct_assert_eq((int)p1.type.element_size, 1, "First param size should be 1 byte");
 
   ct_assert_eq(p2.ident_name, "b", "Second param name should be 'b'");
   ct_assert_eq(p2.type.kind, TYPE_U16, "Second param type should be TYPE_U16");
-  ct_assert_eq((int)p2.type.size, 2, "Second param size should be 2 bytes");
+  ct_assert_eq((int)p2.type.element_size, 2, "Second param size should be 2 bytes");
 
   free_declaration(decl);
   da_free(&parser);
@@ -635,5 +635,110 @@ ct_test(ast, free_stmt_call, "free(get_ptr());")
   ct_assert_eq((int)s->free_stmt.expr->call.arg_count, 0, "call should have 0 args");
 
   free_statement(s);
+  da_free(&parser);
+}
+
+// === ARRAY DECLARATIONS ===
+
+ct_test(ast, array_int_decl, "int[2] a = { 1, 2 };")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "declaration should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_VAR, "should be a var declaration");
+  ct_assert_eq(decl->var_decl.ident.ident_name, "a", "variable name should be 'a'");
+  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_INT, "type should be TYPE_INT");
+  ct_assert_eq((int)decl->var_decl.ident.type.array_len, 2, "array_len should be 2");
+  ct_assert_not_null(decl->var_decl.init, "init should not be NULL");
+  ct_assert_eq(decl->var_decl.init->type, EXPRESSION_COMPOSITE_LITERAL,
+               "init should be a composite literal");
+  ct_assert_eq(decl->var_decl.init->composite_literal.is_initializer, true,
+               "is_initializer should be true");
+  ct_assert_eq((int)decl->var_decl.init->composite_literal.count, 2,
+               "literal should have 2 elements");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, array_literal_values, "int[2] a = { 1, 2 };")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "declaration should not be NULL");
+  expression_t** vals = decl->var_decl.init->composite_literal.values;
+  ct_assert_not_null(vals, "values array should not be NULL");
+  ct_assert_eq(vals[0]->type, EXPRESSION_INT_LIT, "first element should be INT_LIT");
+  ct_assert_eq(vals[0]->int_lit.value, 1, "first element value should be 1");
+  ct_assert_eq(vals[1]->type, EXPRESSION_INT_LIT, "second element should be INT_LIT");
+  ct_assert_eq(vals[1]->int_lit.value, 2, "second element value should be 2");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, array_zero_init, "int[4] b = { 0 };")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "declaration should not be NULL");
+  ct_assert_eq(decl->var_decl.ident.ident_name, "b", "variable name should be 'b'");
+  ct_assert_eq((int)decl->var_decl.ident.type.array_len, 4, "array_len should be 4");
+  ct_assert_not_null(decl->var_decl.init, "init should not be NULL");
+  ct_assert_eq(decl->var_decl.init->type, EXPRESSION_COMPOSITE_LITERAL,
+               "init should be a composite literal");
+  ct_assert_eq(decl->var_decl.init->composite_literal.is_initializer, false,
+               "is_initializer should be false for zero-init");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, array_single_element, "int[1] x = { 99 };")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "declaration should not be NULL");
+  ct_assert_eq(decl->var_decl.ident.ident_name, "x", "variable name should be 'x'");
+  ct_assert_eq((int)decl->var_decl.ident.type.array_len, 1, "array_len should be 1");
+  ct_assert_eq((int)decl->var_decl.init->composite_literal.count, 1,
+               "literal should have 1 element");
+  ct_assert_eq(decl->var_decl.init->composite_literal.values[0]->int_lit.value, 99,
+               "element value should be 99");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, array_u8_decl, "u8[3] arr = { 10, 20, 30 };")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "declaration should not be NULL");
+  ct_assert_eq(decl->var_decl.ident.ident_name, "arr", "variable name should be 'arr'");
+  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_U8, "type should be TYPE_U8");
+  ct_assert_eq((int)decl->var_decl.ident.type.array_len, 3, "array_len should be 3");
+  ct_assert_eq((int)decl->var_decl.init->composite_literal.count, 3,
+               "literal should have 3 elements");
+  ct_assert_eq(decl->var_decl.init->composite_literal.values[0]->int_lit.value, 10,
+               "first element should be 10");
+  ct_assert_eq(decl->var_decl.init->composite_literal.values[1]->int_lit.value, 20,
+               "second element should be 20");
+  ct_assert_eq(decl->var_decl.init->composite_literal.values[2]->int_lit.value, 30,
+               "third element should be 30");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, array_non_typed_has_no_array_len, "var a = 5;")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "declaration should not be NULL");
+  ct_assert_eq((int)decl->var_decl.ident.type.array_len, 0,
+               "non-array var should have array_len == 0");
+
+  free_declaration(decl);
   da_free(&parser);
 }

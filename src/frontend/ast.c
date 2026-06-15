@@ -192,7 +192,7 @@ void populate_parser_known_type(known_type_array* types)
     types_ident desc = types_description[i];
     known_type_t t = { 
       .name = desc.name, 
-      .size = desc.size, 
+      .element_size = desc.size, 
       .kind = i
     };
     da_append(types, t);
@@ -337,6 +337,56 @@ expression_t* ast_parse_expr_var(parser_t* p)
     }
   }
 
+  return e;
+}
+
+expression_t* ast_parse_expr_array_composite_literal(parser_t* p)
+{
+  expression_t* e = calloc(1, sizeof(expression_t));
+  if (!e) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return NULL;
+  }
+
+  e->type = EXPRESSION_COMPOSITE_LITERAL;
+  e->source_pos = peek(p)->source_pos;
+
+  // consume '{'
+  advance(p);
+
+  if (check(p, LEXER_token_intlit) && 
+      peek(p)->int_value == 0 &&
+      check_next(p, '}', 1)) {
+    e->composite_literal.is_initializer = false; 
+
+    // consume '0' and '}'
+    advance(p);
+    advance(p);
+    
+    return e;
+  }
+
+  e->composite_literal.is_initializer = true;
+  while (!check(p, '}')) {
+    expression_t* a = parse_expression(p);
+
+    if (a) {
+      e->composite_literal.values =
+        realloc(
+            e->composite_literal.values,
+            ++e->composite_literal.count * sizeof(expression_t*));
+      e->composite_literal.values[e->composite_literal.count - 1] =
+        a;
+
+      if (check(p, '}'))
+        break;
+
+      expect(p, ',',
+          "expect ',' between custom var members declaration");
+    }
+  }
+  
+  expect(p, '}', "exect '}' after composite literal expression");
   return e;
 }
 
@@ -746,8 +796,11 @@ expression_t* ast_parse_expr_char_lit(parser_t* p)
 
 expression_t* parse_expression(parser_t* p) 
 {
-  if (check(p, '{'))
+  if (check(p, '{') && check_next(p, '.', 1))
     return ast_parse_expr_composite_literal(p);
+
+  if (check(p, '{'))
+    return ast_parse_expr_array_composite_literal(p);
 
   if (check(p, LEXER_token_charlit))
     return ast_parse_expr_char_lit(p);
@@ -1019,8 +1072,27 @@ declaration_t* ast_parse_var_decl(parser_t* p)
     return NULL;
   }
 
-  d->var_decl.ident.type = *type_info;
   d->var_decl.ident.is_constant = false;
+
+  if (check(p, '[')) {
+    // consume '['
+    advance(p);  
+    token_t* size_token = advance(p);
+    if (size_token->type != LEXER_token_intlit) {
+      error_report_at_token(
+         p->error_ctx, size_token, ERROR_SEVERITY_ERROR,
+         "expected array length after array typed variable initilization"); 
+      free_declaration(d);
+      return NULL;
+    }
+
+    type_info->array_len = size_token->int_value;
+
+    expect(p, ']', "expected ']' after array typed variable initialization");
+  }
+
+  d->var_decl.ident.type = *type_info;
+  type_info->array_len = 0;
 
   if (check(p, '!')) {
     // consume '!'

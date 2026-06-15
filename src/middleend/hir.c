@@ -79,7 +79,7 @@ int IR_lower_declaration(
 
   instr->kind = IR_STORE_VAR;
   instr->var.name = strdup(decl->var_decl.ident.ident_name);
-  instr->src.size = decl->var_decl.ident.type.size;
+  instr->src.size = decl->var_decl.ident.type.element_size;
   if (!instr->var.name) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return -1;
@@ -94,7 +94,7 @@ int IR_lower_declaration(
         return -1;
       }
       alloc->kind = IR_ALLOC;
-      alloc->alloc_size = decl->var_decl.ident.type.size;
+      alloc->alloc_size = decl->var_decl.ident.type.element_size;
 
       da_append(func->code, alloc);
       instr->var.is_init = 1;
@@ -120,7 +120,7 @@ int IR_lower_declaration(
       }
     } 
     da_append(func->code, instr);
-    func->stack_reserve_size += decl->var_decl.ident.type.size;
+    func->stack_reserve_size += decl->var_decl.ident.type.element_size;
   }
 
   return 0;
@@ -138,7 +138,7 @@ int IR_lower_composite_literal_expression(
   }
   load->kind = IR_LOAD_VAR;
   load->dest.id = func->next_temp_id;
-  load->dest.size = decl->var_decl.ident.type.size;
+  load->dest.size = decl->var_decl.ident.type.element_size;
   load->var.is_init = 1;
   load->var.name = strdup(decl->var_decl.ident.ident_name);
   if (!load->var.name) {
@@ -167,7 +167,7 @@ int IR_lower_composite_literal_expression(
     mov_offset->kind = IR_MOV_OFFSET;
     mov_offset->offset.timing = IR_PRE_OFFSET;
     mov_offset->dest.id = save;
-    mov_offset->dest.size = decl->var_decl.ident.type.size;
+    mov_offset->dest.size = decl->var_decl.ident.type.element_size;
     mov_offset->src.id = func->next_temp_id;
 
     size_t j = 0;
@@ -177,10 +177,10 @@ int IR_lower_composite_literal_expression(
             sym->members_name[j]) == 0) {
         break ; 
       } else {
-        computed_place += sym->members_type[j].type.size;
+        computed_place += sym->members_type[j].type.element_size;
       }
     } 
-    mov_offset->src.size = sym->members_type[j].type.size;
+    mov_offset->src.size = sym->members_type[j].type.element_size;
     mov_offset->offset.size = computed_place;
     da_append(func->code, mov_offset);
   }
@@ -193,7 +193,8 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
     IR_function_t* func)
 {
   (void)hir;
-  size_t operand_size = expr->unary.operand->var.ident.type.size;
+  size_t operand_size = 
+    expr->unary.operand->var.ident.type.element_size;
 
   if (expr->unary.op == UNARY_POST_INC ||
       expr->unary.op == UNARY_POST_DEC) {
@@ -447,7 +448,7 @@ int IR_lower_expression(HIR_parser_t* hir,
 
     instr->kind = IR_LOAD_VAR;
     instr->dest.id = ++(func->next_temp_id);
-    instr->dest.size = expr->var.ident.type.size;
+    instr->dest.size = expr->var.ident.type.element_size;
     instr->var.name = 
       strdup(expr->var.ident.ident_name);
     if (!instr->var.name) {
@@ -479,13 +480,13 @@ int IR_lower_expression(HIR_parser_t* hir,
             goto insert_member;
         }
 
-        offset += sym->members_type[i].type.size;
+        offset += sym->members_type[i].type.element_size;
       } 
 
 insert_member:
       instr->offset.size = offset;
       instr->src.id = func->next_temp_id;
-      instr->src.size = expr->var.ident.type.size;
+      instr->src.size = expr->var.ident.type.element_size;
       instr->dest.id = ++func->next_temp_id;
       instr->dest.size = expr->var.member->var.ident.type.size;
       da_append(func->code, instr);
@@ -1063,7 +1064,8 @@ int IR_lower_function(HIR_parser_t* hir,
     }
     str->var.is_init = 1;
     str->src.id = func->next_temp_id++;
-    str->src.size = function->func.params.items[i].type.size;
+    str->src.size = 
+      function->func.params.items[i].type.element_size;
 
     da_append(func->code, str);
   }

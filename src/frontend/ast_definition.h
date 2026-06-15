@@ -80,6 +80,8 @@ typedef struct expression_t expression_t;
 typedef struct {
   char* name;
   size_t size; // in bytes
+  size_t element_size;
+  size_t array_len;
   types_t kind;
 } known_type_t;
 

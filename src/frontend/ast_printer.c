@@ -9,7 +9,12 @@
 static void print_known_type(const known_type_t* t)
 {
   const char* name = t->name ? t->name : "?";
-  printf(CLR_TYPE "%s" CLR_RESET " " CLR_SIZE "(%zu)" CLR_RESET, name, t->size);
+  if (t->array_len > 0)
+    printf(CLR_TYPE "%s[%zu]" CLR_RESET " " CLR_SIZE "(%zu)" CLR_RESET,
+           name, t->array_len, t->element_size);
+  else
+    printf(CLR_TYPE "%s" CLR_RESET " " CLR_SIZE "(%zu)" CLR_RESET,
+           name, t->element_size);
 }
 
 static const char* binary_op_str(binary_op_kind op)
@@ -140,11 +145,24 @@ static void print_expression(expression_t* e, const char* prefix, bool is_last)
       break;
 
     case EXPRESSION_COMPOSITE_LITERAL:
-      printf(CLR_LIT "CompositeLiteral" CLR_RESET " is_initializer=%s\n",
-             e->composite_literal.is_initializer ? "true" : "false");
-      for (size_t i = 0; i < e->composite_literal.count; i++)
-        print_expression(e->composite_literal.values[i], cp,
-                         i == e->composite_literal.count - 1);
+      if (!e->composite_literal.is_initializer) {
+        printf(CLR_LIT "ZeroInit\n" CLR_RESET);
+      } else if (e->composite_literal.count > 0 &&
+                 e->composite_literal.values[0]->type == EXPRESSION_ASSIGN) {
+        printf(CLR_LIT "CompositeLiteral" CLR_RESET " (%zu field%s)\n",
+               e->composite_literal.count,
+               e->composite_literal.count != 1 ? "s" : "");
+        for (size_t i = 0; i < e->composite_literal.count; i++)
+          print_expression(e->composite_literal.values[i], cp,
+                           i == e->composite_literal.count - 1);
+      } else {
+        printf(CLR_LIT "ArrayLiteral" CLR_RESET " [%zu element%s]\n",
+               e->composite_literal.count,
+               e->composite_literal.count != 1 ? "s" : "");
+        for (size_t i = 0; i < e->composite_literal.count; i++)
+          print_expression(e->composite_literal.values[i], cp,
+                           i == e->composite_literal.count - 1);
+      }
       break;
   }
 }
