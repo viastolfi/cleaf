@@ -602,61 +602,89 @@ void semantic_check_var_declaration(
     declaration_t* decl,
     scope_t* scope)
 {
-  if (analyze_declaration(analyzer, decl, scope)) {
-    known_type_t expected_type = decl->var_decl.ident.type;
-    known_type_t actual_type; 
+  if (!analyze_declaration(analyzer, decl, scope))
+    return;
 
-    if (!decl->var_decl.init) {
-      actual_type = decl->var_decl.ident.type;
-      goto var_def_put;
-    }
+  known_type_t expected_type = decl->var_decl.ident.type;
+  known_type_t actual_type; 
 
-    actual_type = 
-      semantic_check_expression(
-          analyzer, 
-          decl->var_decl.init,
-          scope);
+  if (!decl->var_decl.init) {
+    actual_type = decl->var_decl.ident.type;
+    goto var_def_put;
+  }
 
-    if (expected_type.kind != actual_type.kind && 
-        expected_type.kind != TYPE_UNTYPE &&
-        expected_type.kind != TYPE_VAR) {
+  if (decl->var_decl.ident.type.array_len > 0) {
+    size_t len = decl->var_decl.ident.type.array_len;
+    for (size_t i = 0; i < len; ++i) {
+      expression_t* e = 
+        decl->var_decl.init->composite_literal.values[i];
+
+      actual_type = semantic_check_expression(analyzer, e, scope);
 
       if (expected_type.kind < actual_type.kind) {
         semantic_error_register(
-            analyzer, decl->source_pos -1,
+            analyzer, e->source_pos -1,
             "can't store value. Exceeding max type accetping value");
       }
       if (expected_type.kind >= actual_type.kind &&
           actual_type.kind != TYPE_CHAR)
-        goto var_def_put;
+        continue;
 
       if (actual_type.kind != TYPE_ERROR) {
         semantic_error_register(
             analyzer, decl->source_pos - 1, 
             "type mismatch");
         actual_type.kind = TYPE_ERROR;
-      }
+      } 
     }
+    goto var_def_put;
+  }
+
+  actual_type = 
+    semantic_check_expression(
+        analyzer, 
+        decl->var_decl.init,
+        scope); 
+  
+  if (expected_type.kind != actual_type.kind && 
+      expected_type.kind != TYPE_UNTYPE &&
+      expected_type.kind != TYPE_VAR) {
+
+    if (expected_type.kind < actual_type.kind) {
+      semantic_error_register(
+          analyzer, decl->source_pos -1,
+          "can't store value. Exceeding max type accetping value");
+    }
+    if (expected_type.kind >= actual_type.kind &&
+        actual_type.kind != TYPE_CHAR)
+      goto var_def_put;
+
+    if (actual_type.kind != TYPE_ERROR) {
+      semantic_error_register(
+          analyzer, decl->source_pos - 1, 
+          "type mismatch");
+      actual_type.kind = TYPE_ERROR;
+    }
+  }
 
 var_def_put:
-    variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
-    if (expected_type.kind == TYPE_VAR) {
-      vs->type = (known_type_t) {
-        .kind = TYPE_INT,
-        .name = types_description[TYPE_INT].name,
-        .element_size = types_description[TYPE_INT].size,
-      };
-    } 
-    else {
-      vs->type = expected_type;
-    }
-    semantic_resolve_type_size(analyzer, &vs->type);
-    vs->is_constant = decl->var_decl.ident.is_constant;
-    decl->var_decl.ident.type = vs->type;
-    hashmap_put(
-        scope->symbols, 
-        decl->var_decl.ident.ident_name, vs);
+  variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
+  if (expected_type.kind == TYPE_VAR) {
+    vs->type = (known_type_t) {
+      .kind = TYPE_INT,
+      .name = types_description[TYPE_INT].name,
+      .element_size = types_description[TYPE_INT].size,
+    };
+  } 
+  else {
+    vs->type = expected_type;
   }
+  semantic_resolve_type_size(analyzer, &vs->type);
+  vs->is_constant = decl->var_decl.ident.is_constant;
+  decl->var_decl.ident.type = vs->type;
+  hashmap_put(
+      scope->symbols, 
+      decl->var_decl.ident.ident_name, vs);
 }
 
 void semantic_check_scope(semantic_analyzer_t* analyzer, 

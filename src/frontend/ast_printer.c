@@ -11,7 +11,7 @@ static void print_known_type(const known_type_t* t)
   const char* name = t->name ? t->name : "?";
   if (t->array_len > 0)
     printf(CLR_TYPE "%s[%zu]" CLR_RESET " " CLR_SIZE "(%zu)" CLR_RESET,
-           name, t->array_len, t->element_size);
+           name, t->array_len, t->size);
   else
     printf(CLR_TYPE "%s" CLR_RESET " " CLR_SIZE "(%zu)" CLR_RESET,
            name, t->element_size);

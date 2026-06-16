@@ -1073,6 +1073,8 @@ declaration_t* ast_parse_var_decl(parser_t* p)
   }
 
   d->var_decl.ident.is_constant = false;
+  type_info->array_len = 0;
+  d->var_decl.ident.type = *type_info;
 
   if (check(p, '[')) {
     // consume '['
@@ -1086,13 +1088,13 @@ declaration_t* ast_parse_var_decl(parser_t* p)
       return NULL;
     }
 
-    type_info->array_len = size_token->int_value;
+    d->var_decl.ident.type.array_len = size_token->int_value;
+
+    d->var_decl.ident.type.size = 
+      type_info->element_size * d->var_decl.ident.type.array_len;
 
     expect(p, ']', "expected ']' after array typed variable initialization");
   }
-
-  d->var_decl.ident.type = *type_info;
-  type_info->array_len = 0;
 
   if (check(p, '!')) {
     // consume '!'
