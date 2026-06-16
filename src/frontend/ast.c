@@ -604,6 +604,37 @@ binary_done:
   return expr;
 }
 
+expression_t* ast_parse_expr_index(parser_t* p)
+{
+  expression_t* e = calloc(1, sizeof(expression_t));
+  if (!e) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return NULL;
+  }
+  e->type = EXPRESSION_INDEX;
+  e->source_pos = peek(p)->source_pos;
+
+  e->index.base = ast_parse_expr_var(p);  
+
+  // Do we have to propagate error here ?
+  if (!e->index.base) {
+    free_expression(e); 
+    return NULL;
+  }
+
+  expect(p, '[', "we expected '[' after array var indexation");
+
+  e->index.index = parse_expression(p);
+
+  if (!e->index.index) {
+    free_expression(e); 
+    return NULL;
+  }
+
+  expect(p, ']', "we expected ']' after array var indexation");
+  return e;
+}
+
 expression_t* ast_parse_expr_call(parser_t* p) 
 {
   expression_t* e = (expression_t*) malloc(sizeof(expression_t));
@@ -766,6 +797,9 @@ expression_t* parse_primary(parser_t* p)
       check(p, '-') ||
       check(p, '!'))
     return ast_parse_expr_unary(p);
+
+  if (check(p, LEXER_token_id) && check_next(p, '[', 1))
+    return ast_parse_expr_index(p);
 
   if (check(p, LEXER_token_id) && check_next(p, '(', 1))
     return ast_parse_expr_call(p);

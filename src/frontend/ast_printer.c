@@ -144,6 +144,12 @@ static void print_expression(expression_t* e, const char* prefix, bool is_last)
       print_expression(e->unary.operand, cp, true);
       break;
 
+    case EXPRESSION_INDEX:
+      printf(CLR_STMT "IndexExpr\n" CLR_RESET);
+      print_expression(e->index.base,  cp, false);
+      print_expression(e->index.index, cp, true);
+      break;
+
     case EXPRESSION_COMPOSITE_LITERAL:
       if (!e->composite_literal.is_initializer) {
         printf(CLR_LIT "ZeroInit\n" CLR_RESET);

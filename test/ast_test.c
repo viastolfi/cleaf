@@ -742,3 +742,65 @@ ct_test(ast, array_non_typed_has_no_array_len, "var a = 5;")
   free_declaration(decl);
   da_free(&parser);
 }
+
+// === ARRAY INDEXING TESTS ===
+
+ct_test(ast, array_index_int_literal, "a[0];")
+{
+  statement_t* s = parse_statement(&parser);
+  expression_t* e = s->expr_stmt.expr;
+
+  ct_assert_not_null(e, "expression should not be NULL");
+  ct_assert_eq(e->type, EXPRESSION_INDEX, "expression type should be EXPRESSION_INDEX");
+  ct_assert_not_null(e->index.base, "base should not be NULL");
+  ct_assert_not_null(e->index.index, "index should not be NULL");
+  ct_assert_eq(e->index.base->var.ident.ident_name, "a", "base should be var 'a'");
+  ct_assert_eq(e->index.index->type, EXPRESSION_INT_LIT, "index should be an int literal");
+  ct_assert_eq(e->index.index->int_lit.value, 0, "index value should be 0");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
+ct_test(ast, array_index_var, "a[i];")
+{
+  statement_t* s = parse_statement(&parser);
+  expression_t* e = s->expr_stmt.expr;
+
+  ct_assert_not_null(e, "expression should not be NULL");
+  ct_assert_eq(e->type, EXPRESSION_INDEX, "expression type should be EXPRESSION_INDEX");
+  ct_assert_eq(e->index.base->var.ident.ident_name, "a", "base should be var 'a'");
+  ct_assert_eq(e->index.index->type, EXPRESSION_VAR, "index should be a var expression");
+  ct_assert_eq(e->index.index->var.ident.ident_name, "i", "index var should be 'i'");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
+ct_test(ast, array_index_binary_expr, "a[i + 1];")
+{
+  statement_t* s = parse_statement(&parser);
+  expression_t* e = s->expr_stmt.expr;
+
+  ct_assert_not_null(e, "expression should not be NULL");
+  ct_assert_eq(e->type, EXPRESSION_INDEX, "expression type should be EXPRESSION_INDEX");
+  ct_assert_eq(e->index.base->var.ident.ident_name, "a", "base should be var 'a'");
+  ct_assert_eq(e->index.index->type, EXPRESSION_BINARY, "index should be a binary expression");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
+ct_test(ast, array_index_nonzero, "arr[3];")
+{
+  statement_t* s = parse_statement(&parser);
+  expression_t* e = s->expr_stmt.expr;
+
+  ct_assert_not_null(e, "expression should not be NULL");
+  ct_assert_eq(e->type, EXPRESSION_INDEX, "expression type should be EXPRESSION_INDEX");
+  ct_assert_eq(e->index.base->var.ident.ident_name, "arr", "base should be var 'arr'");
+  ct_assert_eq(e->index.index->int_lit.value, 3, "index value should be 3");
+
+  free_statement(s);
+  da_free(&parser);
+}
