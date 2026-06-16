@@ -74,6 +74,46 @@ known_type_t semantic_check_expression(
     expression_t* expr, 
     scope_t* scope);
 
+known_type_t semantic_check_expr_int_lit(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope);
+
+known_type_t semantic_check_expr_char_lit(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope);
+
+known_type_t semantic_check_expr_var(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope);
+
+known_type_t semantic_check_expr_binary(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope);
+
+known_type_t semantic_check_expr_assign(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope);
+
+known_type_t semantic_check_expr_unary(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope);
+
+known_type_t semantic_check_expr_call(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope);
+
+known_type_t semantic_check_expr_composite_literal(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope);
+
 void semantic_analyze(semantic_analyzer_t* analyzer);
 
 void semantic_check_for_statement(
@@ -82,6 +122,16 @@ void semantic_check_for_statement(
     scope_t* scope);
 
 void semantic_check_return_statement(
+    semantic_analyzer_t* analyzer,
+    statement_t* stmt,
+    scope_t* scope);
+
+void semantic_check_if_statement(
+    semantic_analyzer_t* analyzer,
+    statement_t* stmt,
+    scope_t* scope);
+
+void semantic_check_while_statement(
     semantic_analyzer_t* analyzer,
     statement_t* stmt,
     scope_t* scope);
