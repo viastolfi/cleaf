@@ -56,6 +56,14 @@ void free_expression(expression_t* e)
     }
   }
 
+  if (e->type == EXPRESSION_INDEX) {
+    if (e->index.base)
+     free_expression(e->index.base);
+
+    if (e->index.index)
+     free_expression(e->index.index);
+  }
+
   free(e);
 }
 
