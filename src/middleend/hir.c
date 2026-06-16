@@ -86,8 +86,8 @@ int IR_lower_declaration(
   }
 
   if (decl->var_decl.ident.type.kind == TYPE_CUSTOM) {
-      IR_instruction_t* alloc = calloc(
-          1, sizeof(IR_instruction_t));   
+      IR_instruction_t* alloc = 
+        calloc(1, sizeof(IR_instruction_t));   
       if (!alloc) {
         error_report_general(
             ERROR_SEVERITY_ERROR, "out of memory"); 
@@ -109,7 +109,32 @@ int IR_lower_declaration(
           return 1;
       }
       func->stack_reserve_size += 8;
-  } else {
+  } 
+  else if (decl->var_decl.ident.type.array_len > 0) {
+    IR_instruction_t* alloc = 
+      calloc(1, sizeof(IR_instruction_t));
+    if (!alloc) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      return -1;
+    }
+    alloc->kind = IR_ALLOC;
+    alloc->alloc_size = decl->var_decl.ident.type.size;
+    da_append(func->code, alloc);
+
+    instr->var.is_init = 1;
+    instr->src.id = -1;
+
+    da_append(func->code, instr);
+    if (decl->var_decl.init && 
+        decl->var_decl.init->composite_literal.is_initializer) {
+      int err = 
+        IR_lower_composite_literal_expression(hir, decl, func);
+      if (err)
+        return 1;
+    }
+    func->stack_reserve_size += 8;
+  }
+  else {
     if (decl->var_decl.init) {
       instr->var.is_init = 1;
       IR_lower_expression(hir, decl->var_decl.init, func);   
@@ -138,7 +163,8 @@ int IR_lower_composite_literal_expression(
   }
   load->kind = IR_LOAD_VAR;
   load->dest.id = func->next_temp_id;
-  load->dest.size = decl->var_decl.ident.type.element_size;
+  // we store a pointer (64bits) so we can hardcode the size here
+  load->dest.size = 8;
   load->var.is_init = 1;
   load->var.name = strdup(decl->var_decl.ident.ident_name);
   if (!load->var.name) {
@@ -155,8 +181,13 @@ int IR_lower_composite_literal_expression(
   int save = func->next_temp_id;
 
   for (size_t i = 0; i < e->composite_literal.count; ++i) {
-    IR_lower_expression(
-        hir, e->composite_literal.values[i]->assign.rhs, func);
+    expression_t* expr;
+    if (e->composite_literal.values[i]->type == EXPRESSION_ASSIGN) 
+      expr = e->composite_literal.values[i]->assign.rhs;
+    else 
+      expr = e->composite_literal.values[i];
+
+    IR_lower_expression(hir, expr, func);
     size_t computed_place = 0;
     IR_instruction_t* mov_offset =
       calloc(1, sizeof(IR_instruction_t));
@@ -167,22 +198,38 @@ int IR_lower_composite_literal_expression(
     mov_offset->kind = IR_MOV_OFFSET;
     mov_offset->offset.timing = IR_PRE_OFFSET;
     mov_offset->dest.id = save;
-    mov_offset->dest.size = decl->var_decl.ident.type.element_size;
+    // data come from pointer so we can hardcode it here
+    // this would definitely crash in 32 bits architecture
+    mov_offset->dest.size = 8;
     mov_offset->src.id = func->next_temp_id;
 
-    size_t j = 0;
-    for (; j < sym->members_count; ++j) {
-      if (strcmp(
-            e->composite_literal.values[i]->assign.lhs->var.ident.ident_name,
-            sym->members_name[j]) == 0) {
-        break ; 
-      } else {
-        computed_place += sym->members_type[j].type.element_size;
-      }
-    } 
-    mov_offset->src.size = sym->members_type[j].type.element_size;
-    mov_offset->offset.size = computed_place;
-    da_append(func->code, mov_offset);
+    if (e->composite_literal.values[i]->type == 
+        EXPRESSION_ASSIGN) {
+      size_t j = 0;
+      for (; j < sym->members_count; ++j) {
+        expression_t* comparator = 
+          e->composite_literal.values[i]->assign.lhs;
+        if (strcmp(
+              comparator->var.ident.ident_name,
+              sym->members_name[j]) == 0) {
+          break ; 
+        } else {
+          computed_place += sym->members_type[j].type.element_size;
+        }
+      } 
+      mov_offset->src.size = 
+        sym->members_type[j].type.element_size;
+
+      mov_offset->offset.size = computed_place;
+      da_append(func->code, mov_offset);
+    }
+    else {
+      mov_offset->src.size = 
+        decl->var_decl.ident.type.element_size; 
+      mov_offset->offset.size = 
+        decl->var_decl.ident.type.element_size * i;
+      da_append(func->code, mov_offset);
+    }
   }
 
   return 0;
@@ -488,7 +535,7 @@ insert_member:
       instr->src.id = func->next_temp_id;
       instr->src.size = expr->var.ident.type.element_size;
       instr->dest.id = ++func->next_temp_id;
-      instr->dest.size = expr->var.member->var.ident.type.size;
+      instr->dest.size = expr->var.member->var.ident.type.element_size;
       da_append(func->code, instr);
 
       expr = expr->var.member;
@@ -532,7 +579,7 @@ insert_member:
 
     instr->kind = IR_STORE_VAR;
     instr->src.id = func->next_temp_id;
-    instr->src.size = expr->assign.lhs->var.ident.type.size;
+    instr->src.size = expr->assign.lhs->var.ident.type.element_size;
     // This works only if lhs in assign is src.id var
     // TODO: make sure this won't break as the compiler evolve
     instr->var.name = 
@@ -574,7 +621,7 @@ int IR_lower_free_statement(
   IR_lower_expression(hir, stmt->free_stmt.expr, func); 
 
   instr->src.id = func->next_temp_id;
-  instr->src.size = stmt->free_stmt.expr->var.ident.type.size;
+  instr->src.size = stmt->free_stmt.expr->var.ident.type.element_size;
 
   da_append(func->code, instr);
   return 0;

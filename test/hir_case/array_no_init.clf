@@ -1,0 +1,4 @@
+fn main(): int {
+  u8[3] a;
+  return 0;
+}
