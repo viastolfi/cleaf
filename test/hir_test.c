@@ -266,3 +266,23 @@ ct_test(hir_test, array_int_init, "test/hir_case/array_int_init.clf", "test/hir_
 ct_test(hir_test, array_no_init, "test/hir_case/array_no_init.clf", "test/hir_case/array_no_init.res") {
   ct_assert_eq(result, 0, "hir gives right output for array declaration without initializer");
 }
+
+ct_test(hir_test, array_int_index_literal, "test/hir_case/array_int_index_literal.clf", "test/hir_case/array_int_index_literal.res") {
+  ct_assert_eq(result, 0, "hir gives right output for int array access with literal index 0");
+}
+
+ct_test(hir_test, array_int_index_nonzero, "test/hir_case/array_int_index_nonzero.clf", "test/hir_case/array_int_index_nonzero.res") {
+  ct_assert_eq(result, 0, "hir gives right output for int array access with non-zero literal index");
+}
+
+ct_test(hir_test, array_u8_index_literal, "test/hir_case/array_u8_index_literal.clf", "test/hir_case/array_u8_index_literal.res") {
+  ct_assert_eq(result, 0, "hir gives right output for u8 array access (element_size=1 in DIRECT_MUL)");
+}
+
+ct_test(hir_test, array_index_var_index, "test/hir_case/array_index_var_index.clf", "test/hir_case/array_index_var_index.res") {
+  ct_assert_eq(result, 0, "hir gives right output for array access with variable index");
+}
+
+ct_test(hir_test, array_index_as_var, "test/hir_case/array_index_as_var.clf", "test/hir_case/array_index_as_var.res") {
+  ct_assert_eq(result, 0, "hir gives right output for array index result stored in a variable");
+}

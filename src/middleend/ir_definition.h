@@ -27,12 +27,16 @@ typedef enum
   IR_INT_CONST,
 
   IR_BINARY,
+  IR_DIRECT_MUL,
 
   IR_INC,
   IR_DEC,
 
   IR_LOAD_VAR,
   IR_STORE_VAR,
+
+  IR_LOAD_ELEM,
+  IR_STORE_ELEM,
 
   IR_JMP,
   IR_JMP_EQUAL,
@@ -81,6 +85,8 @@ typedef struct
   union {
     int int_value;
     size_t alloc_size;
+
+    IR_temp_id index;
 
     struct {
       char* name;

@@ -361,9 +361,46 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
   return 1;
 }
 
-int IR_lower_call_expression(HIR_parser_t* hir,
-    expression_t* expr,
-    IR_function_t* func)
+int IR_lower_index_expression(
+    HIR_parser_t* hir, expression_t* expr, IR_function_t* func)
+{
+  IR_lower_expression(hir, expr->index.base, func);
+  IR_lower_expression(hir, expr->index.index, func);
+
+  IR_instruction_t* mul = calloc(1, sizeof(IR_instruction_t));
+  if (!mul) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return 1;
+  }
+  mul->kind = IR_DIRECT_MUL;
+  mul->dest.id = func->next_temp_id;
+  mul->dest.size = expr->index.base->var.ident.type.element_size;
+  mul->int_value = expr->index.base->var.ident.type.element_size;
+
+  da_append(func->code, mul);
+
+  IR_instruction_t* mov = calloc(1, sizeof(IR_instruction_t));
+  if (!mov) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return 1;
+  }
+  mov->kind = IR_LOAD_ELEM;
+  mov->src.id = func->next_temp_id - 1;
+  mov->src.size = 8;
+
+  mov->index.id = func->next_temp_id;
+  mov->index.size = 8;
+
+  mov->dest.id = ++(func->next_temp_id);
+  mov->dest.size = expr->index.base->var.ident.type.element_size;
+
+  da_append(func->code, mov);
+
+  return 0;
+}
+
+int IR_lower_call_expression(
+    HIR_parser_t* hir, expression_t* expr, IR_function_t* func)
 {
   for (int i = 0; i < (int) expr->call.arg_count; ++i) {
     IR_instruction_t* set_arg = calloc(1, sizeof(IR_instruction_t)); 
@@ -500,7 +537,14 @@ int IR_lower_expr_var(HIR_parser_t* hir,
   }
   instr->kind = IR_LOAD_VAR;
   instr->dest.id = ++(func->next_temp_id);
-  instr->dest.size = expr->var.ident.type.element_size;
+
+  if (expr->var.ident.type.array_len > 0 ||
+      expr->var.ident.type.kind == TYPE_CUSTOM) {
+    instr->dest.size = 8; 
+  } else {
+    instr->dest.size = expr->var.ident.type.element_size;
+  }
+
   instr->var.name = strdup(expr->var.ident.ident_name);
   if (!instr->var.name) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
@@ -614,6 +658,9 @@ int IR_lower_expression(HIR_parser_t* hir,
 
   if (expr->type == EXPRESSION_CALL)
     return IR_lower_call_expression(hir, expr, func);
+
+  if (expr->type == EXPRESSION_INDEX)
+    return IR_lower_index_expression(hir, expr, func);
 
   return 1;
 }
@@ -1313,6 +1360,14 @@ char* IR_generate_string_program(IR_function_t* function)
       }
       sb_append_fmt(&sb, "\n");
       continue;
+    }
+
+    if (instr->kind == IR_LOAD_ELEM) {
+      sb_append_fmt(&sb, "MOV %c%d, [%c%d + %c%d]\n", TEMP_STR(instr->dest), TEMP_STR(instr->src), TEMP_STR(instr->index)); 
+    }
+
+    if (instr->kind == IR_DIRECT_MUL) {
+      sb_append_fmt(&sb, "MUL %c%d, %d\n", TEMP_STR(instr->dest), instr->int_value);
     }
 
     if (instr->kind == IR_MOV_OFFSET) {

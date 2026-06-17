@@ -94,6 +94,14 @@ static void x86_emit_mul(
   sb_append_fmt(sb, "    imul %s, %s\n", dst, src);
 }
 
+static void x86_emit_mul_direct(
+    string_builder_t* sb,
+    const char* dst,
+    int value)
+{
+  sb_append_fmt(sb, "    imul %s, %d\n", dst, value);
+}
+
 static void x86_emit_sub_direct(
     string_builder_t* sb, 
     const char* dst, 
@@ -259,6 +267,15 @@ static void x86_emit_process_exit(
   sb_append_fmt(sb, "    syscall\n");
 }
 
+static void x86_emit_load_elem(
+    string_builder_t* sb,
+    const char* dst,
+    const char* base,
+    const char* index)
+{
+  sb_append_fmt(sb, "    mov %s, [%s + %s]\n", dst, base, index);
+}
+
 static void x86_alloc_memory(string_builder_t* sb, int size) 
 {
   sb_append_fmt(sb, "    mov rax, 9\n");
@@ -328,8 +345,10 @@ const target_t x86_64_target = {
   .emit_mov_from_stack = x86_emit_mov_from_stack,
   .emit_sub = x86_emit_sub,
   .emit_mul = x86_emit_mul,
+  .emit_mul_direct = x86_emit_mul_direct,
   .alloc_memory = x86_alloc_memory,
   .emit_mov_offset_pre = x86_emit_mov_offset_pre,
   .emit_mov_offset_post = x86_emit_mov_offset_post,
   .dealloc_memory = x86_dealloc_memory,
+  .emit_load_elem = x86_emit_load_elem,
 };
