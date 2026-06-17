@@ -28,7 +28,27 @@ int IR_lower_statement(
     HIR_parser_t* hir, 
     statement_t* stmt,
     IR_function_t* func);
+int IR_lower_return_statement(
+    HIR_parser_t* hir,
+    statement_t* stmt,
+    IR_function_t* func);
 int IR_lower_expression(
+    HIR_parser_t* hir,
+    expression_t* expr,
+    IR_function_t* func);
+int IR_lower_expr_int_lit(
+    HIR_parser_t* hir,
+    expression_t* expr,
+    IR_function_t* func);
+int IR_lower_expr_char_lit(
+    HIR_parser_t* hir,
+    expression_t* expr,
+    IR_function_t* func);
+int IR_lower_expr_var(
+    HIR_parser_t* hir,
+    expression_t* expr,
+    IR_function_t* func);
+int IR_lower_expr_assign(
     HIR_parser_t* hir,
     expression_t* expr,
     IR_function_t* func);

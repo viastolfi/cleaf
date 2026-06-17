@@ -455,99 +455,143 @@ int IR_lower_binary_expression(expression_t* expr,
   return 0;
 }
 
+int IR_lower_expr_int_lit(HIR_parser_t* hir,
+    expression_t* expr,
+    IR_function_t* func)
+{
+  (void)hir;
+  IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
+  if (!instr) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return -1;
+  }
+  instr->kind = IR_INT_CONST;
+  instr->dest.id = ++(func->next_temp_id);
+  instr->int_value = expr->int_lit.value;
+  da_append(func->code, instr);
+  return 0;
+}
+
+int IR_lower_expr_char_lit(HIR_parser_t* hir,
+    expression_t* expr,
+    IR_function_t* func)
+{
+  (void)hir;
+  IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
+  if (!instr) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return -1;
+  }
+  instr->kind = IR_INT_CONST;
+  instr->dest.id = ++(func->next_temp_id);
+  instr->int_value = expr->char_lit.value;
+  da_append(func->code, instr);
+  return 0;
+}
+
+int IR_lower_expr_var(HIR_parser_t* hir,
+    expression_t* expr,
+    IR_function_t* func)
+{
+  IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
+  if (!instr) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return -1;
+  }
+  instr->kind = IR_LOAD_VAR;
+  instr->dest.id = ++(func->next_temp_id);
+  instr->dest.size = expr->var.ident.type.element_size;
+  instr->var.name = strdup(expr->var.ident.ident_name);
+  if (!instr->var.name) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return -1;
+  }
+  da_append(func->code, instr);
+
+  while (expr->var.member) {
+    IR_instruction_t* offset_instr = calloc(1, sizeof(IR_instruction_t));
+    if (!offset_instr) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+      return -1;
+    }
+    offset_instr->kind = IR_MOV_OFFSET;
+    offset_instr->offset.timing = IR_POST_OFFSET;
+
+    // sym should never be NULL after semantic
+    // hence, we don't check and error report this but this is important to keep in mind in case it segfaults here
+    struct_symbol_t* sym =
+      hashmap_get(hir->struct_symbols, expr->var.ident.type.name);
+
+    size_t offset = 0;
+    for (size_t i = 0; i < sym->members_count; ++i) {
+      if (strcmp(
+            expr->var.member->var.ident.ident_name,
+            sym->members_name[i]) == 0) {
+          goto insert_member;
+      }
+      offset += sym->members_type[i].type.element_size;
+    }
+
+insert_member:
+    offset_instr->offset.size = offset;
+    offset_instr->src.id = func->next_temp_id;
+    offset_instr->src.size = expr->var.ident.type.element_size;
+    offset_instr->dest.id = ++func->next_temp_id;
+    offset_instr->dest.size = expr->var.member->var.ident.type.element_size;
+    da_append(func->code, offset_instr);
+
+    expr = expr->var.member;
+  }
+
+  return 0;
+}
+
+// TODO: make sure no error can still occurs here even after semantic analysis
+int IR_lower_expr_assign(HIR_parser_t* hir,
+    expression_t* expr,
+    IR_function_t* func)
+{
+  int res = IR_lower_expression(hir, expr->assign.rhs, func);
+  if (res != 0)
+    return 1;
+
+  IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
+  if (!instr) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return -1;
+  }
+  instr->kind = IR_STORE_VAR;
+  instr->src.id = func->next_temp_id;
+  instr->src.size = expr->assign.lhs->var.ident.type.element_size;
+  // This works only if lhs in assign is a var
+  // TODO: make sure this won't break as the compiler evolve
+  instr->var.name = strdup(expr->assign.lhs->var.ident.ident_name);
+  instr->var.is_init = 1;
+  if (!instr->var.name) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return 1;
+  }
+  da_append(func->code, instr);
+  return 0;
+}
+
 int IR_lower_expression(HIR_parser_t* hir,
     expression_t* expr,
     IR_function_t* func)
 {
-  if (expr->type == EXPRESSION_INT_LIT) {
-    IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));  
-    if (!instr) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      return -1;
-    }
-    instr->kind = IR_INT_CONST;
-    instr->dest.id = ++(func->next_temp_id);
-    instr->int_value = expr->int_lit.value;
-    da_append(func->code, instr);
-    return 0;
-  }
+  if (expr->type == EXPRESSION_INT_LIT)
+    return IR_lower_expr_int_lit(hir, expr, func);
 
-  if (expr->type == EXPRESSION_CHAR_LIT) {
-    IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t)); 
-    if (!instr) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      return -1;
-    }
+  if (expr->type == EXPRESSION_CHAR_LIT)
+    return IR_lower_expr_char_lit(hir, expr, func);
 
-    instr->kind = IR_INT_CONST;
-    instr->dest.id = ++(func->next_temp_id);
-    instr->int_value = expr->char_lit.value;
-    da_append(func->code, instr);
-    return 0;
-  }
-
-  if (expr->type == EXPRESSION_VAR) {
-    IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));  
-    if (!instr) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      return -1;
-    }
-
-    instr->kind = IR_LOAD_VAR;
-    instr->dest.id = ++(func->next_temp_id);
-    instr->dest.size = expr->var.ident.type.element_size;
-    instr->var.name = 
-      strdup(expr->var.ident.ident_name);
-    if (!instr->var.name) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      return -1;
-    }
-    da_append(func->code, instr);
-
-    while (expr->var.member) {
-      IR_instruction_t* instr = 
-        calloc(1, sizeof(IR_instruction_t));
-      if (!instr) {
-        error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-        return -1;
-      }
-      instr->kind = IR_MOV_OFFSET;
-      instr->offset.timing = IR_POST_OFFSET;
-
-      // sym should never be NULL after semantic
-      // hence, we don't check and error report this but this is important to keep in mind in case it segfaults here
-      struct_symbol_t* sym = 
-        hashmap_get(hir->struct_symbols, expr->var.ident.type.name);
-      
-      size_t offset = 0;
-      for (size_t i = 0; i < sym->members_count; ++i) {
-        if (strcmp(
-              expr->var.member->var.ident.ident_name,
-              sym->members_name[i]) == 0) {
-            goto insert_member;
-        }
-
-        offset += sym->members_type[i].type.element_size;
-      } 
-
-insert_member:
-      instr->offset.size = offset;
-      instr->src.id = func->next_temp_id;
-      instr->src.size = expr->var.ident.type.element_size;
-      instr->dest.id = ++func->next_temp_id;
-      instr->dest.size = expr->var.member->var.ident.type.element_size;
-      da_append(func->code, instr);
-
-      expr = expr->var.member;
-    } 
-
-    return 0;
-  }
+  if (expr->type == EXPRESSION_VAR)
+    return IR_lower_expr_var(hir, expr, func);
 
   if (expr->type == EXPRESSION_BINARY) {
-    IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));  
+    IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
     if (!instr) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
       return -1;
     }
     if (IR_lower_binary_expression(expr, hir, instr, func) != 0) {
@@ -562,45 +606,14 @@ insert_member:
     return 0;
   }
 
-  // TODO: make sure no error can still occurs here even after semantic analysis
-  if (expr->type == EXPRESSION_ASSIGN) {
-    int res = IR_lower_expression(hir, expr->assign.rhs, func);
+  if (expr->type == EXPRESSION_ASSIGN)
+    return IR_lower_expr_assign(hir, expr, func);
 
-    if (res != 0) {
-      //TODO: do we have to propagate error ?
-      return 1;
-    }
-
-    IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
-    if (!instr) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      return -1;
-    }
-
-    instr->kind = IR_STORE_VAR;
-    instr->src.id = func->next_temp_id;
-    instr->src.size = expr->assign.lhs->var.ident.type.element_size;
-    // This works only if lhs in assign is src.id var
-    // TODO: make sure this won't break as the compiler evolve
-    instr->var.name = 
-      strdup(expr->assign.lhs->var.ident.ident_name);
-    instr->var.is_init = 1;
-    if (!instr->var.name) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      return 1;
-    }
-
-    da_append(func->code, instr);
-    return 0;
-  }
-
-  if (expr->type == EXPRESSION_UNARY) {
+  if (expr->type == EXPRESSION_UNARY)
     return IR_lower_unary_expression(hir, expr, func);
-  }
 
-  if (expr->type == EXPRESSION_CALL) {
-    return IR_lower_call_expression(hir, expr, func); 
-  }
+  if (expr->type == EXPRESSION_CALL)
+    return IR_lower_call_expression(hir, expr, func);
 
   return 1;
 }
@@ -972,114 +985,93 @@ int IR_lower_if_statement(HIR_parser_t* hir,
   return 0;
 }
 
+int IR_lower_return_statement(HIR_parser_t* hir,
+    statement_t* stmt,
+    IR_function_t* func)
+{
+  int res = IR_lower_expression(hir, stmt->ret.value, func);
+  if (res != 0)
+    return -1;
+
+  IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
+  if (!instr) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return -1;
+  }
+
+  if (strcmp(func->name, "main") == 0) {
+    instr->kind = IR_EXIT;
+    instr->dest.id = func->next_temp_id;
+    instr->dest.size = func->code->items[func->code->count - 1]->dest.size;
+  }
+  else {
+    // TODO: what append if we return void ?
+    IR_instruction_t* return_var = calloc(1, sizeof(IR_instruction_t));
+    if (!return_var) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+      return 1;
+    }
+    return_var->kind = IR_MOV;
+    return_var->dest.id = -1;
+    return_var->src.id = func->next_temp_id;
+    return_var->src.size = func->code->items[func->code->count - 1]->dest.size;
+
+    if (return_var->src.size != return_var->dest.size) {
+      size_t s = min(return_var->src.size, return_var->dest.size);
+      return_var->src.size = s;
+      return_var->dest.size = s;
+    }
+
+    da_append(func->code, return_var);
+    instr->kind = IR_RETURN;
+  }
+
+  da_append(func->code, instr);
+  return 0;
+}
+
 int IR_lower_statement(HIR_parser_t* hir, 
     statement_t* stmt,
     IR_function_t* func)
 {
-  if (stmt->type == STATEMENT_EXPR) {
-    return IR_lower_expression(hir, stmt->expr_stmt.expr, func); 
-  }
-  if (stmt->type == STATEMENT_RETURN) {
-    int res = IR_lower_expression(hir, stmt->ret.value, func); 
-    if (res != 0) {
-      // Do we have to propagate error ?
-      return -1; 
-    }
-    IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
-    if (!instr) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      return -1;
-    }
-    if (strcmp(func->name, "main") == 0) {
-      instr->kind = IR_EXIT;     
-      instr->dest.id = func->next_temp_id;
-      instr->dest.size = func->code->items[func->code->count - 1]->dest.size;
-    }
-    else {
-      // TODO: what append if we return void ?
-      IR_instruction_t* return_var = calloc(1, sizeof(IR_instruction_t));
-      if (!return_var) {
-        error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-        return 1;
-      }
-      return_var->kind = IR_MOV;
-      return_var->dest.id = -1;
-      return_var->src.id = func->next_temp_id;
-      return_var->src.size = func->code->items[func->code->count - 1]->dest.size;
+  if (stmt->type == STATEMENT_EXPR)
+    return IR_lower_expression(hir, stmt->expr_stmt.expr, func);
 
-      if (return_var->src.size != return_var->dest.size) {
-        size_t s = 
-          min(return_var->src.size, return_var->dest.size);
-        return_var->src.size = s;
-        return_var->dest.size = s;
-      }
+  if (stmt->type == STATEMENT_RETURN)
+    return IR_lower_return_statement(hir, stmt, func);
 
-      da_append(func->code, return_var);
-
-      instr->kind = IR_RETURN;
-    }
-    da_append(func->code, instr);
-    return 0;
-  }
-  if (stmt->type == STATEMENT_DECL) {
+  if (stmt->type == STATEMENT_DECL)
     return IR_lower_declaration(hir, stmt->decl_stmt.decl, func);
-  }
-  if (stmt->type == STATEMENT_IF) {
-    return IR_lower_if_statement(hir, stmt, func); 
-  }
-  if (stmt->type == STATEMENT_WHILE) {
-    return IR_lower_while_statement(hir, stmt, func); 
-  }
-  if (stmt->type == STATEMENT_FOR) {
-    return IR_lower_for_statement(hir, stmt, func); 
-  }
-  if (stmt->type == STATEMENT_ASM) {
-    return IR_lower_asm_statement(hir, stmt, func);
-  }
-  if (stmt->type == STATEMENT_FREE) {
-    return IR_lower_free_statement(hir, stmt, func); 
-  }
 
-  error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED, 
+  if (stmt->type == STATEMENT_IF)
+    return IR_lower_if_statement(hir, stmt, func);
+
+  if (stmt->type == STATEMENT_WHILE)
+    return IR_lower_while_statement(hir, stmt, func);
+
+  if (stmt->type == STATEMENT_FOR)
+    return IR_lower_for_statement(hir, stmt, func);
+
+  if (stmt->type == STATEMENT_ASM)
+    return IR_lower_asm_statement(hir, stmt, func);
+
+  if (stmt->type == STATEMENT_FREE)
+    return IR_lower_free_statement(hir, stmt, func);
+
+  error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED,
       "unknown statement instruction");
 
   return 1;
 }
 
-int IR_lower_function(HIR_parser_t* hir, 
-    declaration_t* function) 
+static int IR_lower_function_params(IR_function_t* func,
+    declaration_t* function)
 {
-  if (function->type != DECLARATION_FUNC) {
-    return 0;  
-  }
-
-  IR_function_t* func = calloc(1, sizeof(IR_function_t));
-  if (!func) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return -1;
-  } 
-
-  func->name = strdup(function->func.name);
-  if (!func->name) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return -1;
-  } 
-
-  func->next_temp_id = 0;
-  func->stack_reserve_size = 0;
-
-  func->code = calloc(1, sizeof(IR_instruction_block));
-  if (!func->code) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return -1;
-  }
-
-  // TODO: behavior is different for _start but whatever for now
   for (int i = 0; i < (int) function->func.params.count; ++i) {
-    IR_instruction_t* mov = calloc(1, sizeof(IR_instruction_t)); 
+    IR_instruction_t* mov = calloc(1, sizeof(IR_instruction_t));
     if (!mov) {
       error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      return -1; 
+      return -1;
     }
     mov->kind = IR_MOV;
     mov->dest.id = func->next_temp_id;
@@ -1091,7 +1083,7 @@ int IR_lower_function(HIR_parser_t* hir,
     // This might be pretty poor design and lead to bugs in the future
     // TODO: fin a better way to handle function param and return value handling
     if (mov->dest.size != mov->src.size) {
-      size_t s = min(mov->dest.size, mov->src.size); 
+      size_t s = min(mov->dest.size, mov->src.size);
       mov->dest.size = s;
       mov->src.size  = s;
     }
@@ -1100,22 +1092,55 @@ int IR_lower_function(HIR_parser_t* hir,
 
     IR_instruction_t* str = calloc(1, sizeof(IR_instruction_t));
     if (!str) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
       return -1;
     }
     str->kind = IR_STORE_VAR;
     str->var.name = strdup(function->func.params.items[i].ident_name);
     if (!str->var.name) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
       return -1;
     }
     str->var.is_init = 1;
     str->src.id = func->next_temp_id++;
-    str->src.size = 
-      function->func.params.items[i].type.element_size;
+    str->src.size = function->func.params.items[i].type.element_size;
 
     da_append(func->code, str);
   }
+
+  return 0;
+}
+
+int IR_lower_function(HIR_parser_t* hir, 
+    declaration_t* function) 
+{
+  if (function->type != DECLARATION_FUNC)
+    return 0;
+
+  IR_function_t* func = calloc(1, sizeof(IR_function_t));
+  if (!func) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return -1;
+  }
+
+  func->name = strdup(function->func.name);
+  if (!func->name) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return -1;
+  }
+
+  func->next_temp_id = 0;
+  func->stack_reserve_size = 0;
+
+  func->code = calloc(1, sizeof(IR_instruction_block));
+  if (!func->code) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    return -1;
+  }
+
+  // TODO: behavior is different for _start but whatever for now
+  if (IR_lower_function_params(func, function) != 0)
+    return -1;
 
   da_foreach(statement_t*, it, function->func.body) {
     int lowering_result = IR_lower_statement(hir, *it, func);
@@ -1123,7 +1148,7 @@ int IR_lower_function(HIR_parser_t* hir,
       // TODO: see if we have to propage error here or not
       return -1;
     }
-  } 
+  }
 
   da_append(hir->hir_program, func);
 
