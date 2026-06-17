@@ -805,3 +805,28 @@ ct_test(semantic_case, array_decl_int_type_writeback, "test/semantic_case/array_
 
   free_analyzer(&analyzer);
 }
+
+ct_test(semantic_case, index_valid_literal, "test/semantic_case/index_valid_literal.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for valid literal index access");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, index_valid_var_index, "test/semantic_case/index_valid_var_index.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for valid variable index access");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, index_undef_base, "test/semantic_case/index_undef_base.clf") {
+  ct_assert_eq(analyzer.error_count, 2, "Should have 2 errors: undefined variable + type overflow from TYPE_ERROR");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, index_undef_index_var, "test/semantic_case/index_undef_index_var.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for undefined index variable");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, index_both_undef, "test/semantic_case/index_both_undef.clf") {
+  ct_assert_eq(analyzer.error_count, 3, "Should have 3 errors: 2 undefined variables + type overflow from TYPE_ERROR");
+  free_analyzer(&analyzer);
+}

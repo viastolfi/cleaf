@@ -213,6 +213,7 @@ known_type_t semantic_check_expr_int_lit(
     expression_t* expr,
     scope_t* scope)
 {
+  (void) scope;
   int v = expr->int_lit.value;
   types_t kind;
   if (v <= 255)
@@ -236,6 +237,8 @@ known_type_t semantic_check_expr_char_lit(
     expression_t* expr,
     scope_t* scope)
 {
+  (void) analyzer;
+  (void) scope;
   return expr->var.ident.type;
 }
 
@@ -531,7 +534,23 @@ known_type_t semantic_check_expr_composite_literal(
     expression_t* expr,
     scope_t* scope)
 {
+  (void) analyzer;
+  (void) expr;
+  (void) scope;
   return (known_type_t){.kind = TYPE_CUSTOM}; 
+}
+
+known_type_t semantic_check_expr_index(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope)
+{
+  known_type_t base = 
+    semantic_check_expression(analyzer, expr->index.base, scope);
+
+  semantic_check_expression(analyzer, expr->index.index, scope);
+
+  return base;
 }
 
 known_type_t semantic_check_expression(
@@ -541,20 +560,32 @@ known_type_t semantic_check_expression(
 {
   if (expr->type == EXPRESSION_INT_LIT)
     return semantic_check_expr_int_lit(analyzer, expr, scope);
+
   if (expr->type == EXPRESSION_CHAR_LIT)
     return semantic_check_expr_char_lit(analyzer, expr, scope);
+
   if (expr->type == EXPRESSION_VAR)
     return semantic_check_expr_var(analyzer, expr, scope);
+
   if (expr->type == EXPRESSION_BINARY)
     return semantic_check_expr_binary(analyzer, expr, scope);
+
   if (expr->type == EXPRESSION_ASSIGN)
     return semantic_check_expr_assign(analyzer, expr, scope);
+
   if (expr->type == EXPRESSION_UNARY)
     return semantic_check_expr_unary(analyzer, expr, scope);
+
   if (expr->type == EXPRESSION_CALL)
     return semantic_check_expr_call(analyzer, expr, scope);
+
   if (expr->type == EXPRESSION_COMPOSITE_LITERAL)
-    return semantic_check_expr_composite_literal(analyzer, expr, scope);
+    return semantic_check_expr_composite_literal(
+        analyzer, expr, scope);
+
+  if (expr->type == EXPRESSION_INDEX)
+    return semantic_check_expr_index(analyzer, expr, scope);
+
   return (known_type_t){.kind = TYPE_ERROR};
 }
 

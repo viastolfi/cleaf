@@ -114,6 +114,11 @@ known_type_t semantic_check_expr_composite_literal(
     expression_t* expr,
     scope_t* scope);
 
+known_type_t semantic_check_expr_index(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope);
+
 void semantic_analyze(semantic_analyzer_t* analyzer);
 
 void semantic_check_for_statement(
