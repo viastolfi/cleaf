@@ -293,3 +293,7 @@ ct_test(codegen_test, array_index_var_index, "test/codegen_case/array_index_var_
 ct_test(codegen_test, array_index_as_var, "test/codegen_case/array_index_as_var.clf", "test/codegen_case/array_index_as_var.asm") {
   ct_assert_eq(result, 0, "codegen gives right output for array index result stored in a variable");
 }
+
+ct_test(codegen_test, array_elem_assign, "test/codegen_case/array_elem_assign.clf", "test/codegen_case/array_elem_assign.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for array element assignment");
+}

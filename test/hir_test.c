@@ -286,3 +286,7 @@ ct_test(hir_test, array_index_var_index, "test/hir_case/array_index_var_index.cl
 ct_test(hir_test, array_index_as_var, "test/hir_case/array_index_as_var.clf", "test/hir_case/array_index_as_var.res") {
   ct_assert_eq(result, 0, "hir gives right output for array index result stored in a variable");
 }
+
+ct_test(hir_test, array_elem_assign, "test/hir_case/array_elem_assign.clf", "test/hir_case/array_elem_assign.res") {
+  ct_assert_eq(result, 0, "hir gives right output for array element assignment");
+}

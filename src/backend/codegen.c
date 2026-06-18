@@ -169,6 +169,14 @@ int CODEGEN_write_function(
         target->emit_load_elem(sb, dst, base, index);
       }
       break;
+    case IR_STORE_ELEM:
+      {
+        const char* base  = CODEGEN_get_reg(target, (*it)->dest,  false);
+        const char* index = CODEGEN_get_reg(target, (*it)->index, false);
+        const char* src   = CODEGEN_get_reg(target, (*it)->src,   false);
+        target->emit_store_elem(sb, base, index, src);
+      }
+      break;
     case IR_MOV_OFFSET:
       if ((*it)->offset.timing == IR_PRE_OFFSET) {
       const char* dst = CODEGEN_get_reg(target, (*it)->dest, false);

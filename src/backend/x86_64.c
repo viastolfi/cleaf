@@ -276,6 +276,15 @@ static void x86_emit_load_elem(
   sb_append_fmt(sb, "    mov %s, [%s + %s]\n", dst, base, index);
 }
 
+static void x86_emit_store_elem(
+    string_builder_t* sb,
+    const char* base,
+    const char* index,
+    const char* src)
+{
+  sb_append_fmt(sb, "    mov [%s + %s], %s\n", base, index, src);
+}
+
 static void x86_alloc_memory(string_builder_t* sb, int size) 
 {
   sb_append_fmt(sb, "    mov rax, 9\n");
@@ -351,4 +360,5 @@ const target_t x86_64_target = {
   .emit_mov_offset_post = x86_emit_mov_offset_post,
   .dealloc_memory = x86_dealloc_memory,
   .emit_load_elem = x86_emit_load_elem,
+  .emit_store_elem = x86_emit_store_elem,
 };

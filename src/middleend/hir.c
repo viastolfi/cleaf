@@ -361,40 +361,72 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
   return 1;
 }
 
+int IR_lower_lvalue(HIR_parser_t* hir,
+    expression_t* expr,
+    IR_function_t* func,
+    lvalue_t* lv)
+{
+  if (expr->type == EXPRESSION_VAR) {
+    lv->kind = LVALUE_VAR;
+    lv->var_name = expr->var.ident.ident_name;
+    lv->elem_size = expr->var.ident.type.element_size;
+    return 0;
+  }
+
+  if (expr->type == EXPRESSION_INDEX) {
+    size_t elem_size = expr->index.base->var.ident.type.element_size;
+
+    if (IR_lower_expression(hir, expr->index.base, func) != 0)
+      return 1;
+    int base_id = func->next_temp_id;
+
+    if (IR_lower_expression(hir, expr->index.index, func) != 0)
+      return 1;
+    int idx_id = func->next_temp_id;
+
+    IR_instruction_t* mul = calloc(1, sizeof(IR_instruction_t));
+    if (!mul) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+      return 1;
+    }
+    mul->kind = IR_DIRECT_MUL;
+    mul->dest.id = func->next_temp_id;
+    mul->dest.size = elem_size;
+    mul->int_value = elem_size;
+    da_append(func->code, mul);
+
+    lv->kind = LVALUE_ELEM;
+    lv->base_id = base_id;
+    lv->idx_id = idx_id;
+    lv->elem_size = elem_size;
+    return 0;
+  }
+
+  error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED,
+      "unsupported lvalue expression");
+  return 1;
+}
+
 int IR_lower_index_expression(
     HIR_parser_t* hir, expression_t* expr, IR_function_t* func)
 {
-  IR_lower_expression(hir, expr->index.base, func);
-  IR_lower_expression(hir, expr->index.index, func);
+  lvalue_t lv = {0};
+  if (IR_lower_lvalue(hir, expr, func, &lv) != 0)
+    return 1;
 
-  IR_instruction_t* mul = calloc(1, sizeof(IR_instruction_t));
-  if (!mul) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+  IR_instruction_t* load = calloc(1, sizeof(IR_instruction_t));
+  if (!load) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return 1;
   }
-  mul->kind = IR_DIRECT_MUL;
-  mul->dest.id = func->next_temp_id;
-  mul->dest.size = expr->index.base->var.ident.type.element_size;
-  mul->int_value = expr->index.base->var.ident.type.element_size;
-
-  da_append(func->code, mul);
-
-  IR_instruction_t* mov = calloc(1, sizeof(IR_instruction_t));
-  if (!mov) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return 1;
-  }
-  mov->kind = IR_LOAD_ELEM;
-  mov->src.id = func->next_temp_id - 1;
-  mov->src.size = 8;
-
-  mov->index.id = func->next_temp_id;
-  mov->index.size = 8;
-
-  mov->dest.id = ++(func->next_temp_id);
-  mov->dest.size = expr->index.base->var.ident.type.element_size;
-
-  da_append(func->code, mov);
+  load->kind = IR_LOAD_ELEM;
+  load->src.id = lv.base_id;
+  load->src.size = 8;
+  load->index.id = lv.idx_id;
+  load->index.size = 8;
+  load->dest.id = ++(func->next_temp_id);
+  load->dest.size = lv.elem_size;
+  da_append(func->code, load);
 
   return 0;
 }
@@ -595,27 +627,42 @@ int IR_lower_expr_assign(HIR_parser_t* hir,
     expression_t* expr,
     IR_function_t* func)
 {
-  int res = IR_lower_expression(hir, expr->assign.rhs, func);
-  if (res != 0)
+  if (IR_lower_expression(hir, expr->assign.rhs, func) != 0)
+    return 1;
+  int rhs_temp = func->next_temp_id;
+
+  lvalue_t lv = {0};
+  if (IR_lower_lvalue(hir, expr->assign.lhs, func, &lv) != 0)
     return 1;
 
-  IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
-  if (!instr) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return -1;
-  }
-  instr->kind = IR_STORE_VAR;
-  instr->src.id = func->next_temp_id;
-  instr->src.size = expr->assign.lhs->var.ident.type.element_size;
-  // This works only if lhs in assign is a var
-  // TODO: make sure this won't break as the compiler evolve
-  instr->var.name = strdup(expr->assign.lhs->var.ident.ident_name);
-  instr->var.is_init = 1;
-  if (!instr->var.name) {
+  IR_instruction_t* store = calloc(1, sizeof(IR_instruction_t));
+  if (!store) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return 1;
   }
-  da_append(func->code, instr);
+
+  if (lv.kind == LVALUE_VAR) {
+    store->kind = IR_STORE_VAR;
+    store->src.id = rhs_temp;
+    store->src.size = lv.elem_size;
+    store->var.name = strdup(lv.var_name);
+    store->var.is_init = 1;
+    if (!store->var.name) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+      free(store);
+      return 1;
+    }
+  } else {
+    store->kind = IR_STORE_ELEM;
+    store->src.id = rhs_temp;
+    store->src.size = lv.elem_size;
+    store->dest.id = lv.base_id;
+    store->dest.size = 8;
+    store->index.id = lv.idx_id;
+    store->index.size = 8;
+  }
+
+  da_append(func->code, store);
   return 0;
 }
 
@@ -1364,6 +1411,12 @@ char* IR_generate_string_program(IR_function_t* function)
 
     if (instr->kind == IR_LOAD_ELEM) {
       sb_append_fmt(&sb, "MOV %c%d, [%c%d + %c%d]\n", TEMP_STR(instr->dest), TEMP_STR(instr->src), TEMP_STR(instr->index)); 
+      continue;
+    }
+
+    if (instr->kind == IR_STORE_ELEM) {
+      sb_append_fmt(&sb, "MOV [%c%d + %c%d], %c%d\n", TEMP_STR(instr->dest), TEMP_STR(instr->index), TEMP_STR(instr->src));
+      continue;
     }
 
     if (instr->kind == IR_DIRECT_MUL) {

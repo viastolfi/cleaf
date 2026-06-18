@@ -151,6 +151,11 @@ typedef struct {
        const char* dst, const char* base, const char* index);
 
     void
+      (*emit_store_elem)
+      (string_builder_t*,
+       const char* base, const char* index, const char* src);
+
+    void
       (*dealloc_memory)
       (string_builder_t*,
        const char* src, size_t size);
