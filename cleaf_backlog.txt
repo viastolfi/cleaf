@@ -5,7 +5,7 @@ x 2026-06-09 2026-06-09 Add "asm" function for inline assembly in the code base 
 (C) Add "type" keyword to create types at compile time @global
 (A) Import workflow for multiple file and std compilation @global
 x 2026-06-11 2026-06-11 Add "char" type @global
-(B) Add Array type @global
+x 2026-06-18 2026-06-18 Add Array type @global
 (B) Add signed type @global
 x 2026-06-10 2026-06-10 Choose between mutable or const for var by default and change compiler behavior depending on this choice @global
 (A) Enhance error reporting @thirdparty
