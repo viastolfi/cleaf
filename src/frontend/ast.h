@@ -66,13 +66,14 @@ expression_t*  ast_parse_expr_int_lit(parser_t* p);
 expression_t*  ast_parse_expr_string_lit(parser_t* p);
 expression_t*  ast_parse_expr_var(parser_t* p);
 expression_t*  ast_parse_expr_assign(parser_t* p);
-expression_t*  ast_parse_expr_binary(parser_t* p, 
-                                     int bp);
+expression_t*  ast_parse_expr_binary(parser_t* p, int bp);
 expression_t*  ast_parse_expr_comparison_binary(parser_t* p);
 expression_t*  ast_parse_expr_call(parser_t* p);
 expression_t*  ast_parse_expr_unary(parser_t* p);
 expression_t*  ast_parse_expr_composite_literal(parser_t* p);
 expression_t*  ast_parse_expr_char_lit(parser_t* p);
+expression_t*  ast_parse_expr_array_composite_literal(parser_t* p);
+expression_t*  ast_parse_expr_index(parser_t* p);
 
 void populate_parser_known_type(known_type_array* types);
 

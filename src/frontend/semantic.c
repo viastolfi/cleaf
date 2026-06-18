@@ -1,7 +1,7 @@
 #include "semantic.h"
 
-static void semantic_resolve_type_size(semantic_analyzer_t* analyzer,
-                                       known_type_t* t)
+static void semantic_resolve_type_size(
+    semantic_analyzer_t* analyzer, known_type_t* t)
 {
   if (t->size != 0)
     return;
@@ -11,13 +11,15 @@ static void semantic_resolve_type_size(semantic_analyzer_t* analyzer,
     t->name = "int";
   } else if (t->kind == TYPE_CUSTOM && t->name) {
     struct_symbol_t* sym =
-      (struct_symbol_t*) hashmap_get(analyzer->struct_symbols, t->name);
+      (struct_symbol_t*) hashmap_get(
+          analyzer->struct_symbols, t->name);
     if (sym)
-      t->size = sym->total_size;
+      t->element_size = sym->total_size;
   }
 }
 
-int string_array_contains(char** source, size_t source_len, const char* name)
+int string_array_contains(
+    char** source, size_t source_len, const char* name)
 {
   for (char** s = source; s < source + source_len; ++s)
     if (*s && strcmp(*s, name) == 0)
@@ -32,7 +34,8 @@ void semantic_free_program_definition(semantic_analyzer_t* analyzer)
     for (size_t i = 0; i < 211; ++i) {
       if (analyzer->function_symbols->buckets[i]) {
         function_symbol_t* v = 
-          (function_symbol_t*) analyzer->function_symbols->buckets[i]->value;
+          (function_symbol_t*) 
+          analyzer->function_symbols->buckets[i]->value;
         free(v->params_name);
         free(v->params_type);
       } 
@@ -45,7 +48,8 @@ void semantic_free_program_definition(semantic_analyzer_t* analyzer)
     for (size_t i = 0; i < 211; ++i) {
       if (analyzer->struct_symbols->buckets[i]) {
         struct_symbol_t* v = 
-          (struct_symbol_t*) analyzer->struct_symbols->buckets[i]->value;
+          (struct_symbol_t*) 
+          analyzer->struct_symbols->buckets[i]->value;
         free(v->members_type);
         free(v->members_name);
       } 
@@ -72,7 +76,8 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
         if (!fs) continue;
 
         for (size_t i = 0; i < fs->params_count; ++i) {
-          variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
+          variable_symbol_t* vs = 
+            calloc(1, sizeof(variable_symbol_t));
           if (vs) {
             vs->type = fs->params_type[i].type;
             vs->is_constant = false;
@@ -82,7 +87,8 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
         }
 
         analyzer->current_analyzed_function = (*it)->func.name; 
-        semantic_check_scope(analyzer, (*it)->func.body, function_scope); 
+        semantic_check_scope(
+            analyzer, (*it)->func.body, function_scope); 
 
         scope_exit(function_scope);
       }
@@ -202,301 +208,383 @@ int analyze_declaration(semantic_analyzer_t* analyzer,
   return 1;
 }
 
+known_type_t semantic_check_expr_int_lit(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope)
+{
+  (void) scope;
+  int v = expr->int_lit.value;
+  types_t kind;
+  if (v <= 255)
+    kind = TYPE_U8;
+  else if (v <= 65535)
+    kind = TYPE_U16;
+  else {
+    semantic_error_register(analyzer, expr->source_pos - 1,
+        "long intergers are not implemented yet");
+    return (known_type_t){.kind = TYPE_ERROR};
+  }
+  return (known_type_t){
+    .kind = kind,
+    .name = types_description[kind].name,
+    .element_size= types_description[kind].size,
+  };
+}
+
+known_type_t semantic_check_expr_char_lit(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope)
+{
+  (void) analyzer;
+  (void) scope;
+  return expr->var.ident.type;
+}
+
+known_type_t semantic_check_expr_var(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope)
+{
+  variable_symbol_t* vs = 
+    (variable_symbol_t*) scope_resolve(
+        scope, expr->var.ident.ident_name);
+
+  if (!vs) {
+    semantic_error_register(analyzer, expr->source_pos - 1,
+        "use of undefined variable");
+    return (known_type_t){.kind = TYPE_ERROR};
+  }
+
+  known_type_t* k = &vs->type;
+
+  if (expr->var.member) {
+    struct_symbol_t* sym = 
+      hashmap_get(analyzer->struct_symbols, k->name);
+
+    // should never happened
+    if (!sym) {
+      semantic_error_register(analyzer, expr->source_pos - 1, 
+          "use of undefined variable");
+      return (known_type_t){.kind = TYPE_ERROR};
+    }
+
+    for (size_t i = 0; i < sym->members_count; ++i) {
+      if (strcmp(
+            expr->var.member->var.ident.ident_name,
+            sym->members_name[i]) == 0) {
+        semantic_resolve_type_size(analyzer, k);
+
+        expr->var.ident.type = *k;
+        expr->var.member->var.ident.type = 
+          sym->members_type[i].type;
+
+        return sym->members_type[i].type;
+      }
+    }
+    semantic_error_register(
+        analyzer, expr->var.member->source_pos - 1,
+        "undefined struct member");
+    return (known_type_t){.kind = TYPE_ERROR};
+  }
+
+  semantic_resolve_type_size(analyzer, k);
+  expr->var.ident.type = *k;
+  return *k; 
+}
+
+known_type_t semantic_check_expr_binary(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope)
+{
+  // some kind of guard, may need to handle it better even if should not happend
+  if (!expr->binary.left || !expr->binary.right)
+    return (known_type_t){.kind = TYPE_ERROR};
+
+  expression_t* lhs = expr->binary.left;
+  expression_t* rhs = expr->binary.right;
+
+  known_type_t lhs_type = semantic_check_expression(analyzer, lhs, scope);
+  known_type_t rhs_type = semantic_check_expression(analyzer, rhs, scope);
+
+  if (lhs_type.kind == TYPE_ERROR && 
+      rhs_type.kind != TYPE_ERROR) {
+    return rhs_type; 
+  } 
+  else if (lhs_type.kind != TYPE_ERROR && 
+      rhs_type.kind == TYPE_ERROR) {
+    return lhs_type; 
+  } 
+  else if (lhs_type.kind == rhs_type.kind) {
+    return lhs_type;
+  } 
+  else if (lhs_type.kind < rhs_type.kind) {
+    return rhs_type; 
+  }
+  else if (lhs_type.kind > rhs_type.kind) {
+    return lhs_type; 
+  }
+  else {
+    semantic_error_register(analyzer, 
+        rhs->source_pos - 1,
+        "wrong type conversion");
+    return (known_type_t){.kind = TYPE_ERROR};
+  }
+}
+
+known_type_t semantic_check_expr_assign(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope)
+{
+  expression_t* lhs = expr->assign.lhs; 
+  expression_t* rhs = expr->assign.rhs;
+
+  known_type_t lhs_type = 
+    semantic_check_expression(analyzer, lhs, scope);
+  known_type_t rhs_type = 
+    semantic_check_expression(analyzer, rhs, scope);
+
+  variable_symbol_t* sym = 
+    (variable_symbol_t*) scope_resolve(
+        scope,
+        lhs->var.ident.ident_name);
+
+  if (!sym) goto assign_type_check;
+
+  struct_symbol_t* struct_sym = 
+    (struct_symbol_t*) hashmap_get(
+        analyzer->struct_symbols,
+        sym->type.name);
+
+  function_symbol_t* func_sym =
+    (function_symbol_t*) hashmap_get(
+        analyzer->function_symbols,
+        analyzer->current_analyzed_function);
+
+  if (sym->is_constant) {
+    semantic_error_register(
+        analyzer, lhs->source_pos - 1,
+        "you are trying to reassign constant variable, this is not authorized");
+  } 
+  else if (struct_sym) {
+    // Not sure this could work with nested stuct members
+    // This is something I should work on later
+    // For now, let's keep this simple
+    // TODO: refactor this later
+    expression_t* member = lhs->var.member;
+    for (size_t i = 0; i < struct_sym->members_count; ++i) {
+      if (strcmp(
+            struct_sym->members_name[i], 
+            member->var.ident.ident_name) != 0) 
+        continue;
+         
+      if (struct_sym->members_type[i].is_constant) {
+        semantic_error_register(
+            analyzer, member->source_pos - 1,
+            "you are trying to reassign constant variable, this is not authorized");
+      }
+    }       
+  } 
+  else if (func_sym) {
+    for (size_t i = 0; i < func_sym->params_count; ++i) {
+      if (strcmp(
+           func_sym->params_name[i],
+           lhs->var.ident.ident_name) != 0)
+       continue;
+
+      if (func_sym->params_type[i].is_constant) {
+        semantic_error_register(
+            analyzer, lhs->source_pos - 1,
+            "you are trying to reassign constant variable, this is not authorized");
+      } 
+    }
+  }
+
+assign_type_check:
+  if (lhs_type.kind == TYPE_ERROR && 
+      rhs_type.kind != TYPE_ERROR) {
+    return rhs_type; 
+  } 
+  else if (lhs_type.kind != TYPE_ERROR && 
+      rhs_type.kind == TYPE_ERROR) {
+    return lhs_type; 
+  } 
+  else if (lhs_type.kind == rhs_type.kind) {
+    return lhs_type;
+  } 
+  else if (lhs_type.kind == TYPE_UNTYPE) {
+    return rhs_type; 
+  }
+  else if (lhs_type.kind < rhs_type.kind) {
+    semantic_error_register(
+        analyzer, rhs->source_pos - 1,
+        "value exceed lhs max accepting integer value");
+    return (known_type_t){.kind = TYPE_ERROR};
+  } else if (lhs_type.kind > rhs_type.kind) {
+    return lhs_type; 
+  }
+  
+  else {
+    semantic_error_register(analyzer, 
+        rhs->source_pos - 1,
+        "wrong type conversion");
+    return (known_type_t){.kind = TYPE_ERROR};
+  }
+}
+
+known_type_t semantic_check_expr_unary(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope)
+{
+  if (expr->unary.operand) {
+    known_type_t t = semantic_check_expression(analyzer,
+        expr->unary.operand,
+        scope);
+    if (t.kind == TYPE_ERROR)
+      return t;
+    if (t.kind != TYPE_INT &&
+        t.kind != TYPE_U8  &&
+        t.kind != TYPE_U16 &&
+        t.kind != TYPE_U32 &&
+        t.kind != TYPE_U64) {
+      semantic_error_register(analyzer,
+         expr->unary.operand->source_pos - 1,
+         "expression is not assignable"); 
+    } else if (expr->unary.operand->type == EXPRESSION_CALL && 
+               expr->unary.op != UNARY_POST_INC &&
+               expr->unary.op != UNARY_POST_DEC) {
+      semantic_error_register(analyzer,
+          expr->unary.operand->source_pos - 1,
+          "cannot modify rvalue");
+    } else if (expr->unary.operand->type != EXPRESSION_VAR &&
+               expr->unary.op != UNARY_NEGATE) {
+      semantic_error_register(analyzer,
+         expr->unary.operand->source_pos - 1,
+         "expression is not assignable"); 
+    }
+    
+    return t;
+  }
+
+  return (known_type_t){.kind = TYPE_ERROR};
+}
+
+known_type_t semantic_check_expr_call(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope)
+{
+  function_symbol_t* fs = (function_symbol_t*) hashmap_get(
+      analyzer->function_symbols,
+      expr->call.callee);
+  if (!fs) {
+    semantic_error_register(analyzer,
+        expr->source_pos - 1,
+        "undefined function call");
+    return (known_type_t){.kind = TYPE_ERROR};
+  }
+
+  if (fs->params_count < expr->call.arg_count) {
+    semantic_error_register(analyzer,
+        expr->call.args[expr->call.arg_count - 1]->source_pos - 1,
+        "too many arguments to function call");
+      return (known_type_t){.kind = TYPE_ERROR};
+  }
+
+  if (fs->params_count > expr->call.arg_count) {
+    if (expr->call.arg_count == 0) {
+      semantic_error_register(analyzer,
+          expr->source_pos + 1,
+          "too few arguments to function call");
+    
+    } else {
+      semantic_error_register(analyzer,
+        expr->call.args[expr->call.arg_count - 1]->source_pos - 1,
+        "too few arguments to function call");
+    
+    }
+    return (known_type_t){.kind = TYPE_ERROR};
+  }
+
+  for (size_t i = 0; i < fs->params_count; ++i) {
+    known_type_t arg_type = semantic_check_expression(analyzer,
+          expr->call.args[i],
+          scope);
+    if (arg_type.kind == TYPE_UNTYPE)
+      continue;
+
+    if (arg_type.kind != fs->params_type[i].type.kind &&
+        fs->params_type[i].type.kind < arg_type.kind) {
+      semantic_error_register(analyzer,
+          expr->call.args[i]->source_pos - 1,
+          "wrong type conversion");
+      return (known_type_t){.kind = TYPE_ERROR};
+    }
+  }
+
+  return fs->return_type;
+}
+
+known_type_t semantic_check_expr_composite_literal(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope)
+{
+  (void) analyzer;
+  (void) expr;
+  (void) scope;
+  return (known_type_t){.kind = TYPE_CUSTOM}; 
+}
+
+known_type_t semantic_check_expr_index(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope)
+{
+  known_type_t base = 
+    semantic_check_expression(analyzer, expr->index.base, scope);
+
+  semantic_check_expression(analyzer, expr->index.index, scope);
+
+  return base;
+}
+
 known_type_t semantic_check_expression(
     semantic_analyzer_t* analyzer,
     expression_t* expr,
     scope_t* scope)
 {
-  if (expr->type == EXPRESSION_INT_LIT) {
-    int v = expr->int_lit.value;
-    types_t kind;
-    if (v <= 255)
-      kind = TYPE_U8;
-    else if (v <= 65535)
-      kind = TYPE_U16;
-    else {
-      semantic_error_register(analyzer, expr->source_pos - 1,
-          "long intergers are not implemented yet");
-      return (known_type_t){.kind = TYPE_ERROR};
-    }
-    return (known_type_t){
-      .kind = kind,
-      .name = types_description[kind].name,
-      .size = types_description[kind].size,
-    };
-  }
+  if (expr->type == EXPRESSION_INT_LIT)
+    return semantic_check_expr_int_lit(analyzer, expr, scope);
 
-  if (expr->type == EXPRESSION_CHAR_LIT) {
-    return expr->var.ident.type;
-  }
-  
-  if (expr->type == EXPRESSION_VAR) {
-    variable_symbol_t* vs = 
-      (variable_symbol_t*) scope_resolve(
-          scope, expr->var.ident.ident_name);
+  if (expr->type == EXPRESSION_CHAR_LIT)
+    return semantic_check_expr_char_lit(analyzer, expr, scope);
 
-    if (!vs) {
-      semantic_error_register(analyzer, expr->source_pos - 1,
-          "use of undefined variable");
-      return (known_type_t){.kind = TYPE_ERROR};
-    }
+  if (expr->type == EXPRESSION_VAR)
+    return semantic_check_expr_var(analyzer, expr, scope);
 
-    known_type_t* k = &vs->type;
+  if (expr->type == EXPRESSION_BINARY)
+    return semantic_check_expr_binary(analyzer, expr, scope);
 
-    if (expr->var.member) {
-      struct_symbol_t* sym = 
-        hashmap_get(analyzer->struct_symbols, k->name);
+  if (expr->type == EXPRESSION_ASSIGN)
+    return semantic_check_expr_assign(analyzer, expr, scope);
 
-      // should never happened
-      if (!sym) {
-        semantic_error_register(analyzer, expr->source_pos - 1, 
-            "use of undefined variable");
-        return (known_type_t){.kind = TYPE_ERROR};
-      }
+  if (expr->type == EXPRESSION_UNARY)
+    return semantic_check_expr_unary(analyzer, expr, scope);
 
-      for (size_t i = 0; i < sym->members_count; ++i) {
-        if (strcmp(
-              expr->var.member->var.ident.ident_name,
-              sym->members_name[i]) == 0) {
-          semantic_resolve_type_size(analyzer, k);
+  if (expr->type == EXPRESSION_CALL)
+    return semantic_check_expr_call(analyzer, expr, scope);
 
-          expr->var.ident.type = *k;
-          expr->var.member->var.ident.type = 
-            sym->members_type[i].type;
+  if (expr->type == EXPRESSION_COMPOSITE_LITERAL)
+    return semantic_check_expr_composite_literal(
+        analyzer, expr, scope);
 
-          return sym->members_type[i].type;
-        }
-      }
-      semantic_error_register(
-          analyzer, expr->var.member->source_pos - 1,
-          "undefined struct member");
-      return (known_type_t){.kind = TYPE_ERROR};
-    }
-
-    semantic_resolve_type_size(analyzer, k);
-    expr->var.ident.type = *k;
-    return *k; 
-  }
-
-  if (expr->type == EXPRESSION_BINARY) {
-    // some kind of guard, may need to handle it better even if should not happend
-    if (!expr->binary.left || !expr->binary.right)
-      return (known_type_t){.kind = TYPE_ERROR};
-
-    expression_t* lhs = expr->binary.left;
-    expression_t* rhs = expr->binary.right;
-
-    known_type_t lhs_type = semantic_check_expression(analyzer, lhs, scope);
-    known_type_t rhs_type = semantic_check_expression(analyzer, rhs, scope);
-
-    if (lhs_type.kind == TYPE_ERROR && 
-        rhs_type.kind != TYPE_ERROR) {
-      return rhs_type; 
-    } 
-    else if (lhs_type.kind != TYPE_ERROR && 
-        rhs_type.kind == TYPE_ERROR) {
-      return lhs_type; 
-    } 
-    else if (lhs_type.kind == rhs_type.kind) {
-      return lhs_type;
-    } 
-    else if (lhs_type.kind < rhs_type.kind) {
-      return rhs_type; 
-    }
-    else if (lhs_type.kind > rhs_type.kind) {
-      return lhs_type; 
-    }
-    else {
-      semantic_error_register(analyzer, 
-          rhs->source_pos - 1,
-          "wrong type conversion");
-      return (known_type_t){.kind = TYPE_ERROR};
-    }
-  }
-
-  if (expr->type == EXPRESSION_ASSIGN) {
-    expression_t* lhs = expr->assign.lhs; 
-    expression_t* rhs = expr->assign.rhs;
-
-    known_type_t lhs_type = 
-      semantic_check_expression(analyzer, lhs, scope);
-    known_type_t rhs_type = 
-      semantic_check_expression(analyzer, rhs, scope);
-
-    variable_symbol_t* sym = 
-      (variable_symbol_t*) scope_resolve(
-          scope,
-          lhs->var.ident.ident_name);
-
-    if (!sym) goto assign_type_check;
-
-    struct_symbol_t* struct_sym = 
-      (struct_symbol_t*) hashmap_get(
-          analyzer->struct_symbols,
-          sym->type.name);
-
-    function_symbol_t* func_sym =
-      (function_symbol_t*) hashmap_get(
-          analyzer->function_symbols,
-          analyzer->current_analyzed_function);
-
-    if (sym->is_constant) {
-      semantic_error_register(
-          analyzer, lhs->source_pos - 1,
-          "you are trying to reassign constant variable, this is not authorized");
-    } 
-    else if (struct_sym) {
-      // Not sure this could work with nested stuct members
-      // This is something I should work on later
-      // For now, let's keep this simple
-      // TODO: refactor this later
-      expression_t* member = lhs->var.member;
-      for (size_t i = 0; i < struct_sym->members_count; ++i) {
-        if (strcmp(
-              struct_sym->members_name[i], 
-              member->var.ident.ident_name) != 0) 
-          continue;
-           
-        if (struct_sym->members_type[i].is_constant) {
-          semantic_error_register(
-              analyzer, member->source_pos - 1,
-              "you are trying to reassign constant variable, this is not authorized");
-        }
-      }       
-    } 
-    else if (func_sym) {
-      for (size_t i = 0; i < func_sym->params_count; ++i) {
-        if (strcmp(
-             func_sym->params_name[i],
-             lhs->var.ident.ident_name) != 0)
-         continue;
-
-        if (func_sym->params_type[i].is_constant) {
-          semantic_error_register(
-              analyzer, lhs->source_pos - 1,
-              "you are trying to reassign constant variable, this is not authorized");
-        } 
-      }
-    }
-
-assign_type_check:
-    if (lhs_type.kind == TYPE_ERROR && 
-        rhs_type.kind != TYPE_ERROR) {
-      return rhs_type; 
-    } 
-    else if (lhs_type.kind != TYPE_ERROR && 
-        rhs_type.kind == TYPE_ERROR) {
-      return lhs_type; 
-    } 
-    else if (lhs_type.kind == rhs_type.kind) {
-      return lhs_type;
-    } 
-    else if (lhs_type.kind == TYPE_UNTYPE) {
-      return rhs_type; 
-    }
-    else if (lhs_type.kind < rhs_type.kind) {
-      semantic_error_register(
-          analyzer, rhs->source_pos - 1,
-          "value exceed lhs max accepting integer value");
-      return (known_type_t){.kind = TYPE_ERROR};
-    } else if (lhs_type.kind > rhs_type.kind) {
-      return lhs_type; 
-    }
-    
-    else {
-      semantic_error_register(analyzer, 
-          rhs->source_pos - 1,
-          "wrong type conversion");
-      return (known_type_t){.kind = TYPE_ERROR};
-    }
-  }
-
-  if (expr->type == EXPRESSION_UNARY) 
-    if (expr->unary.operand) {
-      known_type_t t = semantic_check_expression(analyzer,
-          expr->unary.operand,
-          scope);
-      if (t.kind == TYPE_ERROR)
-        return t;
-      if (t.kind != TYPE_INT &&
-          t.kind != TYPE_U8  &&
-          t.kind != TYPE_U16 &&
-          t.kind != TYPE_U32 &&
-          t.kind != TYPE_U64) {
-        semantic_error_register(analyzer,
-           expr->unary.operand->source_pos - 1,
-           "expression is not assignable"); 
-      } else if (expr->unary.operand->type == EXPRESSION_CALL && 
-                 expr->unary.op != UNARY_POST_INC &&
-                 expr->unary.op != UNARY_POST_DEC) {
-        semantic_error_register(analyzer,
-            expr->unary.operand->source_pos - 1,
-            "cannot modify rvalue");
-      } else if (expr->unary.operand->type != EXPRESSION_VAR &&
-                 expr->unary.op != UNARY_NEGATE) {
-        semantic_error_register(analyzer,
-           expr->unary.operand->source_pos - 1,
-           "expression is not assignable"); 
-      }
-      
-      return t;
-    }
-
-  if (expr->type == EXPRESSION_CALL) {
-    function_symbol_t* fs = (function_symbol_t*) hashmap_get(
-        analyzer->function_symbols,
-        expr->call.callee);
-    if (!fs) {
-      semantic_error_register(analyzer,
-          expr->source_pos - 1,
-          "undefined function call");
-      return (known_type_t){.kind = TYPE_ERROR};
-    }
-
-    if (fs->params_count < expr->call.arg_count) {
-      semantic_error_register(analyzer,
-          expr->call.args[expr->call.arg_count - 1]->source_pos - 1,
-          "too many arguments to function call");
-        return (known_type_t){.kind = TYPE_ERROR};
-    }
-
-    if (fs->params_count > expr->call.arg_count) {
-      if (expr->call.arg_count == 0) {
-        semantic_error_register(analyzer,
-            expr->source_pos + 1,
-            "too few arguments to function call");
-      
-      } else {
-        semantic_error_register(analyzer,
-          expr->call.args[expr->call.arg_count - 1]->source_pos - 1,
-          "too few arguments to function call");
-      
-      }
-      return (known_type_t){.kind = TYPE_ERROR};
-    }
-
-    for (size_t i = 0; i < fs->params_count; ++i) {
-      known_type_t arg_type = semantic_check_expression(analyzer,
-            expr->call.args[i],
-            scope);
-      if (arg_type.kind == TYPE_UNTYPE)
-        continue;
-
-      if (arg_type.kind != fs->params_type[i].type.kind &&
-          fs->params_type[i].type.kind < arg_type.kind) {
-        semantic_error_register(analyzer,
-            expr->call.args[i]->source_pos - 1,
-            "wrong type conversion");
-        return (known_type_t){.kind = TYPE_ERROR};
-      }
-    }
-
-    return fs->return_type;
-  }
-
-  if (expr->type == EXPRESSION_COMPOSITE_LITERAL) {
-    return (known_type_t){.kind = TYPE_CUSTOM}; 
-  }
+  if (expr->type == EXPRESSION_INDEX)
+    return semantic_check_expr_index(analyzer, expr, scope);
 
   return (known_type_t){.kind = TYPE_ERROR};
 }
@@ -560,7 +648,7 @@ void semantic_check_for_statement(semantic_analyzer_t* analyzer,
         vs->type = (known_type_t) {
           .kind = TYPE_INT,
           .name = types_description[TYPE_INT].name,
-          .size = types_description[TYPE_INT].size,
+          .element_size = types_description[TYPE_INT].size,
         };
       }
       vs->is_constant = false;
@@ -596,61 +684,114 @@ void semantic_check_var_declaration(
     declaration_t* decl,
     scope_t* scope)
 {
-  if (analyze_declaration(analyzer, decl, scope)) {
-    known_type_t expected_type = decl->var_decl.ident.type;
-    known_type_t actual_type; 
+  if (!analyze_declaration(analyzer, decl, scope))
+    return;
 
-    if (!decl->var_decl.init) {
-      actual_type = decl->var_decl.ident.type;
-      goto var_def_put;
-    }
+  known_type_t expected_type = decl->var_decl.ident.type;
+  known_type_t actual_type; 
 
-    actual_type = 
-      semantic_check_expression(
-          analyzer, 
-          decl->var_decl.init,
-          scope);
+  if (!decl->var_decl.init) {
+    actual_type = decl->var_decl.ident.type;
+    goto var_def_put;
+  }
 
-    if (expected_type.kind != actual_type.kind && 
-        expected_type.kind != TYPE_UNTYPE &&
-        expected_type.kind != TYPE_VAR) {
+  if (decl->var_decl.ident.type.array_len > 0) {
+    size_t len = decl->var_decl.ident.type.array_len;
+    for (size_t i = 0; i < len; ++i) {
+      expression_t* e = 
+        decl->var_decl.init->composite_literal.values[i];
+
+      actual_type = semantic_check_expression(analyzer, e, scope);
 
       if (expected_type.kind < actual_type.kind) {
         semantic_error_register(
-            analyzer, decl->source_pos -1,
+            analyzer, e->source_pos -1,
             "can't store value. Exceeding max type accetping value");
       }
       if (expected_type.kind >= actual_type.kind &&
           actual_type.kind != TYPE_CHAR)
-        goto var_def_put;
+        continue;
 
       if (actual_type.kind != TYPE_ERROR) {
         semantic_error_register(
             analyzer, decl->source_pos - 1, 
             "type mismatch");
         actual_type.kind = TYPE_ERROR;
-      }
+      } 
     }
+    goto var_def_put;
+  }
+
+  actual_type = 
+    semantic_check_expression(
+        analyzer, 
+        decl->var_decl.init,
+        scope); 
+  
+  if (expected_type.kind != actual_type.kind && 
+      expected_type.kind != TYPE_UNTYPE &&
+      expected_type.kind != TYPE_VAR) {
+
+    if (expected_type.kind < actual_type.kind) {
+      semantic_error_register(
+          analyzer, decl->source_pos -1,
+          "can't store value. Exceeding max type accetping value");
+    }
+    if (expected_type.kind >= actual_type.kind &&
+        actual_type.kind != TYPE_CHAR)
+      goto var_def_put;
+
+    if (actual_type.kind != TYPE_ERROR) {
+      semantic_error_register(
+          analyzer, decl->source_pos - 1, 
+          "type mismatch");
+      actual_type.kind = TYPE_ERROR;
+    }
+  }
 
 var_def_put:
-    variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
-    if (expected_type.kind == TYPE_VAR) {
-      vs->type = (known_type_t) {
-        .kind = TYPE_INT,
-        .name = types_description[TYPE_INT].name,
-        .size = types_description[TYPE_INT].size,
-      };
-    } 
-    else {
-      vs->type = expected_type;
-    }
-    semantic_resolve_type_size(analyzer, &vs->type);
-    vs->is_constant = decl->var_decl.ident.is_constant;
-    decl->var_decl.ident.type = vs->type;
-    hashmap_put(
-        scope->symbols, 
-        decl->var_decl.ident.ident_name, vs);
+  variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
+  if (expected_type.kind == TYPE_VAR) {
+    vs->type = (known_type_t) {
+      .kind = TYPE_INT,
+      .name = types_description[TYPE_INT].name,
+      .element_size = types_description[TYPE_INT].size,
+    };
+  } 
+  else {
+    vs->type = expected_type;
   }
+  semantic_resolve_type_size(analyzer, &vs->type);
+  vs->is_constant = decl->var_decl.ident.is_constant;
+  decl->var_decl.ident.type = vs->type;
+  hashmap_put(
+      scope->symbols, 
+      decl->var_decl.ident.ident_name, vs);
+}
+
+void semantic_check_if_statement(semantic_analyzer_t* analyzer,
+                                 statement_t* stmt,
+                                 scope_t* scope)
+{
+  semantic_check_expression(
+      analyzer, stmt->if_stmt.condition, scope);
+  if (stmt->if_stmt.then_branch)
+    semantic_check_scope(
+        analyzer, stmt->if_stmt.then_branch, scope); 
+  if (stmt->if_stmt.else_branch)
+    semantic_check_scope(
+        analyzer, stmt->if_stmt.else_branch, scope);
+}
+
+void semantic_check_while_statement(semantic_analyzer_t* analyzer,
+                                    statement_t* stmt,
+                                    scope_t* scope)
+{
+  semantic_check_expression(
+      analyzer, stmt->while_stmt.condition, scope);
+  if (stmt->while_stmt.body) 
+    semantic_check_scope(
+        analyzer, stmt->while_stmt.body, scope); 
 }
 
 void semantic_check_scope(semantic_analyzer_t* analyzer, 
@@ -673,24 +814,11 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
       }
     }
 
-    if (stmt->type == STATEMENT_IF) {
-      semantic_check_expression(
-          analyzer, stmt->if_stmt.condition, local_scope);
-      if (stmt->if_stmt.then_branch)
-        semantic_check_scope(
-            analyzer, stmt->if_stmt.then_branch, local_scope); 
-      if (stmt->if_stmt.else_branch)
-        semantic_check_scope(
-            analyzer, stmt->if_stmt.else_branch, local_scope);
-    } 
+    if (stmt->type == STATEMENT_IF)
+      semantic_check_if_statement(analyzer, stmt, local_scope); 
 
-    if (stmt->type == STATEMENT_WHILE) {
-      semantic_check_expression(
-          analyzer, stmt->while_stmt.condition, local_scope);
-      if (stmt->while_stmt.body) 
-        semantic_check_scope(
-            analyzer, stmt->while_stmt.body, local_scope); 
-    }
+    if (stmt->type == STATEMENT_WHILE)
+      semantic_check_while_statement(analyzer, stmt, local_scope); 
 
     if (stmt->type == STATEMENT_FOR) 
       semantic_check_for_statement(analyzer, stmt, local_scope); 
@@ -917,7 +1045,7 @@ hash_func_put:
         value->members_type[i].is_constant =
           (*it)->struc.members.items[i].is_constant;
         value->total_size += 
-          (*it)->struc.members.items[i].type.size;
+          (*it)->struc.members.items[i].type.element_size;
         actual_count++;
       }
 

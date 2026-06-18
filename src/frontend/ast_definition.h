@@ -36,7 +36,8 @@ typedef enum
   EXPRESSION_CALL,
   EXPRESSION_ASSIGN,
   EXPRESSION_UNARY,
-  EXPRESSION_COMPOSITE_LITERAL
+  EXPRESSION_COMPOSITE_LITERAL,
+  EXPRESSION_INDEX,
 } expression_kind;
 
 typedef enum
@@ -80,6 +81,8 @@ typedef struct expression_t expression_t;
 typedef struct {
   char* name;
   size_t size; // in bytes
+  size_t element_size;
+  size_t array_len;
   types_t kind;
 } known_type_t;
 
@@ -221,6 +224,10 @@ struct expression_t
       expression_t** values;  
       size_t count;
     } composite_literal;
+    struct {
+      expression_t* base;
+      expression_t* index; 
+    } index;
   };
 };
 

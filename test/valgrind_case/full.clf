@@ -9,6 +9,9 @@ fn main(): int {
   v2 x;
   free(x);
   v2 z = { .x = 3, . y = 4 };
+  int[2] array = { 1, 2 };
+  a = array[1];
+  array[1] = 12;
 
   int! constant = 56;
 

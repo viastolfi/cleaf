@@ -9,6 +9,16 @@
 #include "../thirdparty/string_builder.h"
 #include "ir_definition.h"
 
+typedef enum { LVALUE_VAR, LVALUE_ELEM } lvalue_kind;
+
+typedef struct {
+  lvalue_kind kind;
+  char* var_name;
+  int base_id;
+  int idx_id;
+  size_t elem_size;
+} lvalue_t;
+
 typedef struct 
 {
   error_context_t* error_ctx;
@@ -28,7 +38,27 @@ int IR_lower_statement(
     HIR_parser_t* hir, 
     statement_t* stmt,
     IR_function_t* func);
+int IR_lower_return_statement(
+    HIR_parser_t* hir,
+    statement_t* stmt,
+    IR_function_t* func);
 int IR_lower_expression(
+    HIR_parser_t* hir,
+    expression_t* expr,
+    IR_function_t* func);
+int IR_lower_expr_int_lit(
+    HIR_parser_t* hir,
+    expression_t* expr,
+    IR_function_t* func);
+int IR_lower_expr_char_lit(
+    HIR_parser_t* hir,
+    expression_t* expr,
+    IR_function_t* func);
+int IR_lower_expr_var(
+    HIR_parser_t* hir,
+    expression_t* expr,
+    IR_function_t* func);
+int IR_lower_expr_assign(
     HIR_parser_t* hir,
     expression_t* expr,
     IR_function_t* func);
@@ -71,6 +101,15 @@ int IR_lower_asm_statement(
 int IR_lower_free_statement(
     HIR_parser_t* hir,
     statement_t* stmt,
+    IR_function_t* func);
+int IR_lower_lvalue(
+    HIR_parser_t* hir,
+    expression_t* expr,
+    IR_function_t* func,
+    lvalue_t* lv);
+int IR_lower_index_expression(
+    HIR_parser_t* hir,
+    expression_t* expr,
     IR_function_t* func);
 
 #endif // IR_H

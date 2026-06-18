@@ -127,6 +127,10 @@ typedef struct {
       (*emit_mul)
       (string_builder_t*, const char* dst, const char* src);
 
+    void
+      (*emit_mul_direct)
+      (string_builder_t*, const char* dst, int value);
+
     void 
       (*alloc_memory)
       (string_builder_t*, int size);
@@ -140,6 +144,16 @@ typedef struct {
       (*emit_mov_offset_post)
       (string_builder_t*, 
        const char* dst, size_t size, const char* src);
+
+    void
+      (*emit_load_elem)
+      (string_builder_t*,
+       const char* dst, const char* base, const char* index);
+
+    void
+      (*emit_store_elem)
+      (string_builder_t*,
+       const char* base, const char* index, const char* src);
 
     void
       (*dealloc_memory)

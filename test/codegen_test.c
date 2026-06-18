@@ -261,3 +261,39 @@ ct_test(codegen_test, char_var_declaration, "test/codegen_case/char_var_declarat
 ct_test(codegen_test, free_stmt, "test/codegen_case/free_stmt.clf", "test/codegen_case/free_stmt.asm") {
   ct_assert_eq(result, 0, "codegen gives right output for free statement");
 }
+
+ct_test(codegen_test, array_u8_init, "test/codegen_case/array_u8_init.clf", "test/codegen_case/array_u8_init.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for u8 array with initializer");
+}
+
+ct_test(codegen_test, array_int_init, "test/codegen_case/array_int_init.clf", "test/codegen_case/array_int_init.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for int array with initializer");
+}
+
+ct_test(codegen_test, array_no_init, "test/codegen_case/array_no_init.clf", "test/codegen_case/array_no_init.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for array declaration without initializer");
+}
+
+ct_test(codegen_test, array_int_index_literal, "test/codegen_case/array_int_index_literal.clf", "test/codegen_case/array_int_index_literal.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for int array access with literal index 0");
+}
+
+ct_test(codegen_test, array_int_index_nonzero, "test/codegen_case/array_int_index_nonzero.clf", "test/codegen_case/array_int_index_nonzero.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for int array access with non-zero literal index");
+}
+
+ct_test(codegen_test, array_u8_index_literal, "test/codegen_case/array_u8_index_literal.clf", "test/codegen_case/array_u8_index_literal.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for u8 array access (element_size=1, imul by 1)");
+}
+
+ct_test(codegen_test, array_index_var_index, "test/codegen_case/array_index_var_index.clf", "test/codegen_case/array_index_var_index.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for array access with variable index");
+}
+
+ct_test(codegen_test, array_index_as_var, "test/codegen_case/array_index_as_var.clf", "test/codegen_case/array_index_as_var.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for array index result stored in a variable");
+}
+
+ct_test(codegen_test, array_elem_assign, "test/codegen_case/array_elem_assign.clf", "test/codegen_case/array_elem_assign.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for array element assignment");
+}

@@ -1,0 +1,5 @@
+fn main(): int {
+  int[2] a = { 1, 2 };
+  a[0] = 67;
+  return a[0];
+}

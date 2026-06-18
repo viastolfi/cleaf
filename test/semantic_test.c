@@ -385,7 +385,7 @@ ct_test(semantic_case, type_writeback_inferred_var, "test/semantic_case/var_decl
 
   ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_INT,
       "Inferred var type should be TYPE_INT after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 4,
+  ct_assert_eq((int)var_decl->var_decl.ident.type.element_size, 4,
       "Inferred int var size should be 4 bytes");
 
   free_analyzer(&analyzer);
@@ -400,7 +400,7 @@ ct_test(semantic_case, type_writeback_explicit_var, "test/semantic_case/var_decl
 
   ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_INT,
       "Explicit int var type should be TYPE_INT after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 4,
+  ct_assert_eq((int)var_decl->var_decl.ident.type.element_size, 4,
       "Explicit int var size should be 4 bytes");
 
   free_analyzer(&analyzer);
@@ -416,7 +416,7 @@ ct_test(semantic_case, struct_var_type_and_size, "test/semantic_case/struct_memb
 
   ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_CUSTOM,
       "Struct var type should be TYPE_CUSTOM after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 8,
+  ct_assert_eq((int)var_decl->var_decl.ident.type.element_size, 8,
       "Struct var size should be 8 bytes (2 ints x 8 bytes)");
 
   free_analyzer(&analyzer);
@@ -432,7 +432,7 @@ ct_test(semantic_case, for_init_type_writeback, "test/semantic_case/var_for_init
   ct_assert_not_null(init_decl, "For-init decl should not be null");
   ct_assert_eq(init_decl->var_decl.ident.type.kind, TYPE_INT,
       "For-init inferred var type should be TYPE_INT after write-back");
-  ct_assert_eq((int)init_decl->var_decl.ident.type.size, 4,
+  ct_assert_eq((int)init_decl->var_decl.ident.type.element_size, 4,
       "For-init inferred int var size should be 4 bytes");
 
   free_analyzer(&analyzer);
@@ -451,11 +451,11 @@ ct_test(semantic_case, member_access_type_annotation, "test/semantic_case/struct
 
   ct_assert_eq(expr->var.ident.type.kind, TYPE_CUSTOM,
       "Member access base 'a' should be annotated as TYPE_CUSTOM (struct)");
-  ct_assert_eq((int)expr->var.ident.type.size, 8,
+  ct_assert_eq((int)expr->var.ident.type.element_size, 8,
       "Member access base 'a' should have size 8 bytes");
   ct_assert_eq(expr->var.member->var.ident.type.kind, TYPE_INT,
       "Member access '.x' should be annotated as TYPE_INT");
-  ct_assert_eq((int)expr->var.member->var.ident.type.size, 4,
+  ct_assert_eq((int)expr->var.member->var.ident.type.element_size, 4,
       "Member access '.x' should have size 4 bytes");
 
   free_analyzer(&analyzer);
@@ -547,9 +547,9 @@ ct_test(semantic_case, fn_params_u8_u16, "test/semantic_case/fn_params_u8_u16.cl
   ct_assert_not_null(fs, "Function symbol should be in symbol table");
   ct_assert_eq((int)fs->params_count, 2, "Function should have 2 parameters");
   ct_assert_eq(fs->params_type[0].type.kind, TYPE_U8, "First param type should be TYPE_U8");
-  ct_assert_eq((int)fs->params_type[0].type.size, 1, "First param size should be 1 byte");
+  ct_assert_eq((int)fs->params_type[0].type.element_size, 1, "First param size should be 1 byte");
   ct_assert_eq(fs->params_type[1].type.kind, TYPE_U16, "Second param type should be TYPE_U16");
-  ct_assert_eq((int)fs->params_type[1].type.size, 2, "Second param size should be 2 bytes");
+  ct_assert_eq((int)fs->params_type[1].type.element_size, 2, "Second param size should be 2 bytes");
 
   free_analyzer(&analyzer);
 }
@@ -575,7 +575,7 @@ ct_test(semantic_case, type_writeback_u8_var, "test/semantic_case/var_decl_u8.cl
 
   ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_U8,
       "Explicit u8 var type should be TYPE_U8 after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 1,
+  ct_assert_eq((int)var_decl->var_decl.ident.type.element_size, 1,
       "Explicit u8 var size should be 1 byte");
 
   free_analyzer(&analyzer);
@@ -590,7 +590,7 @@ ct_test(semantic_case, type_writeback_u16_var, "test/semantic_case/var_decl_u16.
 
   ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_U16,
       "Explicit u16 var type should be TYPE_U16 after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 2,
+  ct_assert_eq((int)var_decl->var_decl.ident.type.element_size, 2,
       "Explicit u16 var size should be 2 bytes");
 
   free_analyzer(&analyzer);
@@ -605,7 +605,7 @@ ct_test(semantic_case, type_writeback_u64_var, "test/semantic_case/var_decl_u64.
 
   ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_U64,
       "Explicit u64 var type should be TYPE_U64 after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 8,
+  ct_assert_eq((int)var_decl->var_decl.ident.type.element_size, 8,
       "Explicit u64 var size should be 8 bytes");
 
   free_analyzer(&analyzer);
@@ -720,5 +720,113 @@ ct_test(semantic_case, free_use_after_free, "test/semantic_case/free_use_after_f
 
 ct_test(semantic_case, free_undef_error, "test/semantic_case/free_undef_error.clf") {
   ct_assert_eq(analyzer.error_count, 2, "Should have 2 errors when freeing an undefined variable (undefined var + free of unallocated)");
+  free_analyzer(&analyzer);
+}
+
+// --- Array declaration semantic tests ---
+
+ct_test(semantic_case, array_decl_valid_u8, "test/semantic_case/array_decl_valid_u8.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for valid u8[2] array declaration");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, array_decl_valid_int, "test/semantic_case/array_decl_valid_int.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for valid int[3] array declaration");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, array_decl_no_init, "test/semantic_case/array_decl_no_init.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for array declaration without initializer");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, array_decl_smaller_fits_larger, "test/semantic_case/array_decl_smaller_fits_larger.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors when u8 values are assigned to a u16 array");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, array_decl_overflow_one, "test/semantic_case/array_decl_overflow_one.clf") {
+  ct_assert_eq(analyzer.error_count, 2, "Should have 2 errors for one overflowing element (overflow + type mismatch)");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, array_decl_overflow_multi, "test/semantic_case/array_decl_overflow_multi.clf") {
+  ct_assert_eq(analyzer.error_count, 4, "Should have 4 errors for two overflowing elements (2 errors each)");
+  free_analyzer(&analyzer);
+}
+
+// --- Array declaration type write-back tests ---
+
+ct_test(semantic_case, array_decl_type_writeback_kind_and_len, "test/semantic_case/array_decl_valid_u8.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  declaration_t* func_decl = analyzer.ast->items[0];
+  statement_t* stmt = func_decl->func.body->items[0];
+  declaration_t* var_decl = stmt->decl_stmt.decl;
+
+  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_U8,
+      "Array element type should be TYPE_U8 after write-back");
+  ct_assert_eq((int)var_decl->var_decl.ident.type.array_len, 2,
+      "array_len should be 2 after write-back");
+  ct_assert_eq((int)var_decl->var_decl.ident.type.element_size, 1,
+      "element_size should be 1 byte for u8 array");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, array_decl_total_size_writeback, "test/semantic_case/array_decl_valid_u8.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  declaration_t* func_decl = analyzer.ast->items[0];
+  statement_t* stmt = func_decl->func.body->items[0];
+  declaration_t* var_decl = stmt->decl_stmt.decl;
+
+  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 2,
+      "Total size of u8[2] should be 2 bytes (2 * 1)");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, array_decl_int_type_writeback, "test/semantic_case/array_decl_valid_int.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors");
+
+  declaration_t* func_decl = analyzer.ast->items[0];
+  statement_t* stmt = func_decl->func.body->items[0];
+  declaration_t* var_decl = stmt->decl_stmt.decl;
+
+  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_INT,
+      "Array element type should be TYPE_INT after write-back");
+  ct_assert_eq((int)var_decl->var_decl.ident.type.array_len, 3,
+      "array_len should be 3 after write-back");
+  ct_assert_eq((int)var_decl->var_decl.ident.type.element_size, 4,
+      "element_size should be 4 bytes for int array");
+  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 12,
+      "Total size of int[3] should be 12 bytes (3 * 4)");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, index_valid_literal, "test/semantic_case/index_valid_literal.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for valid literal index access");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, index_valid_var_index, "test/semantic_case/index_valid_var_index.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for valid variable index access");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, index_undef_base, "test/semantic_case/index_undef_base.clf") {
+  ct_assert_eq(analyzer.error_count, 2, "Should have 2 errors: undefined variable + type overflow from TYPE_ERROR");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, index_undef_index_var, "test/semantic_case/index_undef_index_var.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for undefined index variable");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, index_both_undef, "test/semantic_case/index_both_undef.clf") {
+  ct_assert_eq(analyzer.error_count, 3, "Should have 3 errors: 2 undefined variables + type overflow from TYPE_ERROR");
   free_analyzer(&analyzer);
 }

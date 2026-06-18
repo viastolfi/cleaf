@@ -156,6 +156,27 @@ int CODEGEN_write_function(
       const char * src = CODEGEN_get_reg(target, (*it)->src, false);
       target->dealloc_memory(sb, src, (*it)->src.size);
       break;
+    case IR_DIRECT_MUL:
+      target->emit_mul_direct(sb,
+          CODEGEN_get_reg(target, (*it)->dest, false),
+          (*it)->int_value);
+      break;
+    case IR_LOAD_ELEM:
+      {
+        const char* dst   = CODEGEN_get_reg(target, (*it)->dest,  false);
+        const char* base  = CODEGEN_get_reg(target, (*it)->src,   false);
+        const char* index = CODEGEN_get_reg(target, (*it)->index, false);
+        target->emit_load_elem(sb, dst, base, index);
+      }
+      break;
+    case IR_STORE_ELEM:
+      {
+        const char* base  = CODEGEN_get_reg(target, (*it)->dest,  false);
+        const char* index = CODEGEN_get_reg(target, (*it)->index, false);
+        const char* src   = CODEGEN_get_reg(target, (*it)->src,   false);
+        target->emit_store_elem(sb, base, index, src);
+      }
+      break;
     case IR_MOV_OFFSET:
       if ((*it)->offset.timing == IR_PRE_OFFSET) {
       const char* dst = CODEGEN_get_reg(target, (*it)->dest, false);

@@ -1,7 +1,7 @@
 ---
 id: inline-asm
 title: Inline Assembly
-sidebar_position: 7
+sidebar_position: 8
 ---
 
 # Inline Assembly
