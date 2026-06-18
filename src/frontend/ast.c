@@ -190,6 +190,11 @@ void free_declaration(declaration_t* d)
     if(d->var_decl.init)
       free_expression(d->var_decl.init);
   }
+
+  if (d->type == DECLARATION_MODULE) {
+    if (d->module.name) 
+     free(d->module.name); 
+  }
   
   free(d);
 }
@@ -1277,6 +1282,38 @@ declaration_t* ast_parse_untype_var_decl(parser_t* p)
   return d;
 }
 
+declaration_t* ast_parse_module_decl(parser_t* p)
+{
+  declaration_t* decl = calloc(1, sizeof(declaration_t));
+  if (!decl) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return NULL;
+  }
+  decl->type = DECLARATION_MODULE;
+  decl->source_pos = peek(p)->source_pos;
+
+  expect(p, LEXER_token_id, 
+      "expect module name after `module` keyword");
+
+  token_t* name_tok = advance(p);
+  if (!name_tok->string_value) {
+    error_report_at_token(
+        p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
+        "expect module name");
+    free_declaration(decl);
+    return NULL;
+  }
+
+  decl->module.name = strdup(name_tok->string_value);
+  if (!decl->module.name) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    free_declaration(decl);
+    return NULL;
+  }
+
+  return decl;
+}
+
 declaration_t* ast_parse_struct_decl(parser_t* p)
 {
   size_t total_struct_size = 0;
@@ -1432,9 +1469,14 @@ declaration_t* parse_declaration(parser_t* p)
     return ast_parse_function(p);
   }
 
-  if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, 
-          "struct") == 0) {
+  if (check(p, LEXER_token_id) && 
+      strcmp(peek(p)->string_value, "struct") == 0) {
     return ast_parse_struct_decl(p);
+  }
+
+  if (check(p, LEXER_token_id) &&
+      strcmp(peek(p)->string_value, "module") == 0) {
+    return ast_parse_module_decl(p); 
   }
 
   if (check(p, LEXER_token_id) && check_is_type(p)) {

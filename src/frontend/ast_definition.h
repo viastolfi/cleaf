@@ -13,6 +13,7 @@ typedef enum
   DECLARATION_VAR,
   DECLARATION_FUNC,
   DECLARATION_STRUCT,
+  DECLARATION_MODULE,
 } declaration_kind;
 
 typedef enum
@@ -147,6 +148,10 @@ struct declaration_t
       char* name;
       typed_identifier_array members; 
     } struc;
+
+    struct {
+      char* name; 
+    } module;
   };
 };
 

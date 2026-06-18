@@ -354,6 +354,11 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
       }
       break;
     }
+
+    case DECLARATION_MODULE:
+      printf(CLR_DECL "ModuleDecl" CLR_RESET " '%s'\n",
+             d->module.name ? d->module.name : "");
+      break;
   }
 }
 

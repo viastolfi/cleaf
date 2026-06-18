@@ -804,3 +804,29 @@ ct_test(ast, array_index_nonzero, "arr[3];")
   free_statement(s);
   da_free(&parser);
 }
+
+// === MODULE DECLARATION TESTS ===
+
+ct_test(ast, module_basic, "module mymod")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "module decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_MODULE, "declaration type should be DECLARATION_MODULE");
+  ct_assert_not_null(decl->module.name, "module name should not be NULL");
+  ct_assert_eq(decl->module.name, "mymod", "module name should match source");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, module_name, "module core")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "module decl should not be NULL");
+  ct_assert_eq(decl->module.name, "core", "module name should be 'core'");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
