@@ -728,7 +728,10 @@ int IR_lower_free_statement(
   IR_lower_expression(hir, stmt->free_stmt.expr, func); 
 
   instr->src.id = func->next_temp_id;
-  instr->src.size = stmt->free_stmt.expr->var.ident.type.element_size;
+
+  // Since we are only freeing pointers, size is always 8 (in 64 bits archytecture)
+  // TODO: fix this if we want it to compile on 32 bits architecture one day
+  instr->src.size = 8;
 
   da_append(func->code, instr);
   return 0;

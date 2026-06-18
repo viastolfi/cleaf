@@ -38,6 +38,7 @@ fn main(): int {
     d = 0;
   }
 
+  free(array);
   return 0;
 }
 
