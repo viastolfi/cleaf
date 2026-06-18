@@ -848,10 +848,10 @@ void semantic_check_free_statement(
   known_type_t t = 
     semantic_check_expression(analyzer, stmt->free_stmt.expr, scope);
 
-  if (t.kind != TYPE_CUSTOM) {
+  if (t.kind != TYPE_CUSTOM && t.array_len <= 0) {
     semantic_error_register(
         analyzer, stmt->free_stmt.expr->source_pos - 1,
-        "you are tryning to free unallocated memory. Please not that only stuct typed variable and arrays are allocated in the heap");
+        "you are trying to free unallocated memory. Please not that only stuct typed variable and arrays are allocated in the heap");
     return;
   }
 
