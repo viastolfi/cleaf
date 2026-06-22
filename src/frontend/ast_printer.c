@@ -359,6 +359,17 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
       printf(CLR_DECL "ModuleDecl" CLR_RESET " '%s'\n",
              d->module.name ? d->module.name : "");
       break;
+
+    case DECLARATION_IMPORT: {
+      printf(CLR_DECL "ImportDecl" CLR_RESET " ");
+      for (size_t i = 0; i < d->import.path.count; i++) {
+        printf("%s%s",
+               d->import.path.items[i] ? d->import.path.items[i] : "?",
+               i < d->import.path.count - 1 ? "::" : "");
+      }
+      printf("\n");
+      break;
+    }
   }
 }
 

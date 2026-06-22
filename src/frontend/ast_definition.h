@@ -14,6 +14,7 @@ typedef enum
   DECLARATION_FUNC,
   DECLARATION_STRUCT,
   DECLARATION_MODULE,
+  DECLARATION_IMPORT,
 } declaration_kind;
 
 typedef enum
@@ -124,6 +125,13 @@ typedef struct
   size_t capacity;
 } statement_block_t;
 
+typedef struct 
+{
+  char** items;
+  size_t count;
+  size_t capacity;
+} import_path_t;
+
 // ----------------- Declarations ------------------
 
 struct declaration_t
@@ -152,6 +160,10 @@ struct declaration_t
     struct {
       char* name; 
     } module;
+
+    struct {
+      import_path_t path;
+    } import;
   };
 };
 

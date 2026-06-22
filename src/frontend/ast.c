@@ -1282,6 +1282,56 @@ declaration_t* ast_parse_untype_var_decl(parser_t* p)
   return d;
 }
 
+declaration_t* ast_parse_import_decl(parser_t* p)
+{
+  declaration_t* decl = calloc(1, sizeof(declaration_t));
+  if (!decl) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return NULL;
+  }
+  decl->type = DECLARATION_IMPORT;
+  decl->source_pos = peek(p)->source_pos;
+
+  // consume 'import'
+  advance(p);
+
+  do {
+    if (!check(p, LEXER_token_id)) {
+      error_report_at_token(
+          p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+          "expect identifier after `import`");
+      free_declaration(decl);
+      return NULL;
+    }
+
+    token_t* name_tok = advance(p);
+    if (!name_tok->string_value) {
+      error_report_at_token(
+          p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
+          "expect module name");
+      free_declaration(decl);
+      return NULL;
+    }
+
+    char* n = strdup(name_tok->string_value);
+    if (!n) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      free_declaration(decl);
+      return NULL;
+    }
+    da_append(&decl->import.path, n);
+
+    if (!check(p, LEXER_token_coloncolon))
+      break;
+
+    // consume '::'
+    advance(p);
+  } while (!check(p, LEXER_token_eof));
+  
+
+  return decl;
+}
+
 declaration_t* ast_parse_module_decl(parser_t* p)
 {
   declaration_t* decl = calloc(1, sizeof(declaration_t));
@@ -1477,6 +1527,11 @@ declaration_t* parse_declaration(parser_t* p)
   if (check(p, LEXER_token_id) &&
       strcmp(peek(p)->string_value, "module") == 0) {
     return ast_parse_module_decl(p); 
+  }
+
+  if (check(p, LEXER_token_id) &&
+      strcmp(peek(p)->string_value, "import") == 0) {
+    return ast_parse_import_decl(p); 
   }
 
   if (check(p, LEXER_token_id) && check_is_type(p)) {

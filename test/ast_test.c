@@ -830,3 +830,47 @@ ct_test(ast, module_name, "module core")
   free_declaration(decl);
   da_free(&parser);
 }
+
+// === IMPORT DECLARATION TESTS ===
+
+ct_test(ast, import_simple, "import std::io")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "import decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_IMPORT, "declaration type should be DECLARATION_IMPORT");
+  ct_assert_eq(decl->import.path.count, 2, "path should have 2 segments");
+  ct_assert_eq(decl->import.path.items[0], "std", "first segment should be 'std'");
+  ct_assert_eq(decl->import.path.items[1], "io", "second segment should be 'io'");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, import_nested, "import std::io::print")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "import decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_IMPORT, "declaration type should be DECLARATION_IMPORT");
+  ct_assert_eq(decl->import.path.count, 3, "path should have 3 segments");
+  ct_assert_eq(decl->import.path.items[0], "std", "first segment should be 'std'");
+  ct_assert_eq(decl->import.path.items[1], "io", "second segment should be 'io'");
+  ct_assert_eq(decl->import.path.items[2], "print", "third segment should be 'print'");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, import_single_segment, "import mymod")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "import decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_IMPORT, "declaration type should be DECLARATION_IMPORT");
+  ct_assert_eq(decl->import.path.count, 1, "path should have 1 segment");
+  ct_assert_eq(decl->import.path.items[0], "mymod", "segment should be 'mymod'");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
