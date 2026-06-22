@@ -195,6 +195,14 @@ void free_declaration(declaration_t* d)
     if (d->module.name) 
      free(d->module.name); 
   }
+
+  if (d->type == DECLARATION_IMPORT) {
+    da_foreach(char*, it, &(d->import.path)) {
+      free(*it); 
+    }
+
+    da_free(&(d->import.path));
+  }
   
   free(d);
 }

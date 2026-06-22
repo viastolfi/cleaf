@@ -1,3 +1,7 @@
+module main
+
+import std::io
+
 struct v2 {
   int x;
   int y;
@@ -42,8 +46,7 @@ fn main(): int {
   return 0;
 }
 
-
-fn foo(): int {
+internal fn foo(): int {
   var b = 12;
   return b;
 }
