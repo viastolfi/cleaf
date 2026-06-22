@@ -874,3 +874,41 @@ ct_test(ast, import_single_segment, "import mymod")
   free_declaration(decl);
   da_free(&parser);
 }
+
+// === INTERNAL FUNCTION TESTS ===
+
+ct_test(ast, internal_fn_basic, "internal fn secret(): int { return 0; }")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_FUNC, "should be a function declaration");
+  ct_assert(decl->func.is_internal, "function should be marked internal");
+  ct_assert_eq(decl->func.name, "secret", "function name should be 'secret'");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, internal_fn_with_params, "internal fn add(int a, int b): int { return 0; }")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "decl should not be NULL");
+  ct_assert(decl->func.is_internal, "function should be marked internal");
+  ct_assert_eq(decl->func.params.count, 2, "should have 2 params");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, non_internal_fn, "fn foo(): int { return 0; }")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "decl should not be NULL");
+  ct_assert(!decl->func.is_internal, "regular function should not be internal");
+
+  free_declaration(decl);
+  da_free(&parser);
+}

@@ -150,6 +150,7 @@ struct declaration_t
       known_type_t return_type; 
       typed_identifier_array params; 
       statement_block_t* body;
+      bool is_internal;
     } func;
 
     struct {

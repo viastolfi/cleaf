@@ -297,7 +297,8 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
 
   switch (d->type) {
     case DECLARATION_FUNC: {
-      printf(CLR_DECL "FunctionDecl" CLR_RESET " '%s'(",
+      printf(CLR_DECL "%sFunctionDecl" CLR_RESET " '%s'(",
+             d->func.is_internal ? "internal " : "",
              d->func.name ? d->func.name : "");
 
       for (size_t i = 0; i < d->func.params.count; i++) {

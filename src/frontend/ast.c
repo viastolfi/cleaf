@@ -899,7 +899,14 @@ declaration_t* ast_parse_function(parser_t* p)
   decl->type = DECLARATION_FUNC;
   decl->func.return_type = p->types->items[TYPE_UNTYPE];
   decl->source_pos = peek(p)->source_pos;
+  decl->func.is_internal = false;
 
+  if (strcmp(peek(p)->string_value, "internal") == 0) {
+    decl->func.is_internal = true;    
+    // consume 'internal'
+    advance(p);
+  }
+  
   // consume 'fn'
   advance(p);
 
@@ -1515,7 +1522,9 @@ declaration_t* ast_parse_struct_decl(parser_t* p)
 
 declaration_t* parse_declaration(parser_t* p)
 {
-  if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "fn") == 0) {
+  if (check(p, LEXER_token_id) && 
+      (strcmp(peek(p)->string_value, "fn") == 0 ||
+       strcmp(peek(p)->string_value, "internal") == 0)) {
     return ast_parse_function(p);
   }
 
