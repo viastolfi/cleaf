@@ -13,6 +13,7 @@ CS = \
 				$(SRC)/backend/codegen.c \
 				$(SRC)/compiler/definition/compiler_definition.c \
 				$(SRC)/compiler/setup/compiler_setup.c \
+				$(SRC)/compiler/build/file_scanner.c \
 
 OBJ = \
         $(BUILD)/cleaf.o \
@@ -25,6 +26,7 @@ OBJ = \
 				$(BUILD)/backend/codegen.o \
 				$(BUILD)/compiler/definition/compiler_definition.o \
 				$(BUILD)/compiler/setup/compiler_setup.o \
+				$(BUILD)/compiler/build/file_scanner.o \
 
 CC = gcc
 CFLAGS = -Wall -Wextra -g -Isrc
@@ -47,6 +49,7 @@ $(BUILD)/%.o: $(SRC)/%.c
 	@mkdir -p $(BUILD)/backend
 	@mkdir -p $(BUILD)/compiler/definition
 	@mkdir -p $(BUILD)/compiler/setup
+	@mkdir -p $(BUILD)/compiler/build
 	$(CC) $(CFLAGS) -c $< -o $@
 
 AST_TEST_SRC = $(TEST)/ast_test.c

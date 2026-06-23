@@ -25,7 +25,8 @@ int main(int argc, char** argv)
 
   // TODO: implement this
   if (strcmp(argv[1], "build") == 0) {
-  
+    res = build_setup();  
+    return 0;
   } else {
     res = single_file_setup(argc, argv);  
   }

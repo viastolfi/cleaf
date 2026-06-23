@@ -5,6 +5,7 @@ compiler_resources_t* single_file_setup(int argc, char** argv)
   log_verbosity_t verbosity = LOG_VERBOSE;
   const char* output = NULL;
   const char* filename = NULL;
+
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "-V") == 0)
       verbosity = LOG_DUMP;
@@ -65,5 +66,13 @@ compiler_resources_t* single_file_setup(int argc, char** argv)
 
   res->len = len;
   return res;
+}
+
+compiler_resources_t* build_setup() 
+{
+  compiled_files_array files = find_source_files();  
+  (void)files;
+
+  return NULL;
 }
 

@@ -20,6 +20,12 @@ typedef struct {
   const char* output;
 } compiler_resources_t;
 
+typedef struct {
+  char** items;
+  size_t count;
+  size_t capacity;
+} compiled_files_array;
+
 void compiler_resources_free(compiler_resources_t* res);
 
 #endif // COMPILER_DEFINITION_H
