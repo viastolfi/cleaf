@@ -12,6 +12,7 @@ CS = \
 				$(SRC)/backend/x86_64.c \
 				$(SRC)/backend/codegen.c \
 				$(SRC)/compiler/definition/compiler_definition.c \
+				$(SRC)/compiler/setup/compiler_setup.c \
 
 OBJ = \
         $(BUILD)/cleaf.o \
@@ -23,6 +24,7 @@ OBJ = \
 				$(BUILD)/backend/x86_64.o \
 				$(BUILD)/backend/codegen.o \
 				$(BUILD)/compiler/definition/compiler_definition.o \
+				$(BUILD)/compiler/setup/compiler_setup.o \
 
 CC = gcc
 CFLAGS = -Wall -Wextra -g -Isrc
@@ -44,6 +46,7 @@ $(BUILD)/%.o: $(SRC)/%.c
 	@mkdir -p $(BUILD)/middleend
 	@mkdir -p $(BUILD)/backend
 	@mkdir -p $(BUILD)/compiler/definition
+	@mkdir -p $(BUILD)/compiler/setup
 	$(CC) $(CFLAGS) -c $< -o $@
 
 AST_TEST_SRC = $(TEST)/ast_test.c

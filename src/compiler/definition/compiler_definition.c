@@ -32,5 +32,6 @@ void compiler_resources_free(compiler_resources_t* res)
 
   free(res->text);
   res->text = NULL;
+  free(res);
 }
 

@@ -15,6 +15,9 @@ typedef struct {
   parser_t parser;
   declaration_array program;
   IR_function_array* hir_program;
+  int len;
+  const char* filename;
+  const char* output;
 } compiler_resources_t;
 
 void compiler_resources_free(compiler_resources_t* res);
