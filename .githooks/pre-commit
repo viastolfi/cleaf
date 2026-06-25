@@ -1,0 +1,32 @@
+#!/bin/bash
+
+echo "try building projects"
+
+make clean
+make
+
+if [ $? -ne 0 ]; then
+  echo "project compilation fail, please fix this"
+  exit 1
+fi
+
+echo "running tests"
+
+make test
+
+if [ $? -ne 0 ]; then
+  echo "tests fails"
+  echo "either fix them or commit using `git commit --no-verify` if failing in intended"
+  exit 1
+fi
+
+echo "running valgring tests"
+
+if [ $? -ne 0 ]; then
+  echo "tests fails"
+  echo "either fix them or commit using `git commit --no-verify` if failing in intended"
+  exit 1
+fi
+
+echo "all tests passed"
+exit 0

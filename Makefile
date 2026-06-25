@@ -35,7 +35,7 @@ CFLAGS = -Wall -Wextra -g -Isrc
 VALGRIND = valgrind --error-exitcode=42 --leak-check=full --show-leak-kinds=all
 
 .PRECIOUS: build/cleaf
-.PHONY: all clean test ast-test semantic-test asan-test valgrind-test hir-test codegen-test
+.PHONY: all clean test ast-test semantic-test asan-test valgrind-test hir-test codegen-test setup
 
 all: $(BUILD)/cleaf
 
@@ -140,3 +140,6 @@ valgrind-test:
 clean:
 	rm -rf $(BUILD)
 
+setup:
+	chmod +x .githooks/pre-commit
+	git config core.hooksPath .githooks
