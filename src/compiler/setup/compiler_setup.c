@@ -4,7 +4,7 @@ compiler_resources_t* single_file_setup(int argc, char** argv)
 {
   log_verbosity_t verbosity = LOG_VERBOSE;
   const char* output = NULL;
-  const char* filename = NULL;
+  char* filename = NULL;
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "-V") == 0)
@@ -40,39 +40,24 @@ compiler_resources_t* single_file_setup(int argc, char** argv)
     return NULL;
   }
 
-  log_phase("compiling", "'%s'", filename);
-
-  FILE *f = fopen(filename, "rb");
-  if (f == NULL) {
-    error_report_general(
-        ERROR_SEVERITY_ERROR, "cannot open file '%s'", filename);
-    return NULL;
-  }
-
   compiler_resources_t* res = 
     calloc(1, sizeof(compiler_resources_t));
 
   res->output = output;
-  res->filename = filename;
-  res->text = (char *) malloc(1 << 20);
-  int len = (int) fread(res->text, 1, 1 << 20, f);
-  fclose(f);
-  if (len < 0) {
-    error_report_general(
-        ERROR_SEVERITY_ERROR, "failed to read file '%s'", res->filename);
-    compiler_resources_free(res);
-    return NULL;
-  }
-
-  res->len = len;
+  da_append(&(res->files), strdup(filename));
   return res;
 }
 
 compiler_resources_t* build_setup() 
 {
-  compiled_files_array files = find_source_files();  
-  (void)files;
+  log_verbosity_t verbosity = LOG_VERBOSE;
+  log_set_verbosity(verbosity);
 
-  return NULL;
+  compiler_resources_t* res = 
+    calloc(1, sizeof(compiler_resources_t));
+
+  res->files = find_source_files();  
+
+  return res;
 }
 

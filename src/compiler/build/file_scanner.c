@@ -64,9 +64,5 @@ compiled_files_array find_source_files()
     return files; 
   }
 
-  da_foreach(char*, it, &files) {
-    printf("filename : %s\n", (*it));
-  }
-
   return files;
 }

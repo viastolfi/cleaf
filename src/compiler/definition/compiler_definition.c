@@ -1,14 +1,46 @@
 #include "compiler_definition.h"
 
+void module_unit_free(module_unit_t* unit)
+{
+  if (!unit) return;
+
+  if (unit->parser.types) {
+    da_foreach(known_type_t, it, unit->parser.types) {
+      if (it->kind == TYPE_CUSTOM && it->name)
+        free(it->name);
+    }
+    da_free(unit->parser.types);
+    free(unit->parser.types);
+  }
+
+  for (size_t i = 0; i < unit->parser.count; i++) {
+    if (unit->parser.items[i].string_value)
+      free(unit->parser.items[i].string_value);
+  }
+  da_free(&unit->parser);
+
+  da_foreach(declaration_t*, it, &unit->program) {
+    free_declaration(*it);
+  }
+  da_free(&unit->program);
+
+  free(unit->source);
+  free(unit);
+}
+
 void compiler_resources_free(compiler_resources_t* res)
 {
-  da_foreach(known_type_t, it, res->parser.types) {
-    if (it->kind == TYPE_CUSTOM)
-      if (it->name)
-        free(it->name);
+  if (!res) return;
+
+  da_foreach(module_unit_t*, it, &res->units) {
+    module_unit_free(*it);
   }
-  da_free(res->parser.types);
-  free(res->parser.types);
+  da_free(&res->units);
+
+  da_foreach(char*, it, &res->files) {
+    free(*it);
+  }
+  da_free(&res->files);
 
   if (res->hir_program) {
     da_foreach(IR_function_t*, it, res->hir_program) {
@@ -19,19 +51,6 @@ void compiler_resources_free(compiler_resources_t* res)
     res->hir_program = NULL;
   }
 
-  da_foreach(declaration_t*, it, &res->program) {
-    free_declaration(*it);
-  }
-  da_free(&res->program);
-
-  for (size_t i = 0; i < res->parser.count; i++) {
-    if (res->parser.items[i].string_value)
-      free(res->parser.items[i].string_value);
-  }
-  da_free(&res->parser);
-
-  free(res->text);
-  res->text = NULL;
   free(res);
 }
 

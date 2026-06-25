@@ -23,197 +23,94 @@ int main(int argc, char** argv)
 {
   compiler_resources_t* res = NULL;
 
-  // TODO: implement this
-  if (strcmp(argv[1], "build") == 0) {
+  if (argc > 1 && strcmp(argv[1], "build") == 0) {
     res = build_setup();  
-    return 0;
   } else {
     res = single_file_setup(argc, argv);  
   }
 
-  error_context_t error_ctx;
-  error_init(&error_ctx, res->filename, res->text, res->len);
+  if (!res) return 1;
 
-  lexer_t lex;
-  res->parser.error_ctx = &error_ctx;
+  log_phase("compiling", "%zu file(s)", res->files.count);
 
-  lexer_init_lexer(
-      &lex, res->text, res->text + res->len, (char*) malloc(4096), 4096);
+  da_foreach(char*, it, &res->files) {
+    char* filename = *it;
 
-  while (lexer_get_token(&lex)) {
-    if (lex.token == LEXER_token_parse_error) {
+    FILE* f = fopen(filename, "rb");
+    if (!f) {
       error_report_general(
-          ERROR_SEVERITY_ERROR, "lexer parse error");
-      free(lex.string_storage);
+          ERROR_SEVERITY_ERROR, "cannot open file '%s'", filename);
       compiler_resources_free(res);
       return 1;
     }
-    token_t t = lexer_copy_token(&lex);
-    lexer_print_token(&lex);
-    printf("  ");
-    da_append(&res->parser, t);
-  }
-  free(lex.string_storage);
 
-  log_phase("lexing", "%zu tokens", res->parser.count);
-
-  res->parser.types = calloc(1, sizeof(known_type_array));
-  if (!res->parser.types) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
-    return 1;
-  }
-
-  populate_parser_known_type(res->parser.types);
-
-  while ((size_t) res->parser.pos < res->parser.count) {
-    declaration_t* decl = parse_declaration(&res->parser);
-    if (decl == NULL) {
-      error_report_general(ERROR_SEVERITY_ERROR, "ast parse error");
+    module_unit_t* unit = calloc(1, sizeof(module_unit_t));
+    if (!unit) {
+      fclose(f);
       compiler_resources_free(res);
       return 1;
     }
-    da_append(&res->program, decl);
-  }
 
-  log_phase("parsing", "%zu declaration(s)", res->program.count);
+    unit->file_path = filename;
+    unit->source = malloc(1 << 20);
+    unit->source_len = (int) fread(unit->source, 1, 1 << 20, f);
+    fclose(f);
 
-  if (log_is_dump()) {
-    log_section_begin("AST");
-    ast_print_program(&res->program);
-    log_section_end();
-  }
+    error_init(&unit->error_ctx, filename, unit->source, unit->source_len);
+    unit->parser.error_ctx = &unit->error_ctx;
 
-  semantic_analyzer_t analyzer = {0};
-  analyzer.error_ctx = &error_ctx;
-  analyzer.ast = &res->program;
-  analyzer.error_count = 0;
+    lexer_t lex;
+    lexer_init_lexer(
+        &lex, unit->source, unit->source + unit->source_len,
+        malloc(4096), 4096);
 
-  semantic_analyze(&analyzer);
+    while (lexer_get_token(&lex)) {
+      if (lex.token == LEXER_token_parse_error) {
+        error_report_general(ERROR_SEVERITY_ERROR, "lexer parse error");
+        free(lex.string_storage);
+        module_unit_free(unit);
+        compiler_resources_free(res);
+        return 1;
+      }
+      token_t t = lexer_copy_token(&lex);
+      da_append(&unit->parser, t);
+    }
+    free(lex.string_storage);
 
-  if (log_is_dump()) {
-    log_section_begin("AST after semantic");
-    ast_print_program(&res->program);
-    log_section_end();
-  }
+    log_phase("lexing", "'%s': %zu tokens", filename, unit->parser.count);
 
-  if (analyzer.error_count > 0) {
-    log_phase("semantic", "%d error(s)", analyzer.error_count);
-    error_report_general(
-        ERROR_SEVERITY_NOTE, 
-        "%d error(s) during semantic analysis, aborting", 
-        analyzer.error_count);
-    semantic_free_program_definition(&analyzer);
-    compiler_resources_free(res);
-    return 1;
-  }
-  log_phase("semantic", "ok");
-
-  res->hir_program = calloc(1, sizeof(IR_function_array));
-  if (!res->hir_program) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    compiler_resources_free(res);
-    return 1;
-  }
-
-  HIR_parser_t hir_parser = {0};
-  hir_parser.error_ctx = &error_ctx;
-  hir_parser.error_count = 0;
-  hir_parser.hir_program = res->hir_program;
-  hir_parser.struct_symbols = analyzer.struct_symbols;
-  rand_t rng;
-  rand_init(&rng);
-  HIR_PARSER_USE_RNG(hir_parser, &rng);
-
-  da_foreach(declaration_t*, it, &res->program) {
-    if ((*it)->type != DECLARATION_FUNC)
-      continue;
-
-    int lowering_result = IR_lower_function(&hir_parser, *it);
-    if (lowering_result != 0) {
-      error_report_general(
-          ERROR_SEVERITY_ERROR, "HIR lowering error");
+    unit->parser.types = calloc(1, sizeof(known_type_array));
+    if (!unit->parser.types) {
+      module_unit_free(unit);
       compiler_resources_free(res);
       return 1;
     }
-  }
+    populate_parser_known_type(unit->parser.types);
 
-  log_phase(
-      "HIR lowering", "%zu function(s)", res->hir_program->count);
-
-  semantic_free_program_definition(&analyzer);
-  if (log_is_dump()) {
-    log_section_begin("HIR");
-    da_foreach(IR_function_t*, it, hir_parser.hir_program) {
-      IR_display_function(*it);
+    while ((size_t) unit->parser.pos < unit->parser.count) {
+      declaration_t* decl = parse_declaration(&unit->parser);
+      if (!decl) {
+        error_report_general(
+            ERROR_SEVERITY_ERROR, "ast parse error in '%s'", filename);
+        module_unit_free(unit);
+        compiler_resources_free(res);
+        return 1;
+      }
+      da_append(&unit->program, decl);
     }
-    log_section_end();
-  }
 
-  string_builder_t asm_prog = {0};
-  da_foreach(IR_function_t*, it, hir_parser.hir_program) {
-    int err = CODEGEN_write_function(&asm_prog, *it, &x86_64_target);
-    if (err) {
-      da_free(&asm_prog);
-      compiler_resources_free(res);
-      return 1;
+    log_phase("parsing", "'%s': %zu declaration(s)", filename, unit->program.count);
+
+    if (log_is_dump()) {
+      log_section_begin("AST");
+      ast_print_program(&unit->program);
+      log_section_end();
     }
+
+    da_append(&res->units, unit);
   }
-
-  log_phase("codegen", "ok");
-
-  if (log_is_dump()) {
-    log_section_begin("ASM");
-    printf("%s", asm_prog.items);
-    log_section_end();
-  }
-
-  const char* output_name = res->output ? res->output : "a.out";
-
-  const char* obj_base = strrchr(output_name, '/');
-  obj_base = obj_base ? obj_base + 1 : output_name;
-
-  char asm_path[512];
-  snprintf(asm_path, sizeof(asm_path), "/tmp/%s.asm", obj_base);
-  FILE* asm_file = fopen(asm_path, "w");
-  if (!asm_file) {
-    error_report_general(ERROR_SEVERITY_ERROR, "failed to write temp asm file");
-    da_free(&asm_prog);
-    compiler_resources_free(res);
-    return 1;
-  }
-  fputs(asm_prog.items, asm_file);
-  fclose(asm_file);
-  da_free(&asm_prog);
-
-  char nasm_cmd[1024];
-  snprintf(nasm_cmd, sizeof(nasm_cmd),
-      "nasm -f elf64 -o /tmp/%s.o %s", obj_base, asm_path);
-  if (system(nasm_cmd) != 0) {
-    error_report_general(ERROR_SEVERITY_ERROR, "nasm failed");
-    compiler_resources_free(res);
-    return 1;
-  }
-  remove(asm_path);
-
-  log_phase("nasm", "ok");
-
-  char ld_cmd[1024];
-  snprintf(
-      ld_cmd, sizeof(ld_cmd), "ld -o %s /tmp/%s.o", 
-      output_name, obj_base);
-
-  if (system(ld_cmd) != 0) {
-    error_report_general(ERROR_SEVERITY_ERROR, "ld failed");
-    compiler_resources_free(res);
-    return 1;
-  }
-
-  char rm_cmd[512];
-  snprintf(rm_cmd, sizeof(rm_cmd), "rm /tmp/%s.o", obj_base);
-  system(rm_cmd);
-
-  log_phase("linking", "'%s'", output_name);
 
   compiler_resources_free(res);
   return 0;
 }
+
