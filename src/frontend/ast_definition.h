@@ -164,6 +164,7 @@ struct declaration_t
 
     struct {
       import_path_t path;
+      char* alias;
     } import;
   };
 };

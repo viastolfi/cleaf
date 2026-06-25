@@ -870,6 +870,46 @@ ct_test(ast, import_single_segment, "import mymod")
   ct_assert_eq(decl->type, DECLARATION_IMPORT, "declaration type should be DECLARATION_IMPORT");
   ct_assert_eq(decl->import.path.count, 1, "path should have 1 segment");
   ct_assert_eq(decl->import.path.items[0], "mymod", "segment should be 'mymod'");
+  ct_assert_null(decl->import.alias, "no alias should be NULL");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, import_with_alias, "import std::io::print as p")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "import decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_IMPORT, "declaration type should be DECLARATION_IMPORT");
+  ct_assert_eq(decl->import.path.count, 3, "path should have 3 segments");
+  ct_assert_eq(decl->import.path.items[2], "print", "last segment should be 'print'");
+  ct_assert_not_null(decl->import.alias, "alias should not be NULL");
+  ct_assert_eq(decl->import.alias, "p", "alias should be 'p'");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, import_alias_no_conflict, "import math::add as math_add")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "import decl should not be NULL");
+  ct_assert_eq(decl->import.path.items[0], "math", "module should be 'math'");
+  ct_assert_eq(decl->import.path.items[1], "add", "symbol should be 'add'");
+  ct_assert_eq(decl->import.alias, "math_add", "alias should be 'math_add'");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, import_no_alias, "import std::io::print")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "import decl should not be NULL");
+  ct_assert_null(decl->import.alias, "import without alias should have NULL alias");
 
   free_declaration(decl);
   da_free(&parser);

@@ -201,6 +201,10 @@ void free_declaration(declaration_t* d)
       free(*it); 
     }
 
+    if (d->import.alias) {
+      free(d->import.alias); 
+    }
+
     da_free(&(d->import.path));
   }
   
@@ -1343,6 +1347,29 @@ declaration_t* ast_parse_import_decl(parser_t* p)
     advance(p);
   } while (!check(p, LEXER_token_eof));
   
+  if (check(p, LEXER_token_id) &&
+      strcmp(peek(p)->string_value, "as") == 0) {
+    // consume 'as'
+    advance(p); 
+
+    token_t* name_tok = advance(p);
+    if (!name_tok->string_value) {
+      error_report_at_token(
+          p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
+          "expect module name");
+      free_declaration(decl);
+      return NULL;
+    }
+
+    char* alias = strdup(name_tok->string_value);
+    if (!alias) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      free_declaration(decl);
+      return NULL;
+    }
+
+    decl->import.alias = alias;
+  }
 
   return decl;
 }

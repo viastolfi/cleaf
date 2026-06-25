@@ -368,6 +368,8 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
                d->import.path.items[i] ? d->import.path.items[i] : "?",
                i < d->import.path.count - 1 ? "::" : "");
       }
+      if (d->import.alias)
+        printf(CLR_CONST " as %s" CLR_RESET, d->import.alias);
       printf("\n");
       break;
     }
