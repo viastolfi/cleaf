@@ -1,4 +1,4 @@
-module main
+module main::test
 
 import std::io
 import std::io::print as print

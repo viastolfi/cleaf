@@ -192,8 +192,10 @@ void free_declaration(declaration_t* d)
   }
 
   if (d->type == DECLARATION_MODULE) {
-    if (d->module.name) 
-     free(d->module.name); 
+    da_foreach(char*, it, &(d->module.path)) {
+      free(*it); 
+    }
+    da_free(&(d->module.path));
   }
 
   if (d->type == DECLARATION_IMPORT) {
@@ -1384,24 +1386,41 @@ declaration_t* ast_parse_module_decl(parser_t* p)
   decl->type = DECLARATION_MODULE;
   decl->source_pos = peek(p)->source_pos;
 
-  expect(p, LEXER_token_id, 
-      "expect module name after `module` keyword");
+  // consume 'module' keyword
+  advance(p);
 
-  token_t* name_tok = advance(p);
-  if (!name_tok->string_value) {
-    error_report_at_token(
-        p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
-        "expect module name");
-    free_declaration(decl);
-    return NULL;
-  }
+  do {
+    if (!check(p, LEXER_token_id)) {
+      error_report_at_token(
+          p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+          "expect module name after `module` keyword");
+      free_declaration(decl);
+      return NULL;
+    }
 
-  decl->module.name = strdup(name_tok->string_value);
-  if (!decl->module.name) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    free_declaration(decl);
-    return NULL;
-  }
+    token_t* name_tok = advance(p);
+    if (!name_tok->string_value) {
+      error_report_at_token(
+          p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
+          "expect module name");
+      free_declaration(decl);
+      return NULL;
+    }
+
+    char* m = strdup(name_tok->string_value);
+    if (!m) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+      free_declaration(decl);
+      return NULL;
+    }
+    da_append(&(decl->module.path), m);
+
+    if (!check(p, LEXER_token_coloncolon))
+      break;
+
+    // consume '::'
+    advance(p);
+  } while (!check(p, LEXER_token_eof));
 
   return decl;
 }

@@ -159,7 +159,7 @@ struct declaration_t
     } struc;
 
     struct {
-      char* name; 
+      import_path_t path; 
     } module;
 
     struct {

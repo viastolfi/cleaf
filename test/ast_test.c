@@ -813,19 +813,36 @@ ct_test(ast, module_basic, "module mymod")
 
   ct_assert_not_null(decl, "module decl should not be NULL");
   ct_assert_eq(decl->type, DECLARATION_MODULE, "declaration type should be DECLARATION_MODULE");
-  ct_assert_not_null(decl->module.name, "module name should not be NULL");
-  ct_assert_eq(decl->module.name, "mymod", "module name should match source");
+  ct_assert_eq(decl->module.path.count, 1, "path should have 1 segment");
+  ct_assert_eq(decl->module.path.items[0], "mymod", "module name should match source");
 
   free_declaration(decl);
   da_free(&parser);
 }
 
-ct_test(ast, module_name, "module core")
+ct_test(ast, module_nested, "module std::io")
 {
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_not_null(decl, "module decl should not be NULL");
-  ct_assert_eq(decl->module.name, "core", "module name should be 'core'");
+  ct_assert_eq(decl->type, DECLARATION_MODULE, "declaration type should be DECLARATION_MODULE");
+  ct_assert_eq(decl->module.path.count, 2, "path should have 2 segments");
+  ct_assert_eq(decl->module.path.items[0], "std", "first segment should be 'std'");
+  ct_assert_eq(decl->module.path.items[1], "io", "second segment should be 'io'");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, module_deep_nested, "module std::io::fs")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "module decl should not be NULL");
+  ct_assert_eq(decl->module.path.count, 3, "path should have 3 segments");
+  ct_assert_eq(decl->module.path.items[0], "std", "first segment should be 'std'");
+  ct_assert_eq(decl->module.path.items[1], "io", "second segment should be 'io'");
+  ct_assert_eq(decl->module.path.items[2], "fs", "third segment should be 'fs'");
 
   free_declaration(decl);
   da_free(&parser);
