@@ -32,14 +32,18 @@ int main(int argc, char** argv)
 
   if (!res) return 1;
 
+  int is_build_mode = (argc > 1 && strcmp(argv[1], "build") == 0);
+
   log_phase("compiling", "%zu file(s)", res->files.count);
 
   build_context_t build_ctx = {0};
-  build_ctx.registry = calloc(1, sizeof(hashmap_t));
-  if (!build_ctx.registry) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    compiler_resources_free(res);
-    return 1;
+  if (is_build_mode) {
+    build_ctx.registry = calloc(1, sizeof(hashmap_t));
+    if (!build_ctx.registry) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      compiler_resources_free(res);
+      return 1;
+    }
   }
 
   da_foreach(char*, it, &res->files) {
@@ -125,26 +129,28 @@ int main(int argc, char** argv)
     da_append(&res->units, unit);
   }
 
-  da_foreach(module_unit_t*, it, &res->units) {
-    if (!populate_module_registry(&build_ctx, *it)) {
-      error_report_general(
-          ERROR_SEVERITY_ERROR, 
-          "error while building module registry");
-      compiler_resources_free(res);
+  if (is_build_mode) {
+    da_foreach(module_unit_t*, it, &res->units) {
+      if (!populate_module_registry(&build_ctx, *it)) {
+        error_report_general(
+            ERROR_SEVERITY_ERROR, 
+            "error while building module registry");
+        compiler_resources_free(res);
+        build_context_free(&build_ctx);
+        return 1;
+      }
+    }
+
+    module_unit_array* main_units =
+      (module_unit_array*) hashmap_get(build_ctx.registry, "main");
+
+    if (!main_units || main_units->count == 0) {
       build_context_free(&build_ctx);
+      error_report_general(ERROR_SEVERITY_ERROR,
+         "no `main` module found");
+      compiler_resources_free(res);
       return 1;
     }
-  }
-
-  module_unit_array* main_units =
-    (module_unit_array*) hashmap_get(build_ctx.registry, "main");
-
-  if (!main_units || main_units->count == 0) {
-    build_context_free(&build_ctx);
-    error_report_general(ERROR_SEVERITY_ERROR,
-       "no `main` module found");
-    compiler_resources_free(res);
-    return 1;
   }
 
   build_context_free(&build_ctx);
