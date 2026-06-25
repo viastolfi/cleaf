@@ -199,10 +199,43 @@ ct_test(ast, function_call, "test(a, 5);")
 
   ct_assert_eq(e->type, EXPRESSION_CALL, "Expression type should be CALL");
   ct_assert_eq(e->call.callee, "test", "Function name should be 'test'");
+  ct_assert_null(e->call.qualifier, "unqualified call should have NULL qualifier");
   ct_assert_eq((int)e->call.arg_count, 2, "Function call should have 3 args");
 
   ct_assert_eq(e->call.args[0]->var.ident.ident_name, "a", "Arg1 should be var 'a'");
   ct_assert_eq(e->call.args[1]->int_lit.value, 5, "Arg2 should be int 5");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
+ct_test(ast, qualified_call_no_args, "io::print();")
+{
+  statement_t* s = parse_statement(&parser);
+  expression_t* e = s->expr_stmt.expr;
+
+  ct_assert_not_null(e, "expression should not be NULL");
+  ct_assert_eq(e->type, EXPRESSION_CALL, "should be a call expression");
+  ct_assert_not_null(e->call.qualifier, "qualifier should not be NULL");
+  ct_assert_eq(e->call.qualifier, "io", "qualifier should be 'io'");
+  ct_assert_eq(e->call.callee, "print", "callee should be 'print'");
+  ct_assert_eq((int)e->call.arg_count, 0, "should have 0 args");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
+ct_test(ast, qualified_call_with_args, "math::add(1, 2);")
+{
+  statement_t* s = parse_statement(&parser);
+  expression_t* e = s->expr_stmt.expr;
+
+  ct_assert_not_null(e, "expression should not be NULL");
+  ct_assert_eq(e->call.qualifier, "math", "qualifier should be 'math'");
+  ct_assert_eq(e->call.callee, "add", "callee should be 'add'");
+  ct_assert_eq((int)e->call.arg_count, 2, "should have 2 args");
+  ct_assert_eq(e->call.args[0]->int_lit.value, 1, "first arg should be 1");
+  ct_assert_eq(e->call.args[1]->int_lit.value, 2, "second arg should be 2");
 
   free_statement(s);
   da_free(&parser);

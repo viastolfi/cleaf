@@ -230,9 +230,11 @@ struct expression_t
       binary_op_kind op;
     } binary;
     struct { 
+      char* qualifier;
       char* callee; 
       expression_t** args; 
       size_t arg_count; 
+      char* resolved_module;
     } call;
     struct {
       unary_op_kind op;

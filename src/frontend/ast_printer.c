@@ -132,8 +132,12 @@ static void print_expression(expression_t* e, const char* prefix, bool is_last)
       break;
 
     case EXPRESSION_CALL:
-      printf(CLR_STMT "CallExpr" CLR_RESET " '%s'\n",
-             e->call.callee ? e->call.callee : "");
+      if (e->call.qualifier)
+        printf(CLR_STMT "CallExpr" CLR_RESET " '%s::%s'\n",
+               e->call.qualifier, e->call.callee ? e->call.callee : "");
+      else
+        printf(CLR_STMT "CallExpr" CLR_RESET " '%s'\n",
+               e->call.callee ? e->call.callee : "");
       for (size_t i = 0; i < e->call.arg_count; i++)
         print_expression(e->call.args[i], cp, i == e->call.arg_count - 1);
       break;

@@ -42,6 +42,12 @@ void free_expression(expression_t* e)
 
       free(e->call.args);
     }
+
+    if (e->call.qualifier)
+      free(e->call.qualifier);
+
+    if (e->call.resolved_module)
+      free(e->call.resolved_module);
   }
 
   if (e->type == EXPRESSION_UNARY) 
@@ -664,7 +670,7 @@ expression_t* ast_parse_expr_index(parser_t* p)
 
 expression_t* ast_parse_expr_call(parser_t* p) 
 {
-  expression_t* e = (expression_t*) malloc(sizeof(expression_t));
+  expression_t* e = calloc(1, sizeof(expression_t));
   if (!e) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return NULL;
@@ -672,10 +678,32 @@ expression_t* ast_parse_expr_call(parser_t* p)
   e->type = EXPRESSION_CALL;
   e->source_pos = peek(p)->source_pos;
 
+  if (check_next(p, LEXER_token_coloncolon, 1)) {
+    token_t* qualifier_tok = advance(p);  
+    if (!qualifier_tok->string_value) {
+      error_report_at_token(
+          p->error_ctx, qualifier_tok, ERROR_SEVERITY_ERROR,
+          "identifier has no value");
+      free_expression(e);
+      return NULL;
+    }
+  
+    e->call.qualifier = strdup(qualifier_tok->string_value);
+    if (!e->call.qualifier) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      free_expression(e);
+      return NULL;
+    }
+
+    // consume '::'
+    advance(p);
+  }
+
   token_t* name_tok = advance(p);
   if (!name_tok->string_value) {
-    error_report_at_token(p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
-                          "identifier has no value");
+    error_report_at_token(
+        p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
+        "identifier has no value");
     free_expression(e);
     return NULL;
   }
@@ -828,7 +856,9 @@ expression_t* parse_primary(parser_t* p)
   if (check(p, LEXER_token_id) && check_next(p, '[', 1))
     return ast_parse_expr_index(p);
 
-  if (check(p, LEXER_token_id) && check_next(p, '(', 1))
+  if (check(p, LEXER_token_id) && 
+      (check_next(p, '(', 1) ||
+       check_next(p, LEXER_token_coloncolon, 1)))
     return ast_parse_expr_call(p);
 
   if (check(p, LEXER_token_id)) 
