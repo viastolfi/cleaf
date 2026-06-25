@@ -24,6 +24,7 @@ void module_unit_free(module_unit_t* unit)
   }
   da_free(&unit->program);
 
+  free(unit->module_name);
   free(unit->source);
   free(unit);
 }
@@ -54,3 +55,24 @@ void compiler_resources_free(compiler_resources_t* res)
   free(res);
 }
 
+void build_context_free(build_context_t* ctx)
+{
+  if (ctx->registry) {
+    for (size_t i = 0; i < HASH_SIZE; i++) {
+      hashmap_entry_t* e = ctx->registry->buckets[i];
+      while (e) {
+        module_unit_array* arr = (module_unit_array*) e->value;
+        if (arr) {
+          da_free(arr);
+          free(arr);
+        }
+        e = e->next;
+      }
+    }
+    hashmap_free(ctx->registry, 0);
+    free(ctx->registry);
+    ctx->registry = NULL;
+  }
+  free(ctx->topo_order);
+  ctx->topo_order = NULL;
+}

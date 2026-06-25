@@ -7,6 +7,7 @@
 #define DA_LIB_IMPLEMENTATION
 #include "thirdparty/da.h"
 #include "thirdparty/error.h"
+#include "thirdparty/hashmap.h"
 #include "frontend/ast.h"
 #include "middleend/hir.h"
 #include "middleend/ir_definition.h"
@@ -19,6 +20,7 @@ typedef struct {
 
 typedef struct {
   char*             file_path;   // not owned (points into files array)
+  char*             module_name; // owned, built from DECLARATION_MODULE path
   char*             source;      // owned
   int               source_len;
   error_context_t   error_ctx;
@@ -39,6 +41,13 @@ typedef struct {
   const char*          output;
 } compiler_resources_t;
 
+typedef struct {
+  hashmap_t* registry;
+  module_unit_t** topo_order;
+  size_t topo_count;
+} build_context_t;
+
+void build_context_free(build_context_t* ctx);
 void module_unit_free(module_unit_t* unit);
 void compiler_resources_free(compiler_resources_t* res);
 

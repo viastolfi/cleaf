@@ -14,6 +14,7 @@ CS = \
 				$(SRC)/compiler/definition/compiler_definition.c \
 				$(SRC)/compiler/setup/compiler_setup.c \
 				$(SRC)/compiler/build/file_scanner.c \
+				$(SRC)/compiler/build/registry.c \
 
 OBJ = \
         $(BUILD)/cleaf.o \
@@ -27,6 +28,7 @@ OBJ = \
 				$(BUILD)/compiler/definition/compiler_definition.o \
 				$(BUILD)/compiler/setup/compiler_setup.o \
 				$(BUILD)/compiler/build/file_scanner.o \
+				$(BUILD)/compiler/build/registry.o \
 
 CC = gcc
 CFLAGS = -Wall -Wextra -g -Isrc

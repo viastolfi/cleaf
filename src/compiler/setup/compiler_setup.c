@@ -50,7 +50,7 @@ compiler_resources_t* single_file_setup(int argc, char** argv)
 
 compiler_resources_t* build_setup() 
 {
-  log_verbosity_t verbosity = LOG_VERBOSE;
+  log_verbosity_t verbosity = LOG_DUMP;
   log_set_verbosity(verbosity);
 
   compiler_resources_t* res = 

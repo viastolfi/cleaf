@@ -18,6 +18,7 @@
 #include "backend/x86_64_definition.h"
 #include "compiler/definition/compiler_definition.h"
 #include "compiler/setup/compiler_setup.h"
+#include "compiler/build/registry.h"
 
 int main(int argc, char** argv) 
 {
@@ -33,6 +34,14 @@ int main(int argc, char** argv)
 
   log_phase("compiling", "%zu file(s)", res->files.count);
 
+  build_context_t build_ctx = {0};
+  build_ctx.registry = calloc(1, sizeof(hashmap_t));
+  if (!build_ctx.registry) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    compiler_resources_free(res);
+    return 1;
+  }
+
   da_foreach(char*, it, &res->files) {
     char* filename = *it;
 
@@ -41,6 +50,7 @@ int main(int argc, char** argv)
       error_report_general(
           ERROR_SEVERITY_ERROR, "cannot open file '%s'", filename);
       compiler_resources_free(res);
+      build_context_free(&build_ctx);
       return 1;
     }
 
@@ -48,6 +58,7 @@ int main(int argc, char** argv)
     if (!unit) {
       fclose(f);
       compiler_resources_free(res);
+      build_context_free(&build_ctx);
       return 1;
     }
 
@@ -70,6 +81,7 @@ int main(int argc, char** argv)
         free(lex.string_storage);
         module_unit_free(unit);
         compiler_resources_free(res);
+        build_context_free(&build_ctx);
         return 1;
       }
       token_t t = lexer_copy_token(&lex);
@@ -83,6 +95,7 @@ int main(int argc, char** argv)
     if (!unit->parser.types) {
       module_unit_free(unit);
       compiler_resources_free(res);
+      build_context_free(&build_ctx);
       return 1;
     }
     populate_parser_known_type(unit->parser.types);
@@ -91,9 +104,11 @@ int main(int argc, char** argv)
       declaration_t* decl = parse_declaration(&unit->parser);
       if (!decl) {
         error_report_general(
-            ERROR_SEVERITY_ERROR, "ast parse error in '%s'", filename);
+            ERROR_SEVERITY_ERROR, 
+            "ast parse error in '%s'", filename);
         module_unit_free(unit);
         compiler_resources_free(res);
+        build_context_free(&build_ctx);
         return 1;
       }
       da_append(&unit->program, decl);
@@ -110,6 +125,29 @@ int main(int argc, char** argv)
     da_append(&res->units, unit);
   }
 
+  da_foreach(module_unit_t*, it, &res->units) {
+    if (!populate_module_registry(&build_ctx, *it)) {
+      error_report_general(
+          ERROR_SEVERITY_ERROR, 
+          "error while building module registry");
+      compiler_resources_free(res);
+      build_context_free(&build_ctx);
+      return 1;
+    }
+  }
+
+  module_unit_array* main_units =
+    (module_unit_array*) hashmap_get(build_ctx.registry, "main");
+
+  if (!main_units || main_units->count == 0) {
+    build_context_free(&build_ctx);
+    error_report_general(ERROR_SEVERITY_ERROR,
+       "no `main` module found");
+    compiler_resources_free(res);
+    return 1;
+  }
+
+  build_context_free(&build_ctx);
   compiler_resources_free(res);
   return 0;
 }
