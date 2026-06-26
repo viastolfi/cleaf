@@ -1,8 +1,0 @@
-module main
-
-import math::add
-
-fn main(): int {
-  var a = math::add(1, 2);
-  return a;
-}

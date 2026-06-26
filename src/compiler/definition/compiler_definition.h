@@ -42,9 +42,9 @@ typedef struct {
 } compiler_resources_t;
 
 typedef struct {
-  hashmap_t* registry;
+  hashmap_t*      registry;
   module_unit_t** topo_order;
-  size_t topo_count;
+  size_t          topo_count;
 } build_context_t;
 
 void build_context_free(build_context_t* ctx);

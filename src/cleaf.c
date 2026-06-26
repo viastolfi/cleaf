@@ -19,6 +19,7 @@
 #include "compiler/definition/compiler_definition.h"
 #include "compiler/setup/compiler_setup.h"
 #include "compiler/build/registry.h"
+#include "compiler/build/dep_graph.h"
 
 int main(int argc, char** argv) 
 {
@@ -151,6 +152,10 @@ int main(int argc, char** argv)
       compiler_resources_free(res);
       return 1;
     }
+  }
+
+  if (is_build_mode) {
+    build_dep_graph(&build_ctx);
   }
 
   build_context_free(&build_ctx);
