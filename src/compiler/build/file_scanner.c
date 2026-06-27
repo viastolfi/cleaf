@@ -19,7 +19,7 @@ bool read_files_in_dir(
       if (strcmp(extension, ".clf") == 0) {
         char* file = 
           calloc(
-              strlen(path) + strlen(entry->d_name) + 1, 
+              strlen(path) + strlen(entry->d_name) + 2, 
               sizeof(char)); 
         file = 
           strcat(strcat(strcpy(file, path), "/"), entry->d_name);
@@ -41,7 +41,7 @@ bool read_files_in_dir(
 
       char* new = 
         calloc(
-            strlen(path) + strlen(entry->d_name) + 1, sizeof(char)); 
+            strlen(path) + strlen(entry->d_name) + 2, sizeof(char)); 
 
       read_files_in_dir(
           files, 

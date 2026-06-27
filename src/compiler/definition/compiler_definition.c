@@ -57,6 +57,11 @@ void compiler_resources_free(compiler_resources_t* res)
 
 void build_context_free(build_context_t* ctx)
 {
+  if (ctx->items) {
+    da_free(ctx);
+    ctx->items = NULL;
+  }
+
   if (ctx->registry) {
     for (size_t i = 0; i < HASH_SIZE; i++) {
       hashmap_entry_t* e = ctx->registry->buckets[i];
@@ -73,6 +78,4 @@ void build_context_free(build_context_t* ctx)
     free(ctx->registry);
     ctx->registry = NULL;
   }
-  free(ctx->topo_order);
-  ctx->topo_order = NULL;
 }

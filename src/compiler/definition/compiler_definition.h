@@ -43,8 +43,9 @@ typedef struct {
 
 typedef struct {
   hashmap_t*      registry;
-  module_unit_t** topo_order;
-  size_t          topo_count;
+  module_unit_t** items;
+  size_t          count;
+  size_t          capacity;
 } build_context_t;
 
 void build_context_free(build_context_t* ctx);

@@ -155,7 +155,15 @@ int main(int argc, char** argv)
   }
 
   if (is_build_mode) {
-    build_dep_graph(&build_ctx);
+    if (!build_dep_graph(&build_ctx)) {
+      build_context_free(&build_ctx);
+      compiler_resources_free(res);
+      return 1;
+    }
+
+    log_phase("topo order", "%zu module(s)", build_ctx.count);
+    for (size_t i = 0; i < build_ctx.count; ++i)
+      log_phase("  -->", "%s", build_ctx.items[i]->module_name);
   }
 
   build_context_free(&build_ctx);
