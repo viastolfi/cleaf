@@ -26,6 +26,7 @@ typedef struct {
   error_context_t   error_ctx;
   parser_t          parser;
   declaration_array program;
+  hashmap_t*        export_funcs;
 } module_unit_t;
 
 typedef struct {
@@ -43,8 +44,8 @@ typedef struct {
 
 typedef struct {
   hashmap_t*      registry;
-  module_unit_t** items;
-  size_t          count;
+  module_unit_t** items; // act as topo_order
+  size_t          count; // must compile the files in the order of this array
   size_t          capacity;
 } build_context_t;
 

@@ -1,4 +1,5 @@
 #include "compiler_definition.h"
+#include "frontend/symbols.h"
 
 void module_unit_free(module_unit_t* unit)
 {
@@ -26,6 +27,21 @@ void module_unit_free(module_unit_t* unit)
 
   free(unit->module_name);
   free(unit->source);
+
+  if (unit->export_funcs) {
+    for (size_t i = 0; i < 211; ++i) {
+      hashmap_entry_t* e = unit->export_funcs->buckets[i];
+      while (e) {
+        function_symbol_t* fs = (function_symbol_t*) e->value;
+        free(fs->params_name);
+        free(fs->params_type);
+        e = e->next;
+      }
+    }
+    hashmap_free(unit->export_funcs, 1);
+    free(unit->export_funcs);
+  }
+
   free(unit);
 }
 

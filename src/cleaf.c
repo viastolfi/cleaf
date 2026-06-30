@@ -20,6 +20,7 @@
 #include "compiler/setup/compiler_setup.h"
 #include "compiler/build/registry.h"
 #include "compiler/build/dep_graph.h"
+#include "compiler/build/export_table.h"
 
 int main(int argc, char** argv) 
 {
@@ -164,6 +165,14 @@ int main(int argc, char** argv)
     log_phase("topo order", "%zu module(s)", build_ctx.count);
     for (size_t i = 0; i < build_ctx.count; ++i)
       log_phase("  -->", "%s", build_ctx.items[i]->module_name);
+  }
+
+  da_foreach(module_unit_t*, it, &build_ctx) {
+    if (!semantic_build_export_table(*it)) {
+      build_context_free(&build_ctx);
+      compiler_resources_free(res);
+      return 1;
+    }
   }
 
   build_context_free(&build_ctx);
