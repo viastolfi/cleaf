@@ -1,0 +1,5 @@
+module math
+
+fn add(): int {
+    return 41;
+}

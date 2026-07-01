@@ -1,0 +1,7 @@
+module main
+
+import math::add
+
+internal fn main(): int {
+    return add();
+}

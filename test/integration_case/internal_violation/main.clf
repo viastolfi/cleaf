@@ -1,0 +1,7 @@
+module main
+
+import math::helper
+
+internal fn main(): int {
+    return helper();
+}

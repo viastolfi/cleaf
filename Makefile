@@ -41,7 +41,7 @@ CFLAGS = -Wall -Wextra -g -Isrc
 VALGRIND = valgrind --error-exitcode=42 --leak-check=full --show-leak-kinds=all
 
 .PRECIOUS: build/cleaf
-.PHONY: all clean test ast-test semantic-test asan-test valgrind-test hir-test hir-module-test codegen-test build-test setup
+.PHONY: all clean test ast-test semantic-test asan-test valgrind-test hir-test hir-module-test codegen-test build-test integration-test setup
 
 all: $(BUILD)/cleaf
 
@@ -77,7 +77,7 @@ CODEGEN_TEST_BIN = $(BUILD)/codegen_test
 BUILD_TEST_SRC = $(TEST)/build_test.c
 BUILD_TEST_BIN = $(BUILD)/build_test
 
-test: $(AST_TEST_BIN) $(SEM_TEST_BIN) $(HIR_TEST_BIN) $(HIR_MODULE_TEST_BIN) $(CODEGEN_TEST_BIN) $(BUILD_TEST_BIN)
+test: $(AST_TEST_BIN) $(SEM_TEST_BIN) $(HIR_TEST_BIN) $(HIR_MODULE_TEST_BIN) $(CODEGEN_TEST_BIN) $(BUILD_TEST_BIN) $(BUILD)/cleaf
 	@echo "Running tests..."
 	@$(AST_TEST_BIN)
 	@$(SEM_TEST_BIN)
@@ -85,6 +85,7 @@ test: $(AST_TEST_BIN) $(SEM_TEST_BIN) $(HIR_TEST_BIN) $(HIR_MODULE_TEST_BIN) $(C
 	@$(HIR_MODULE_TEST_BIN)
 	@$(CODEGEN_TEST_BIN)
 	@$(BUILD_TEST_BIN)
+	@$(MAKE) integration-test
 
 ast-test: $(AST_TEST_BIN)
 	@echo "Running AST tests..."
@@ -109,6 +110,10 @@ codegen-test: $(CODEGEN_TEST_BIN)
 build-test: $(BUILD_TEST_BIN)
 	@echo "Running build tests..."
 	@$(BUILD_TEST_BIN) 2> test.log
+
+integration-test: $(BUILD)/cleaf
+	@echo "Running integration tests (cleaf build end-to-end)..."
+	@./test/integration_test.sh $(BUILD)/cleaf
 
 $(AST_TEST_BIN): $(AST_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c
 	@mkdir -p $(BUILD)
@@ -164,6 +169,8 @@ valgrind-test:
 	$(VALGRIND) ./build/cleaf test/valgrind_case/semantic_control_flow_errors.clf; [ $$? -ne 42 ]
 	@echo "=== Testing combined errors ==="
 	$(VALGRIND) ./build/cleaf test/valgrind_case/combined_multiple_errors.clf; [ $$? -ne 42 ]
+	@echo "=== Testing multi-module build ==="
+	cd test/integration_case/return_value_chain && rm -rf build a.out && $(VALGRIND) ../../../build/cleaf build; [ $$? -ne 42 ]
 	@echo "=== All valgrind tests passed ==="
 
 clean:

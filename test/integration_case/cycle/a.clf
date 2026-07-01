@@ -1,0 +1,7 @@
+module a
+
+import main::helper
+
+fn ping(): int {
+    return helper();
+}

@@ -13,7 +13,7 @@ static void dep_graph_free(dep_graph_t* graph)
   }
 }
 
-static void topo_visit(build_context_t* ctx, dep_node_t* node)
+static void topo_visit(build_context_t* ctx, dep_node_t* node, bool* had_cycle)
 {
   if (node->color == BLACK) return;
 
@@ -21,13 +21,14 @@ static void topo_visit(build_context_t* ctx, dep_node_t* node)
     error_report_general(ERROR_SEVERITY_ERROR,
         "circular dependency detected involving module '%s'",
         node->module_name);
+    *had_cycle = true;
     return;
   }
 
   node->color = GRAY;
 
   da_foreach(dep_node_t*, it, node) {
-    topo_visit(ctx, (*it));
+    topo_visit(ctx, (*it), had_cycle);
   }
 
   node->color = BLACK;
@@ -115,11 +116,12 @@ bool build_dep_graph(build_context_t* ctx)
     }
   }
 
+  bool had_cycle = false;
   da_foreach(dep_node_t, it, &graph) {
     if (strcmp(it->module_name, "main") == 0) 
-      topo_visit(ctx, it);
+      topo_visit(ctx, it, &had_cycle);
   }
 
   dep_graph_free(&graph);
-  return true;
+  return !had_cycle;
 }
