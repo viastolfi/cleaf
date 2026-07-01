@@ -14,6 +14,7 @@
 #include "thirdparty/error.h"
 #include "frontend/semantic.h"
 #include "middleend/hir.h"
+#include "thirdparty/rand.h"
 #include "backend/codegen.h"
 #include "backend/x86_64_definition.h"
 #include "compiler/definition/compiler_definition.h"
@@ -166,6 +167,10 @@ int main(int argc, char** argv)
     log_phase("topo order", "%zu module(s)", build_ctx.count);
     for (size_t i = 0; i < build_ctx.count; ++i)
       log_phase("  -->", "%s", build_ctx.items[i]->module_name);
+  } else {
+    da_foreach(module_unit_t*, it, &res->units) {
+      da_append(&build_ctx, *it);
+    }
   }
 
   da_foreach(module_unit_t*, it, &build_ctx) {
@@ -176,7 +181,18 @@ int main(int argc, char** argv)
     }
   }
 
-  int had_semantic_errors = 0;
+  res->hir_program = calloc(1, sizeof(IR_function_array));
+  if (!res->hir_program) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+    build_context_free(&build_ctx);
+    compiler_resources_free(res);
+    return 1;
+  }
+
+  rand_t chunk_rng;
+  rand_init(&chunk_rng);
+
+  int had_errors = 0;
   da_foreach(module_unit_t*, it, &build_ctx) {
     module_unit_t* unit = *it;
 
@@ -192,17 +208,51 @@ int main(int argc, char** argv)
     }
 
     log_phase("semantic", "'%s' (module '%s')",
-        unit->file_path, unit->module_name);
+        unit->file_path, unit->module_name ? unit->module_name : "-");
     semantic_analyze(&analyzer);
 
-    if (analyzer.error_count > 0)
-      had_semantic_errors = 1;
+    if (analyzer.error_count > 0) {
+      had_errors = 1;
+      semantic_free_program_definition(&analyzer);
+      continue;
+    }
+
+    HIR_parser_t hir_parser = {0};
+    hir_parser.error_ctx = &unit->error_ctx;
+    hir_parser.hir_program = res->hir_program;
+    hir_parser.struct_symbols = analyzer.struct_symbols;
+    hir_parser.current_module = unit->module_name;
+    HIR_PARSER_USE_RNG(hir_parser, &chunk_rng);
+
+    size_t hir_before = res->hir_program->count;
+    da_foreach(declaration_t*, dit, &unit->program) {
+      if (IR_lower_function(&hir_parser, *dit) != 0) {
+        error_report_general(
+            ERROR_SEVERITY_ERROR, "hir lowering error in '%s'", unit->file_path);
+        had_errors = 1;
+        break;
+      }
+    }
+
+    log_phase("hir", "'%s' (module '%s'): %zu function(s)",
+        unit->file_path, unit->module_name ? unit->module_name : "-",
+        res->hir_program->count - hir_before);
+
+    if (log_is_dump()) {
+      log_section_begin("HIR");
+      for (size_t i = hir_before; i < res->hir_program->count; ++i) {
+        char* hir_text = IR_generate_string_program(res->hir_program->items[i]);
+        fprintf(stderr, "%s", hir_text);
+        free(hir_text);
+      }
+      log_section_end();
+    }
 
     semantic_free_program_definition(&analyzer);
   }
 
   build_context_free(&build_ctx);
   compiler_resources_free(res);
-  return had_semantic_errors ? 1 : 0;
+  return had_errors ? 1 : 0;
 }
 

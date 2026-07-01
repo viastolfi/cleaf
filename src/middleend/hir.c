@@ -3,6 +3,36 @@
 static size_t min(size_t a, size_t b) {
   return a < b ? a : b;
 }
+
+char* IR_mangle_function_name(const char* module_path, const char* func_name)
+{
+  if (!module_path)
+    return strdup(func_name);
+
+  if (strcmp(module_path, "main") == 0 && strcmp(func_name, "main") == 0)
+    return strdup("start");
+
+  char* mangled_module = strdup(module_path);
+  if (!mangled_module) return NULL;
+
+  for (char* p = mangled_module; *p; ++p) {
+    if (p[0] == ':' && p[1] == ':') {
+      p[0] = '_';
+      p[1] = '_';
+    }
+  }
+
+  size_t len = strlen(mangled_module) + 2 + strlen(func_name) + 1;
+  char* out = malloc(len);
+  if (!out) {
+    free(mangled_module);
+    return NULL;
+  }
+  snprintf(out, len, "%s__%s", mangled_module, func_name);
+  free(mangled_module);
+
+  return out;
+}
   
 void IR_free_instruction(IR_instruction_t* instr) {
   switch (instr->kind) {
@@ -457,7 +487,10 @@ int IR_lower_call_expression(
     return 1;
   }
   call->kind = IR_CALL;
-  call->func_name = strdup(expr->call.callee);
+  const char* call_module = expr->call.resolved_module
+    ? expr->call.resolved_module
+    : hir->current_module;
+  call->func_name = IR_mangle_function_name(call_module, expr->call.callee);
   if (!call->func_name) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
     return 1;
@@ -1096,7 +1129,7 @@ int IR_lower_return_statement(HIR_parser_t* hir,
     return -1;
   }
 
-  if (strcmp(func->name, "main") == 0) {
+  if (strcmp(func->name, "main") == 0 || strcmp(func->name, "start") == 0) {
     instr->kind = IR_EXIT;
     instr->dest.id = func->next_temp_id;
     instr->dest.size = func->code->items[func->code->count - 1]->dest.size;
@@ -1220,7 +1253,7 @@ int IR_lower_function(HIR_parser_t* hir,
     return -1;
   }
 
-  func->name = strdup(function->func.name);
+  func->name = IR_mangle_function_name(hir->current_module, function->func.name);
   if (!func->name) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return -1;

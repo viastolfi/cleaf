@@ -27,9 +27,14 @@ typedef struct
   chunk_name_gen_t gen_chunk;
   void* chunk_ctx;
 
+  const char* current_module;
+
   hashmap_t* struct_symbols;
   IR_function_array* hir_program;
 } HIR_parser_t;
+
+char* IR_mangle_function_name(
+    const char* module_path, const char* func_name);
 
 int IR_lower_function(
     HIR_parser_t* hir, 

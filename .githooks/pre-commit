@@ -16,7 +16,7 @@ make test
 
 if [ $? -ne 0 ]; then
   echo "tests fails"
-  echo "either fix them or commit using `git commit --no-verify` if failing in intended"
+  echo "either fix them or commit using 'git commit --no-verify' if failing is intended"
   exit 1
 fi
 
@@ -26,7 +26,7 @@ make valgrind-test
 
 if [ $? -ne 0 ]; then
   echo "tests fails"
-  echo "either fix them or commit using `git commit --no-verify` if failing in intended"
+  echo "either fix them or commit using 'git commit --no-verify' if failing is intended"
   exit 1
 fi
 
