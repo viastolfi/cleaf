@@ -17,6 +17,7 @@ CS = \
 				$(SRC)/compiler/build/registry.c \
 				$(SRC)/compiler/build/dep_graph.c \
 				$(SRC)/compiler/build/export_table.c \
+				$(SRC)/compiler/build/import_resolver.c \
 
 OBJ = \
         $(BUILD)/cleaf.o \
@@ -33,13 +34,14 @@ OBJ = \
 				$(BUILD)/compiler/build/registry.o \
 				$(BUILD)/compiler/build/dep_graph.o \
 				$(BUILD)/compiler/build/export_table.o \
+				$(BUILD)/compiler/build/import_resolver.o \
 
 CC = gcc
 CFLAGS = -Wall -Wextra -g -Isrc
 VALGRIND = valgrind --error-exitcode=42 --leak-check=full --show-leak-kinds=all
 
 .PRECIOUS: build/cleaf
-.PHONY: all clean test ast-test semantic-test asan-test valgrind-test hir-test codegen-test setup
+.PHONY: all clean test ast-test semantic-test asan-test valgrind-test hir-test codegen-test build-test setup
 
 all: $(BUILD)/cleaf
 
@@ -70,12 +72,16 @@ HIR_TEST_BIN = $(BUILD)/hir_test
 CODEGEN_TEST_SRC = $(TEST)/codegen_test.c
 CODEGEN_TEST_BIN = $(BUILD)/codegen_test
 
-test: $(AST_TEST_BIN) $(SEM_TEST_BIN) $(HIR_TEST_BIN) $(CODEGEN_TEST_BIN)
+BUILD_TEST_SRC = $(TEST)/build_test.c
+BUILD_TEST_BIN = $(BUILD)/build_test
+
+test: $(AST_TEST_BIN) $(SEM_TEST_BIN) $(HIR_TEST_BIN) $(CODEGEN_TEST_BIN) $(BUILD_TEST_BIN)
 	@echo "Running tests..."
 	@$(AST_TEST_BIN)
 	@$(SEM_TEST_BIN)
 	@$(HIR_TEST_BIN)
 	@$(CODEGEN_TEST_BIN)
+	@$(BUILD_TEST_BIN)
 
 ast-test: $(AST_TEST_BIN)
 	@echo "Running AST tests..."
@@ -93,6 +99,10 @@ codegen-test: $(CODEGEN_TEST_BIN)
 	@echo "Running codegen tests..."
 	@$(CODEGEN_TEST_BIN) 2> test.log
 
+build-test: $(BUILD_TEST_BIN)
+	@echo "Running build tests..."
+	@$(BUILD_TEST_BIN) 2> test.log
+
 $(AST_TEST_BIN): $(AST_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c
 	@mkdir -p $(BUILD)
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
@@ -106,6 +116,10 @@ $(HIR_TEST_BIN): $(HIR_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
 
 $(CODEGEN_TEST_BIN): $(CODEGEN_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c $(SRC)/frontend/semantic.c $(SRC)/middleend/hir.c $(SRC)/backend/x86_64.c $(SRC)/backend/codegen.c
+	@mkdir -p $(BUILD)
+	@$(CC) $(CFLAGS) $^ -o $@ -lm
+
+$(BUILD_TEST_BIN): $(BUILD_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c $(SRC)/frontend/semantic.c $(SRC)/middleend/hir.c $(SRC)/compiler/definition/compiler_definition.c $(SRC)/compiler/build/registry.c $(SRC)/compiler/build/export_table.c $(SRC)/compiler/build/import_resolver.c
 	@mkdir -p $(BUILD)
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
 

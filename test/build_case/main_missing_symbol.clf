@@ -1,0 +1,5 @@
+module main
+
+import math::missing
+
+internal fn main(): int { return missing(); }

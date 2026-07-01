@@ -47,6 +47,13 @@ typedef struct
   size_t capacity;
 } diagnostics_t;
 
+typedef struct
+{
+  imported_symbol_t** items;
+  size_t count;
+  size_t capacity;
+} imported_symbol_array;
+
 typedef struct 
 {
   error_context_t* error_ctx;
@@ -57,6 +64,9 @@ typedef struct
 
   hashmap_t* function_symbols;
   hashmap_t* struct_symbols;
+
+  hashmap_t* imported_functions;
+  imported_symbol_array imported_owned;
 
   const char* current_analyzed_function;
 } semantic_analyzer_t;

@@ -21,6 +21,7 @@
 #include "compiler/build/registry.h"
 #include "compiler/build/dep_graph.h"
 #include "compiler/build/export_table.h"
+#include "compiler/build/import_resolver.h"
 
 int main(int argc, char** argv) 
 {
@@ -175,8 +176,33 @@ int main(int argc, char** argv)
     }
   }
 
+  int had_semantic_errors = 0;
+  da_foreach(module_unit_t*, it, &build_ctx) {
+    module_unit_t* unit = *it;
+
+    semantic_analyzer_t analyzer = {0};
+    analyzer.error_ctx = &unit->error_ctx;
+    analyzer.ast = &unit->program;
+
+    if (!semantic_resolve_imports(&build_ctx, unit, &analyzer)) {
+      semantic_free_program_definition(&analyzer);
+      build_context_free(&build_ctx);
+      compiler_resources_free(res);
+      return 1;
+    }
+
+    log_phase("semantic", "'%s' (module '%s')",
+        unit->file_path, unit->module_name);
+    semantic_analyze(&analyzer);
+
+    if (analyzer.error_count > 0)
+      had_semantic_errors = 1;
+
+    semantic_free_program_definition(&analyzer);
+  }
+
   build_context_free(&build_ctx);
   compiler_resources_free(res);
-  return 0;
+  return had_semantic_errors ? 1 : 0;
 }
 

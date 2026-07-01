@@ -1,0 +1,5 @@
+module main
+
+import math::add
+
+internal fn main(): int { return wrongmod::add(1, 2); }

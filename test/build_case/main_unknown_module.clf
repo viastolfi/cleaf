@@ -1,0 +1,5 @@
+module main
+
+import unknown::add
+
+internal fn main(): int { return add(1, 2); }

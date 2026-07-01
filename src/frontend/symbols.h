@@ -25,4 +25,10 @@ typedef struct {
   size_t total_size;
 } struct_symbol_t;
 
+typedef struct {
+  function_symbol_t*  fs;
+  char*               module_name;
+  char*               qualifier;
+} imported_symbol_t;
+
 #endif // SYMBOLS_H
