@@ -1,8 +1,5 @@
 module main
 
-import std::io
-import std::io::print as print
-
 struct v2 {
   int x;
   int y;
