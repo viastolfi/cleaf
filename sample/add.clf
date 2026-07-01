@@ -1,5 +1,11 @@
 module math
 
-fn add(int a, int b): int {
+internal fn add(int a, int b): int {
   return a + b;
 }
+
+fn mul(int a, int b): int {
+  a = add(a, b);
+  return a * b;
+}
+

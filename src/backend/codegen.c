@@ -38,6 +38,7 @@ int CODEGEN_write_function(
 
   if (strcmp(func->name, "main") == 0) {
     target->setup(sb);
+    target->emit_global(sb, "start");
     target->func_write(sb, "start"); 
   }
   else {

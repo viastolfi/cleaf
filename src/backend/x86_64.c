@@ -126,7 +126,7 @@ static void x86_emit_pop(
 static void x86_setup(
     string_builder_t* sb)
 {
-  sb_append_fmt(sb, "section .text\nglobal _start\n");
+  sb_append_fmt(sb, "section .text\n");
 }
 
 static void x86_func_write(
@@ -318,6 +318,16 @@ static void x86_emit_mov_offset_post(string_builder_t* sb,
   sb_append_fmt(sb, "    mov %s, [%s + %zu]\n", dst, src, size);
 }
 
+static void x86_emit_global(string_builder_t* sb, const char* name)
+{
+  sb_append_fmt(sb, "global _%s\n", name);
+}
+
+static void x86_emit_extern(string_builder_t* sb, const char* name)
+{
+  sb_append_fmt(sb, "extern _%s\n", name);
+}
+
 const target_t x86_64_target = {
   .setup = x86_setup,
   .regs_8 = x86_regs_8,
@@ -361,4 +371,6 @@ const target_t x86_64_target = {
   .dealloc_memory = x86_dealloc_memory,
   .emit_load_elem = x86_emit_load_elem,
   .emit_store_elem = x86_emit_store_elem,
+  .emit_global = x86_emit_global,
+  .emit_extern = x86_emit_extern,
 };
