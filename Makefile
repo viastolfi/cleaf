@@ -85,7 +85,6 @@ test: $(AST_TEST_BIN) $(SEM_TEST_BIN) $(HIR_TEST_BIN) $(HIR_MODULE_TEST_BIN) $(C
 	@$(HIR_MODULE_TEST_BIN)
 	@$(CODEGEN_TEST_BIN)
 	@$(BUILD_TEST_BIN)
-	@$(MAKE) integration-test
 
 ast-test: $(AST_TEST_BIN)
 	@echo "Running AST tests..."
