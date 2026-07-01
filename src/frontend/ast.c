@@ -42,6 +42,12 @@ void free_expression(expression_t* e)
 
       free(e->call.args);
     }
+
+    if (e->call.qualifier)
+      free(e->call.qualifier);
+
+    if (e->call.resolved_module)
+      free(e->call.resolved_module);
   }
 
   if (e->type == EXPRESSION_UNARY) 
@@ -189,6 +195,25 @@ void free_declaration(declaration_t* d)
 
     if(d->var_decl.init)
       free_expression(d->var_decl.init);
+  }
+
+  if (d->type == DECLARATION_MODULE) {
+    da_foreach(char*, it, &(d->module.path)) {
+      free(*it); 
+    }
+    da_free(&(d->module.path));
+  }
+
+  if (d->type == DECLARATION_IMPORT) {
+    da_foreach(char*, it, &(d->import.path)) {
+      free(*it); 
+    }
+
+    if (d->import.alias) {
+      free(d->import.alias); 
+    }
+
+    da_free(&(d->import.path));
   }
   
   free(d);
@@ -645,7 +670,7 @@ expression_t* ast_parse_expr_index(parser_t* p)
 
 expression_t* ast_parse_expr_call(parser_t* p) 
 {
-  expression_t* e = (expression_t*) malloc(sizeof(expression_t));
+  expression_t* e = calloc(1, sizeof(expression_t));
   if (!e) {
     error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
     return NULL;
@@ -653,10 +678,32 @@ expression_t* ast_parse_expr_call(parser_t* p)
   e->type = EXPRESSION_CALL;
   e->source_pos = peek(p)->source_pos;
 
+  if (check_next(p, LEXER_token_coloncolon, 1)) {
+    token_t* qualifier_tok = advance(p);  
+    if (!qualifier_tok->string_value) {
+      error_report_at_token(
+          p->error_ctx, qualifier_tok, ERROR_SEVERITY_ERROR,
+          "identifier has no value");
+      free_expression(e);
+      return NULL;
+    }
+  
+    e->call.qualifier = strdup(qualifier_tok->string_value);
+    if (!e->call.qualifier) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      free_expression(e);
+      return NULL;
+    }
+
+    // consume '::'
+    advance(p);
+  }
+
   token_t* name_tok = advance(p);
   if (!name_tok->string_value) {
-    error_report_at_token(p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
-                          "identifier has no value");
+    error_report_at_token(
+        p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
+        "identifier has no value");
     free_expression(e);
     return NULL;
   }
@@ -809,7 +856,9 @@ expression_t* parse_primary(parser_t* p)
   if (check(p, LEXER_token_id) && check_next(p, '[', 1))
     return ast_parse_expr_index(p);
 
-  if (check(p, LEXER_token_id) && check_next(p, '(', 1))
+  if (check(p, LEXER_token_id) && 
+      (check_next(p, '(', 1) ||
+       check_next(p, LEXER_token_coloncolon, 1)))
     return ast_parse_expr_call(p);
 
   if (check(p, LEXER_token_id)) 
@@ -894,7 +943,14 @@ declaration_t* ast_parse_function(parser_t* p)
   decl->type = DECLARATION_FUNC;
   decl->func.return_type = p->types->items[TYPE_UNTYPE];
   decl->source_pos = peek(p)->source_pos;
+  decl->func.is_internal = false;
 
+  if (strcmp(peek(p)->string_value, "internal") == 0) {
+    decl->func.is_internal = true;    
+    // consume 'internal'
+    advance(p);
+  }
+  
   // consume 'fn'
   advance(p);
 
@@ -1277,6 +1333,128 @@ declaration_t* ast_parse_untype_var_decl(parser_t* p)
   return d;
 }
 
+declaration_t* ast_parse_import_decl(parser_t* p)
+{
+  declaration_t* decl = calloc(1, sizeof(declaration_t));
+  if (!decl) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return NULL;
+  }
+  decl->type = DECLARATION_IMPORT;
+  decl->source_pos = peek(p)->source_pos;
+
+  // consume 'import'
+  advance(p);
+
+  do {
+    if (!check(p, LEXER_token_id)) {
+      error_report_at_token(
+          p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+          "expect identifier after `import`");
+      free_declaration(decl);
+      return NULL;
+    }
+
+    token_t* name_tok = advance(p);
+    if (!name_tok->string_value) {
+      error_report_at_token(
+          p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
+          "expect module name");
+      free_declaration(decl);
+      return NULL;
+    }
+
+    char* n = strdup(name_tok->string_value);
+    if (!n) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      free_declaration(decl);
+      return NULL;
+    }
+    da_append(&decl->import.path, n);
+
+    if (!check(p, LEXER_token_coloncolon))
+      break;
+
+    // consume '::'
+    advance(p);
+  } while (!check(p, LEXER_token_eof));
+  
+  if (check(p, LEXER_token_id) &&
+      strcmp(peek(p)->string_value, "as") == 0) {
+    // consume 'as'
+    advance(p); 
+
+    token_t* name_tok = advance(p);
+    if (!name_tok->string_value) {
+      error_report_at_token(
+          p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
+          "expect module name");
+      free_declaration(decl);
+      return NULL;
+    }
+
+    char* alias = strdup(name_tok->string_value);
+    if (!alias) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+      free_declaration(decl);
+      return NULL;
+    }
+
+    decl->import.alias = alias;
+  }
+
+  return decl;
+}
+
+declaration_t* ast_parse_module_decl(parser_t* p)
+{
+  declaration_t* decl = calloc(1, sizeof(declaration_t));
+  if (!decl) {
+    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
+    return NULL;
+  }
+  decl->type = DECLARATION_MODULE;
+  decl->source_pos = peek(p)->source_pos;
+
+  // consume 'module' keyword
+  advance(p);
+
+  do {
+    if (!check(p, LEXER_token_id)) {
+      error_report_at_token(
+          p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+          "expect module name after `module` keyword");
+      free_declaration(decl);
+      return NULL;
+    }
+
+    token_t* name_tok = advance(p);
+    if (!name_tok->string_value) {
+      error_report_at_token(
+          p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
+          "expect module name");
+      free_declaration(decl);
+      return NULL;
+    }
+
+    char* m = strdup(name_tok->string_value);
+    if (!m) {
+      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
+      free_declaration(decl);
+      return NULL;
+    }
+    da_append(&(decl->module.path), m);
+
+    if (!check(p, LEXER_token_coloncolon))
+      break;
+
+    // consume '::'
+    advance(p);
+  } while (!check(p, LEXER_token_eof));
+
+  return decl;
+}
+
 declaration_t* ast_parse_struct_decl(parser_t* p)
 {
   size_t total_struct_size = 0;
@@ -1428,13 +1606,25 @@ declaration_t* ast_parse_struct_decl(parser_t* p)
 
 declaration_t* parse_declaration(parser_t* p)
 {
-  if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "fn") == 0) {
+  if (check(p, LEXER_token_id) && 
+      (strcmp(peek(p)->string_value, "fn") == 0 ||
+       strcmp(peek(p)->string_value, "internal") == 0)) {
     return ast_parse_function(p);
   }
 
-  if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, 
-          "struct") == 0) {
+  if (check(p, LEXER_token_id) && 
+      strcmp(peek(p)->string_value, "struct") == 0) {
     return ast_parse_struct_decl(p);
+  }
+
+  if (check(p, LEXER_token_id) &&
+      strcmp(peek(p)->string_value, "module") == 0) {
+    return ast_parse_module_decl(p); 
+  }
+
+  if (check(p, LEXER_token_id) &&
+      strcmp(peek(p)->string_value, "import") == 0) {
+    return ast_parse_import_decl(p); 
   }
 
   if (check(p, LEXER_token_id) && check_is_type(p)) {

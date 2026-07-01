@@ -30,8 +30,8 @@ This produces `./build/cleaf`.
 ## Compiling a Cleaf program
 
 ```sh
-./build/cleaf <source.clf>           # compile to ./a.out
-./build/cleaf <source.clf> -o <out>  # compile with a custom output name
+./build/cleaf <source.clf>           # compile to ./build/a.out
+./build/cleaf <source.clf> -o <out>  # compile with a custom output name (./build/<out>)
 ```
 
 ### Debug flags
@@ -55,7 +55,7 @@ Compile and run it:
 
 ```sh
 ./build/cleaf hello.clf -o hello
-./hello
+./build/hello
 echo $?   # prints 0
 ```
 
@@ -74,6 +74,15 @@ fn main(): int {
 
 ```sh
 ./build/cleaf example.clf -o example
-./example
+./build/example
 echo $?   # prints 7
 ```
+
+## Multi-file projects
+
+Cleaf can also compile a project spread across several `.clf` files, using a
+Go/Rust-inspired module system (`module`/`import` declarations). Running
+`cleaf build` in a directory scans every `.clf` file, resolves dependencies between
+modules, and produces a single executable at `build/a.out`. See
+[Modules and Imports](/docs/language/modules) for the full syntax and rules.
+

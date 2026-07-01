@@ -13,6 +13,8 @@ typedef enum
   DECLARATION_VAR,
   DECLARATION_FUNC,
   DECLARATION_STRUCT,
+  DECLARATION_MODULE,
+  DECLARATION_IMPORT,
 } declaration_kind;
 
 typedef enum
@@ -123,6 +125,13 @@ typedef struct
   size_t capacity;
 } statement_block_t;
 
+typedef struct 
+{
+  char** items;
+  size_t count;
+  size_t capacity;
+} import_path_t;
+
 // ----------------- Declarations ------------------
 
 struct declaration_t
@@ -141,12 +150,22 @@ struct declaration_t
       known_type_t return_type; 
       typed_identifier_array params; 
       statement_block_t* body;
+      bool is_internal;
     } func;
 
     struct {
       char* name;
       typed_identifier_array members; 
     } struc;
+
+    struct {
+      import_path_t path; 
+    } module;
+
+    struct {
+      import_path_t path;
+      char* alias;
+    } import;
   };
 };
 
@@ -211,9 +230,11 @@ struct expression_t
       binary_op_kind op;
     } binary;
     struct { 
+      char* qualifier;
       char* callee; 
       expression_t** args; 
       size_t arg_count; 
+      char* resolved_module;
     } call;
     struct {
       unary_op_kind op;

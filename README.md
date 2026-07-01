@@ -27,10 +27,11 @@ To compile `.clf` source files with the resulting binary:
 
 ```sh
 make              # build ./build/cleaf
-./build/cleaf <source.clf>           # compile to a.out
-./build/cleaf <source.clf> -o <out>  # compile with a custom output name
+./build/cleaf <source.clf>           # compile to build/a.out
+./build/cleaf <source.clf> -o <out>  # compile with a custom output name (build/<out>)
 ./build/cleaf <source.clf> -v        # show each compilation phase and its result
 ./build/cleaf <source.clf> -V        # same as -v, and dump AST, HIR, and generated assembly
+./build/cleaf build                  # compile a multi-file module project (see below)
 ```
 
 ## Examples
@@ -95,6 +96,33 @@ fn main(): int {
 }
 ```
 
+### Modules and imports
+
+Multi-file projects use a Go/Rust-inspired module system, compiled with `cleaf build`:
+
+```
+// math.clf
+module math
+
+internal fn helper(): int { return 41; }
+fn add(): int { return helper(); }
+```
+
+```
+// main.clf
+module main
+
+import math::add
+
+fn main(): int {
+    return add();
+}
+```
+
+`cleaf build` scans every `.clf` file in the current directory, resolves the module
+dependency graph, and links everything into a single executable under `build/`.
+`internal` functions are only visible within their own module.
+
 ## Current state
 
 - [x] Lexer
@@ -132,26 +160,38 @@ fn main(): int {
   - [x] Struct field access
 - [ ] Memory safety (garbage collection or ownership model, not yet decided)
 - [ ] Standard library
-- [ ] Multiple source files
+- [x] Multiple source files
+  - [x] `module`/`import` declarations (nested module paths via `::`)
+  - [x] `internal` visibility restriction
+  - [x] `cleaf build` — project-wide scan, dependency graph, topological compilation
+  - [x] Cross-module name mangling + multi-object codegen/link
 - [ ] Arrays
 - [ ] Additional primitive types
 
 ## Test coverage
 
-The test suite contains 120 test cases totalling 248 assertions spread across the four compiler passes,
-plus around 20 additional fixtures used for memory safety validation with Valgrind.
+The test suite contains 249 test cases totalling 563 assertions spread across the compiler
+passes and the module build pipeline, plus a set of end-to-end integration tests and
+around 20 additional fixtures used for memory safety validation with Valgrind.
 
-| Suite    | Test cases | Assertions |
-|----------|-----------|------------|
-| Parser   | 26        | 129        |
-| Semantic | 56        | 85         |
-| HIR      | 20        | 20         |
-| Codegen  | 19        | 19         |
-| **Total**| **120**   | **248**    |
+| Suite               | Test cases | Assertions |
+|---------------------|-----------|------------|
+| Parser (AST)        | 64        | 324        |
+| Semantic            | 106       | 160        |
+| HIR                 | 35        | 35         |
+| HIR name mangling   | 3         | 3          |
+| Codegen             | 34        | 34         |
+| Build (imports)     | 7         | 7          |
+| **Total**           | **249**   | **563**    |
 
 The semantic pass has the most coverage, reflecting the variety of error cases it handles.
 The parser and HIR passes cover the main language constructs. The codegen tests compare
 the full generated assembly output against expected fixtures for each construct.
+
+On top of the suites above, `test/integration_case/` holds end-to-end multi-module
+projects exercised via `make integration-test`: a correct 2-module build whose executable
+is run and checked for the expected exit code, plus three failure scenarios (`internal`
+violation, import cycle, missing `main` module).
 
 Note that these numbers give a rough indication of coverage — there is no formal coverage
 measurement tool in place yet.
@@ -159,11 +199,14 @@ measurement tool in place yet.
 ## Running tests
 
 ```sh
-make test           # run all test suites
-make ast-test       # parser tests only
-make semantic-test  # semantic analysis tests only
-make hir-test       # HIR lowering tests only
-make codegen-test   # code generation tests only
-make asan-test      # all tests with AddressSanitizer and UBSan
-make valgrind-test  # memory checks on a suite of ~20 .clf fixtures
+make test              # run all test suites, including integration tests
+make ast-test           # parser tests only
+make semantic-test      # semantic analysis tests only
+make hir-test           # HIR lowering tests only
+make hir-module-test    # HIR name mangling tests only
+make codegen-test       # code generation tests only
+make build-test         # multi-module import/semantic tests only
+make integration-test   # end-to-end `cleaf build` tests (requires nasm/ld)
+make asan-test          # all tests with AddressSanitizer and UBSan
+make valgrind-test      # memory checks on single-file and multi-module fixtures
 ```

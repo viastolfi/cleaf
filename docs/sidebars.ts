@@ -17,6 +17,7 @@ const sidebars: SidebarsConfig = {
         'language/arrays',
         'language/inline-asm',
         'language/comments',
+        'language/modules',
       ],
     },
   ],

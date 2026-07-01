@@ -1,3 +1,5 @@
+module main
+
 fn main() {
   int a = undefined_var + 5;
   var b = another_undef;

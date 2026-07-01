@@ -1,3 +1,5 @@
+module main
+
 fn test(int a, int a): string {
   var b = undefined_var + 5;
   int c = "string" + 10;

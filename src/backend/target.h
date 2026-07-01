@@ -159,6 +159,14 @@ typedef struct {
       (*dealloc_memory)
       (string_builder_t*,
        const char* src, size_t size);
+
+    void
+      (*emit_global)
+      (string_builder_t*, const char* name);
+
+    void
+      (*emit_extern)
+      (string_builder_t*, const char* name);
 } target_t;
 
 #endif // TARGET_H

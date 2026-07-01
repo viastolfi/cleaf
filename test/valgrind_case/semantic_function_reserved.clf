@@ -1,3 +1,5 @@
+module main
+
 fn var(): {
   return 0;
 }

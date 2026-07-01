@@ -132,8 +132,12 @@ static void print_expression(expression_t* e, const char* prefix, bool is_last)
       break;
 
     case EXPRESSION_CALL:
-      printf(CLR_STMT "CallExpr" CLR_RESET " '%s'\n",
-             e->call.callee ? e->call.callee : "");
+      if (e->call.qualifier)
+        printf(CLR_STMT "CallExpr" CLR_RESET " '%s::%s'\n",
+               e->call.qualifier, e->call.callee ? e->call.callee : "");
+      else
+        printf(CLR_STMT "CallExpr" CLR_RESET " '%s'\n",
+               e->call.callee ? e->call.callee : "");
       for (size_t i = 0; i < e->call.arg_count; i++)
         print_expression(e->call.args[i], cp, i == e->call.arg_count - 1);
       break;
@@ -297,7 +301,8 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
 
   switch (d->type) {
     case DECLARATION_FUNC: {
-      printf(CLR_DECL "FunctionDecl" CLR_RESET " '%s'(",
+      printf(CLR_DECL "%sFunctionDecl" CLR_RESET " '%s'(",
+             d->func.is_internal ? "internal " : "",
              d->func.name ? d->func.name : "");
 
       for (size_t i = 0; i < d->func.params.count; i++) {
@@ -352,6 +357,30 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
         }
         printf("\n");
       }
+      break;
+    }
+
+    case DECLARATION_MODULE: {
+      printf(CLR_DECL "ModuleDecl" CLR_RESET " ");
+      for (size_t i = 0; i < d->module.path.count; i++) {
+        printf("%s%s",
+               d->module.path.items[i] ? d->module.path.items[i] : "?",
+               i < d->module.path.count - 1 ? "::" : "");
+      }
+      printf("\n");
+      break;
+    }
+
+    case DECLARATION_IMPORT: {
+      printf(CLR_DECL "ImportDecl" CLR_RESET " ");
+      for (size_t i = 0; i < d->import.path.count; i++) {
+        printf("%s%s",
+               d->import.path.items[i] ? d->import.path.items[i] : "?",
+               i < d->import.path.count - 1 ? "::" : "");
+      }
+      if (d->import.alias)
+        printf(CLR_CONST " as %s" CLR_RESET, d->import.alias);
+      printf("\n");
       break;
     }
   }

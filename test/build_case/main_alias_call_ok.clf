@@ -1,0 +1,5 @@
+module main
+
+import math::add as madd
+
+internal fn main(): int { return madd(1, 2); }

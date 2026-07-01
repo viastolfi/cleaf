@@ -1,0 +1,3 @@
+module math
+
+internal fn secret(): int { return 42; }

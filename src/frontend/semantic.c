@@ -44,6 +44,19 @@ void semantic_free_program_definition(semantic_analyzer_t* analyzer)
     free(analyzer->function_symbols);
   }
 
+  if (analyzer->imported_functions) {
+    hashmap_free(analyzer->imported_functions, 0);
+    free(analyzer->imported_functions);
+    analyzer->imported_functions = NULL;
+  }
+
+  da_foreach(imported_symbol_t*, it, &analyzer->imported_owned) {
+    free((*it)->module_name);
+    free((*it)->qualifier);
+    free(*it);
+  }
+  da_free(&analyzer->imported_owned);
+
   if (analyzer->struct_symbols) {
     for (size_t i = 0; i < 211; ++i) {
       if (analyzer->struct_symbols->buckets[i]) {
@@ -478,9 +491,49 @@ known_type_t semantic_check_expr_call(
     expression_t* expr,
     scope_t* scope)
 {
-  function_symbol_t* fs = (function_symbol_t*) hashmap_get(
-      analyzer->function_symbols,
-      expr->call.callee);
+  function_symbol_t* fs = NULL;
+
+  if (expr->call.qualifier) {
+    imported_symbol_t* isym = NULL;
+
+    if (analyzer->imported_functions) {
+      size_t key_len =
+        strlen(expr->call.qualifier) + 2 + strlen(expr->call.callee) + 1;
+      char* key = malloc(key_len);
+      if (key) {
+        snprintf(key, key_len, "%s::%s",
+            expr->call.qualifier, expr->call.callee);
+        isym = (imported_symbol_t*) hashmap_get(
+            analyzer->imported_functions, key);
+        free(key);
+      }
+    }
+
+    if (!isym) {
+      semantic_error_register(analyzer,
+          expr->source_pos - 1,
+          "unknown qualified function call (module not imported or "
+          "qualifier does not match the source module)");
+      return (known_type_t){.kind = TYPE_ERROR};
+    }
+
+    fs = isym->fs;
+    expr->call.resolved_module = strdup(isym->module_name);
+  } else {
+    fs = (function_symbol_t*) hashmap_get(
+        analyzer->function_symbols,
+        expr->call.callee);
+
+    if (!fs && analyzer->imported_functions) {
+      imported_symbol_t* isym = (imported_symbol_t*) hashmap_get(
+          analyzer->imported_functions, expr->call.callee);
+      if (isym) {
+        fs = isym->fs;
+        expr->call.resolved_module = strdup(isym->module_name);
+      }
+    }
+  }
+
   if (!fs) {
     semantic_error_register(analyzer,
         expr->source_pos - 1,

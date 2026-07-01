@@ -1,3 +1,5 @@
+module main
+
 fn main() {
   int a = 5;
   for (var i = 0; undefined_cond < 10; ++i) {

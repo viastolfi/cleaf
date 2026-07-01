@@ -199,10 +199,43 @@ ct_test(ast, function_call, "test(a, 5);")
 
   ct_assert_eq(e->type, EXPRESSION_CALL, "Expression type should be CALL");
   ct_assert_eq(e->call.callee, "test", "Function name should be 'test'");
+  ct_assert_null(e->call.qualifier, "unqualified call should have NULL qualifier");
   ct_assert_eq((int)e->call.arg_count, 2, "Function call should have 3 args");
 
   ct_assert_eq(e->call.args[0]->var.ident.ident_name, "a", "Arg1 should be var 'a'");
   ct_assert_eq(e->call.args[1]->int_lit.value, 5, "Arg2 should be int 5");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
+ct_test(ast, qualified_call_no_args, "io::print();")
+{
+  statement_t* s = parse_statement(&parser);
+  expression_t* e = s->expr_stmt.expr;
+
+  ct_assert_not_null(e, "expression should not be NULL");
+  ct_assert_eq(e->type, EXPRESSION_CALL, "should be a call expression");
+  ct_assert_not_null(e->call.qualifier, "qualifier should not be NULL");
+  ct_assert_eq(e->call.qualifier, "io", "qualifier should be 'io'");
+  ct_assert_eq(e->call.callee, "print", "callee should be 'print'");
+  ct_assert_eq((int)e->call.arg_count, 0, "should have 0 args");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
+ct_test(ast, qualified_call_with_args, "math::add(1, 2);")
+{
+  statement_t* s = parse_statement(&parser);
+  expression_t* e = s->expr_stmt.expr;
+
+  ct_assert_not_null(e, "expression should not be NULL");
+  ct_assert_eq(e->call.qualifier, "math", "qualifier should be 'math'");
+  ct_assert_eq(e->call.callee, "add", "callee should be 'add'");
+  ct_assert_eq((int)e->call.arg_count, 2, "should have 2 args");
+  ct_assert_eq(e->call.args[0]->int_lit.value, 1, "first arg should be 1");
+  ct_assert_eq(e->call.args[1]->int_lit.value, 2, "second arg should be 2");
 
   free_statement(s);
   da_free(&parser);
@@ -802,5 +835,170 @@ ct_test(ast, array_index_nonzero, "arr[3];")
   ct_assert_eq(e->index.index->int_lit.value, 3, "index value should be 3");
 
   free_statement(s);
+  da_free(&parser);
+}
+
+// === MODULE DECLARATION TESTS ===
+
+ct_test(ast, module_basic, "module mymod")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "module decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_MODULE, "declaration type should be DECLARATION_MODULE");
+  ct_assert_eq(decl->module.path.count, 1, "path should have 1 segment");
+  ct_assert_eq(decl->module.path.items[0], "mymod", "module name should match source");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, module_nested, "module std::io")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "module decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_MODULE, "declaration type should be DECLARATION_MODULE");
+  ct_assert_eq(decl->module.path.count, 2, "path should have 2 segments");
+  ct_assert_eq(decl->module.path.items[0], "std", "first segment should be 'std'");
+  ct_assert_eq(decl->module.path.items[1], "io", "second segment should be 'io'");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, module_deep_nested, "module std::io::fs")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "module decl should not be NULL");
+  ct_assert_eq(decl->module.path.count, 3, "path should have 3 segments");
+  ct_assert_eq(decl->module.path.items[0], "std", "first segment should be 'std'");
+  ct_assert_eq(decl->module.path.items[1], "io", "second segment should be 'io'");
+  ct_assert_eq(decl->module.path.items[2], "fs", "third segment should be 'fs'");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+// === IMPORT DECLARATION TESTS ===
+
+ct_test(ast, import_simple, "import std::io")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "import decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_IMPORT, "declaration type should be DECLARATION_IMPORT");
+  ct_assert_eq(decl->import.path.count, 2, "path should have 2 segments");
+  ct_assert_eq(decl->import.path.items[0], "std", "first segment should be 'std'");
+  ct_assert_eq(decl->import.path.items[1], "io", "second segment should be 'io'");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, import_nested, "import std::io::print")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "import decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_IMPORT, "declaration type should be DECLARATION_IMPORT");
+  ct_assert_eq(decl->import.path.count, 3, "path should have 3 segments");
+  ct_assert_eq(decl->import.path.items[0], "std", "first segment should be 'std'");
+  ct_assert_eq(decl->import.path.items[1], "io", "second segment should be 'io'");
+  ct_assert_eq(decl->import.path.items[2], "print", "third segment should be 'print'");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, import_single_segment, "import mymod")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "import decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_IMPORT, "declaration type should be DECLARATION_IMPORT");
+  ct_assert_eq(decl->import.path.count, 1, "path should have 1 segment");
+  ct_assert_eq(decl->import.path.items[0], "mymod", "segment should be 'mymod'");
+  ct_assert_null(decl->import.alias, "no alias should be NULL");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, import_with_alias, "import std::io::print as p")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "import decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_IMPORT, "declaration type should be DECLARATION_IMPORT");
+  ct_assert_eq(decl->import.path.count, 3, "path should have 3 segments");
+  ct_assert_eq(decl->import.path.items[2], "print", "last segment should be 'print'");
+  ct_assert_not_null(decl->import.alias, "alias should not be NULL");
+  ct_assert_eq(decl->import.alias, "p", "alias should be 'p'");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, import_alias_no_conflict, "import math::add as math_add")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "import decl should not be NULL");
+  ct_assert_eq(decl->import.path.items[0], "math", "module should be 'math'");
+  ct_assert_eq(decl->import.path.items[1], "add", "symbol should be 'add'");
+  ct_assert_eq(decl->import.alias, "math_add", "alias should be 'math_add'");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, import_no_alias, "import std::io::print")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "import decl should not be NULL");
+  ct_assert_null(decl->import.alias, "import without alias should have NULL alias");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+// === INTERNAL FUNCTION TESTS ===
+
+ct_test(ast, internal_fn_basic, "internal fn secret(): int { return 0; }")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_FUNC, "should be a function declaration");
+  ct_assert(decl->func.is_internal, "function should be marked internal");
+  ct_assert_eq(decl->func.name, "secret", "function name should be 'secret'");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, internal_fn_with_params, "internal fn add(int a, int b): int { return 0; }")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "decl should not be NULL");
+  ct_assert(decl->func.is_internal, "function should be marked internal");
+  ct_assert_eq(decl->func.params.count, 2, "should have 2 params");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, non_internal_fn, "fn foo(): int { return 0; }")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "decl should not be NULL");
+  ct_assert(!decl->func.is_internal, "regular function should not be internal");
+
+  free_declaration(decl);
   da_free(&parser);
 }

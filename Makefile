@@ -12,6 +12,12 @@ CS = \
 				$(SRC)/backend/x86_64.c \
 				$(SRC)/backend/codegen.c \
 				$(SRC)/compiler/definition/compiler_definition.c \
+				$(SRC)/compiler/setup/compiler_setup.c \
+				$(SRC)/compiler/build/file_scanner.c \
+				$(SRC)/compiler/build/registry.c \
+				$(SRC)/compiler/build/dep_graph.c \
+				$(SRC)/compiler/build/export_table.c \
+				$(SRC)/compiler/build/import_resolver.c \
 
 OBJ = \
         $(BUILD)/cleaf.o \
@@ -23,19 +29,24 @@ OBJ = \
 				$(BUILD)/backend/x86_64.o \
 				$(BUILD)/backend/codegen.o \
 				$(BUILD)/compiler/definition/compiler_definition.o \
+				$(BUILD)/compiler/setup/compiler_setup.o \
+				$(BUILD)/compiler/build/file_scanner.o \
+				$(BUILD)/compiler/build/registry.o \
+				$(BUILD)/compiler/build/dep_graph.o \
+				$(BUILD)/compiler/build/export_table.o \
+				$(BUILD)/compiler/build/import_resolver.o \
 
 CC = gcc
 CFLAGS = -Wall -Wextra -g -Isrc
 VALGRIND = valgrind --error-exitcode=42 --leak-check=full --show-leak-kinds=all
 
 .PRECIOUS: build/cleaf
-.PHONY: all clean test ast-test semantic-test asan-test valgrind-test hir-test codegen-test
+.PHONY: all clean test ast-test semantic-test asan-test valgrind-test hir-test hir-module-test codegen-test build-test integration-test setup
 
 all: $(BUILD)/cleaf
 
 $(BUILD)/cleaf: $(OBJ)
 	$(CC) -o $@ $^ -lm
-	@$(BUILD)/cleaf test.clf 
 
 $(BUILD)/%.o: $(SRC)/%.c
 	@mkdir -p $(BUILD)
@@ -44,6 +55,8 @@ $(BUILD)/%.o: $(SRC)/%.c
 	@mkdir -p $(BUILD)/middleend
 	@mkdir -p $(BUILD)/backend
 	@mkdir -p $(BUILD)/compiler/definition
+	@mkdir -p $(BUILD)/compiler/setup
+	@mkdir -p $(BUILD)/compiler/build
 	$(CC) $(CFLAGS) -c $< -o $@
 
 AST_TEST_SRC = $(TEST)/ast_test.c
@@ -55,15 +68,23 @@ SEM_TEST_BIN = $(BUILD)/semantic_test
 HIR_TEST_SRC = $(TEST)/hir_test.c
 HIR_TEST_BIN = $(BUILD)/hir_test
 
+HIR_MODULE_TEST_SRC = $(TEST)/hir_module_test.c
+HIR_MODULE_TEST_BIN = $(BUILD)/hir_module_test
+
 CODEGEN_TEST_SRC = $(TEST)/codegen_test.c
 CODEGEN_TEST_BIN = $(BUILD)/codegen_test
 
-test: $(AST_TEST_BIN) $(SEM_TEST_BIN) $(HIR_TEST_BIN) $(CODEGEN_TEST_BIN)
+BUILD_TEST_SRC = $(TEST)/build_test.c
+BUILD_TEST_BIN = $(BUILD)/build_test
+
+test: $(AST_TEST_BIN) $(SEM_TEST_BIN) $(HIR_TEST_BIN) $(HIR_MODULE_TEST_BIN) $(CODEGEN_TEST_BIN) $(BUILD_TEST_BIN) $(BUILD)/cleaf
 	@echo "Running tests..."
 	@$(AST_TEST_BIN)
 	@$(SEM_TEST_BIN)
 	@$(HIR_TEST_BIN)
+	@$(HIR_MODULE_TEST_BIN)
 	@$(CODEGEN_TEST_BIN)
+	@$(BUILD_TEST_BIN)
 
 ast-test: $(AST_TEST_BIN)
 	@echo "Running AST tests..."
@@ -77,9 +98,21 @@ hir-test: $(HIR_TEST_BIN)
 	@echo "Running hir tests..."
 	@$(HIR_TEST_BIN) 2> test.log
 
+hir-module-test: $(HIR_MODULE_TEST_BIN)
+	@echo "Running hir module (name mangling) tests..."
+	@$(HIR_MODULE_TEST_BIN) 2> test.log
+
 codegen-test: $(CODEGEN_TEST_BIN)
 	@echo "Running codegen tests..."
 	@$(CODEGEN_TEST_BIN) 2> test.log
+
+build-test: $(BUILD_TEST_BIN)
+	@echo "Running build tests..."
+	@$(BUILD_TEST_BIN) 2> test.log
+
+integration-test: $(BUILD)/cleaf
+	@echo "Running integration tests (cleaf build end-to-end)..."
+	@./test/integration_test.sh $(BUILD)/cleaf
 
 $(AST_TEST_BIN): $(AST_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c
 	@mkdir -p $(BUILD)
@@ -93,7 +126,15 @@ $(HIR_TEST_BIN): $(HIR_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c
 	@mkdir -p $(BUILD)
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
 
+$(HIR_MODULE_TEST_BIN): $(HIR_MODULE_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c $(SRC)/frontend/semantic.c $(SRC)/middleend/hir.c
+	@mkdir -p $(BUILD)
+	@$(CC) $(CFLAGS) $^ -o $@ -lm
+
 $(CODEGEN_TEST_BIN): $(CODEGEN_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c $(SRC)/frontend/semantic.c $(SRC)/middleend/hir.c $(SRC)/backend/x86_64.c $(SRC)/backend/codegen.c
+	@mkdir -p $(BUILD)
+	@$(CC) $(CFLAGS) $^ -o $@ -lm
+
+$(BUILD_TEST_BIN): $(BUILD_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c $(SRC)/frontend/semantic.c $(SRC)/middleend/hir.c $(SRC)/compiler/definition/compiler_definition.c $(SRC)/compiler/build/registry.c $(SRC)/compiler/build/export_table.c $(SRC)/compiler/build/import_resolver.c
 	@mkdir -p $(BUILD)
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
 
@@ -127,8 +168,13 @@ valgrind-test:
 	$(VALGRIND) ./build/cleaf test/valgrind_case/semantic_control_flow_errors.clf; [ $$? -ne 42 ]
 	@echo "=== Testing combined errors ==="
 	$(VALGRIND) ./build/cleaf test/valgrind_case/combined_multiple_errors.clf; [ $$? -ne 42 ]
+	@echo "=== Testing multi-module build ==="
+	cd test/integration_case/return_value_chain && rm -rf build a.out && $(VALGRIND) ../../../build/cleaf build; [ $$? -ne 42 ]
 	@echo "=== All valgrind tests passed ==="
 
 clean:
 	rm -rf $(BUILD)
 
+setup:
+	chmod +x .githooks/pre-commit
+	git config core.hooksPath .githooks

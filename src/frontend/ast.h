@@ -48,6 +48,8 @@ declaration_t* ast_parse_function(parser_t* p);
 declaration_t* ast_parse_var_decl(parser_t* p);
 declaration_t* ast_parse_untype_var_decl(parser_t* p);
 declaration_t* ast_parse_struct_decl(parser_t* p);
+declaration_t* ast_parse_module_decl(parser_t* p);
+declaration_t* ast_parse_import_decl(parser_t* p);
 declaration_t* parse_declaration(parser_t* p);
 
 statement_t*   ast_parse_return_stmt(parser_t* p);

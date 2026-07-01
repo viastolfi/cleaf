@@ -1,0 +1,11 @@
+module main
+
+import a::ping
+
+fn helper(): int {
+    return 1;
+}
+
+internal fn main(): int {
+    return ping();
+}
