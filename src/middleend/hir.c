@@ -1,4 +1,5 @@
 #include "hir.h"
+#include "thirdparty/assertion.h"
 
 static size_t min(size_t a, size_t b) {
   return a < b ? a : b;
@@ -102,27 +103,18 @@ int IR_lower_declaration(
   }
 
   IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
-  if (!instr) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return -1;  
-  }
+  CLEAF_ASSERT(instr != NULL, "out of memory");
 
   instr->kind = IR_STORE_VAR;
   instr->var.name = strdup(decl->var_decl.ident.ident_name);
   instr->src.size = decl->var_decl.ident.type.element_size;
-  if (!instr->var.name) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return -1;
-  }
+  CLEAF_ASSERT(instr->var.name != NULL, "out of memory");
 
   if (decl->var_decl.ident.type.kind == TYPE_CUSTOM) {
       IR_instruction_t* alloc = 
         calloc(1, sizeof(IR_instruction_t));   
-      if (!alloc) {
-        error_report_general(
-            ERROR_SEVERITY_ERROR, "out of memory"); 
-        return -1;
-      }
+      CLEAF_ASSERT(alloc != NULL, "out of memory");
+
       alloc->kind = IR_ALLOC;
       alloc->alloc_size = decl->var_decl.ident.type.element_size;
 
@@ -143,10 +135,8 @@ int IR_lower_declaration(
   else if (decl->var_decl.ident.type.array_len > 0) {
     IR_instruction_t* alloc = 
       calloc(1, sizeof(IR_instruction_t));
-    if (!alloc) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      return -1;
-    }
+    CLEAF_ASSERT(alloc != NULL, "out of memory");
+
     alloc->kind = IR_ALLOC;
     alloc->alloc_size = decl->var_decl.ident.type.size;
     da_append(func->code, alloc);
@@ -187,20 +177,15 @@ int IR_lower_composite_literal_expression(
     IR_function_t* func)
 {
   IR_instruction_t* load = calloc(1, sizeof(IR_instruction_t));
-  if (!load) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return 1;
-  }
+  CLEAF_ASSERT(load != NULL, "out of memory");
+
   load->kind = IR_LOAD_VAR;
   load->dest.id = func->next_temp_id;
   // we store a pointer (64bits) so we can hardcode the size here
   load->dest.size = 8;
   load->var.is_init = 1;
   load->var.name = strdup(decl->var_decl.ident.ident_name);
-  if (!load->var.name) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return 1;
-  }
+  CLEAF_ASSERT(load->var.name != NULL, "out of memory");
 
   da_append(func->code, load);
 
@@ -221,10 +206,8 @@ int IR_lower_composite_literal_expression(
     size_t computed_place = 0;
     IR_instruction_t* mov_offset =
       calloc(1, sizeof(IR_instruction_t));
-    if (!mov_offset) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      return 1;
-    }
+    CLEAF_ASSERT(mov_offset != NULL, "out of memory");
+
     mov_offset->kind = IR_MOV_OFFSET;
     mov_offset->offset.timing = IR_PRE_OFFSET;
     mov_offset->dest.id = save;
@@ -276,26 +259,18 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
   if (expr->unary.op == UNARY_POST_INC ||
       expr->unary.op == UNARY_POST_DEC) {
     IR_instruction_t* load = calloc(1, sizeof(IR_instruction_t)); 
-    if (!load) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      return 1;
-    }
+    CLEAF_ASSERT(load != NULL, "out of memory");
 
     load->kind = IR_LOAD_VAR;
     load->var.name = strdup(expr->unary.operand->var.ident.ident_name);
     load->dest.id = ++(func->next_temp_id);
     load->dest.size = operand_size;
-    if (!load->var.name) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      return 1;
-    }
+    CLEAF_ASSERT(load->var.name != NULL, "out of memory");
     da_append(func->code, load);  
 
     IR_instruction_t* mov = calloc(1, sizeof(IR_instruction_t));
-    if (!mov) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
-      return 1;
-    }
+    CLEAF_ASSERT(mov != NULL, "out of memory");
+
     mov->kind = IR_MOV;
     mov->dest.id = func->next_temp_id + 1;
     mov->dest.size = operand_size;
@@ -304,10 +279,8 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
     da_append(func->code, mov);
 
     IR_instruction_t* op = calloc(1, sizeof(IR_instruction_t));
-    if (!op) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
-      return 1;
-    }
+    CLEAF_ASSERT(op != NULL, "out of memory");
+
     switch (expr->unary.op) {
       case UNARY_POST_INC: op->kind = IR_INC; break;
       case UNARY_POST_DEC: op->kind = IR_DEC; break;
@@ -319,19 +292,14 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
     da_append(func->code, op);
 
     IR_instruction_t* str = calloc(1, sizeof(IR_instruction_t));
-    if (!str) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      return 1;
-    }
+    CLEAF_ASSERT(str != NULL, "out of memory");
+
     str->kind = IR_STORE_VAR;
     str->src.id = func->next_temp_id++;
     str->src.size = operand_size;
     str->var.name = strdup(expr->unary.operand->var.ident.ident_name);
     str->var.is_init = 1;
-    if (!str->var.name) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
-      return 1;
-    }
+    CLEAF_ASSERT(str->var.name != NULL, "out of memory");
     da_append(func->code, str);
     return 0;
   }
@@ -339,25 +307,20 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
   if (expr->unary.op == UNARY_PRE_INC ||
       expr->unary.op == UNARY_PRE_DEC) {
     IR_instruction_t* load = calloc(1, sizeof(IR_instruction_t)); 
-    if (!load) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      return 1;   
-    }
+    CLEAF_ASSERT(load != NULL, "out of memory");
+
     load->kind = IR_LOAD_VAR;
     load->dest.id = ++(func->next_temp_id);
     load->dest.size = operand_size;
-    load->var.name = strdup(expr->unary.operand->var.ident.ident_name);
-    if (!load->var.name) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      return 1;
-    }
+    load->var.name = 
+      strdup(expr->unary.operand->var.ident.ident_name);
+
+    CLEAF_ASSERT(load->var.name != NULL, "out of memory");
     da_append(func->code, load);
 
     IR_instruction_t* op = calloc(1, sizeof(IR_instruction_t));
-    if (!op) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      return 1;
-    }
+    CLEAF_ASSERT(op != NULL, "out of memory");
+
     switch (expr->unary.op) {
       case UNARY_PRE_INC: op->kind = IR_INC; break;
       case UNARY_PRE_DEC: op->kind = IR_DEC; break;
@@ -368,18 +331,16 @@ int IR_lower_unary_expression(HIR_parser_t* hir,
     da_append(func->code, op);
 
     IR_instruction_t* str = calloc(1, sizeof(IR_instruction_t));
-    if (!str) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      return 1;
-    }
+    CLEAF_ASSERT(str != NULL, "out of memory");
+
     str->kind = IR_STORE_VAR;
     str->src.id = func->next_temp_id;
     str->src.size = operand_size;
-    str->var.name = strdup(expr->unary.operand->var.ident.ident_name);
-    if (!str->var.name) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      return 1; 
-    }
+    str->var.name = 
+      strdup(expr->unary.operand->var.ident.ident_name);
+
+    CLEAF_ASSERT(str->var.name != NULL, "out of memory");
+
     str->var.is_init = 1;
     da_append(func->code, str);
     return 0;
@@ -415,10 +376,8 @@ int IR_lower_lvalue(HIR_parser_t* hir,
     int idx_id = func->next_temp_id;
 
     IR_instruction_t* mul = calloc(1, sizeof(IR_instruction_t));
-    if (!mul) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      return 1;
-    }
+    CLEAF_ASSERT(mul != NULL, "out of memory");
+
     mul->kind = IR_DIRECT_MUL;
     mul->dest.id = func->next_temp_id;
     mul->dest.size = elem_size;
@@ -445,10 +404,8 @@ int IR_lower_index_expression(
     return 1;
 
   IR_instruction_t* load = calloc(1, sizeof(IR_instruction_t));
-  if (!load) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return 1;
-  }
+  CLEAF_ASSERT(load != NULL, "out of memory");
+
   load->kind = IR_LOAD_ELEM;
   load->src.id = lv.base_id;
   load->src.size = 8;
@@ -466,10 +423,8 @@ int IR_lower_call_expression(
 {
   for (int i = 0; i < (int) expr->call.arg_count; ++i) {
     IR_instruction_t* set_arg = calloc(1, sizeof(IR_instruction_t)); 
-    if (!set_arg) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      return 1;
-    }
+    CLEAF_ASSERT(set_arg != NULL, "out of memory");
+
     set_arg->kind = IR_MOV;
     set_arg->dest.id = -i - 1;
 
@@ -482,26 +437,21 @@ int IR_lower_call_expression(
   } 
 
   IR_instruction_t* call = calloc(1, sizeof(IR_instruction_t));
-  if (!call) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return 1;
-  }
+  CLEAF_ASSERT(call != NULL, "out of memory");
+
   call->kind = IR_CALL;
   const char* call_module = expr->call.resolved_module
     ? expr->call.resolved_module
     : hir->current_module;
   call->func_name = IR_mangle_function_name(call_module, expr->call.callee);
-  if (!call->func_name) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return 1;
-  }
+
+  CLEAF_ASSERT(call->func_name != NULL, "out of memory");
+
   da_append(func->code, call);
 
   IR_instruction_t* result = calloc(1, sizeof(IR_instruction_t));
-  if (!result) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return 1;
-  }
+  CLEAF_ASSERT(result != NULL, "out of memory");
+
   result->kind = IR_MOV;
   result->dest.id = ++(func->next_temp_id);
   result->src.id = -1;
@@ -563,10 +513,8 @@ int IR_lower_expr_int_lit(HIR_parser_t* hir,
 {
   (void)hir;
   IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
-  if (!instr) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return -1;
-  }
+  CLEAF_ASSERT(instr != NULL, "out of memory");
+
   instr->kind = IR_INT_CONST;
   instr->dest.id = ++(func->next_temp_id);
   instr->int_value = expr->int_lit.value;
@@ -580,10 +528,8 @@ int IR_lower_expr_char_lit(HIR_parser_t* hir,
 {
   (void)hir;
   IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
-  if (!instr) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return -1;
-  }
+  CLEAF_ASSERT(instr != NULL, "out of memory");
+
   instr->kind = IR_INT_CONST;
   instr->dest.id = ++(func->next_temp_id);
   instr->int_value = expr->char_lit.value;
@@ -596,10 +542,8 @@ int IR_lower_expr_var(HIR_parser_t* hir,
     IR_function_t* func)
 {
   IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
-  if (!instr) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return -1;
-  }
+  CLEAF_ASSERT(instr != NULL, "out of memory");
+
   instr->kind = IR_LOAD_VAR;
   instr->dest.id = ++(func->next_temp_id);
 
@@ -611,18 +555,15 @@ int IR_lower_expr_var(HIR_parser_t* hir,
   }
 
   instr->var.name = strdup(expr->var.ident.ident_name);
-  if (!instr->var.name) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return -1;
-  }
+  CLEAF_ASSERT(instr->var.name != NULL, "out of memory");
   da_append(func->code, instr);
 
   while (expr->var.member) {
-    IR_instruction_t* offset_instr = calloc(1, sizeof(IR_instruction_t));
-    if (!offset_instr) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      return -1;
-    }
+    IR_instruction_t* offset_instr = 
+      calloc(1, sizeof(IR_instruction_t));
+
+    CLEAF_ASSERT(offset_instr != NULL, "out of memory");
+
     offset_instr->kind = IR_MOV_OFFSET;
     offset_instr->offset.timing = IR_POST_OFFSET;
 
@@ -669,10 +610,7 @@ int IR_lower_expr_assign(HIR_parser_t* hir,
     return 1;
 
   IR_instruction_t* store = calloc(1, sizeof(IR_instruction_t));
-  if (!store) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return 1;
-  }
+  CLEAF_ASSERT(store != NULL, "out of memory");
 
   if (lv.kind == LVALUE_VAR) {
     store->kind = IR_STORE_VAR;
@@ -680,11 +618,7 @@ int IR_lower_expr_assign(HIR_parser_t* hir,
     store->src.size = lv.elem_size;
     store->var.name = strdup(lv.var_name);
     store->var.is_init = 1;
-    if (!store->var.name) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      free(store);
-      return 1;
-    }
+    CLEAF_ASSERT(store->var.name != NULL, "out of memory");
   } else {
     store->kind = IR_STORE_ELEM;
     store->src.id = rhs_temp;
@@ -714,10 +648,8 @@ int IR_lower_expression(HIR_parser_t* hir,
 
   if (expr->type == EXPRESSION_BINARY) {
     IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
-    if (!instr) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      return -1;
-    }
+    CLEAF_ASSERT(instr != NULL, "out of memory");
+
     if (IR_lower_binary_expression(expr, hir, instr, func) != 0) {
       error_report_at_position(hir->error_ctx,
           expr->source_pos,
@@ -751,10 +683,7 @@ int IR_lower_free_statement(
     IR_function_t* func)
 {
   IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
-  if (!instr) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out if memory"); 
-    return 1;
-  }
+  CLEAF_ASSERT(instr != NULL, "out of memory");
 
   instr->kind = IR_DEALLOC;
   
@@ -778,10 +707,8 @@ int IR_lower_asm_statement(
   IR_temp_id* temps = NULL;
   if (stmt->asm_stmt.arg_count > 0) {
     temps = calloc(stmt->asm_stmt.arg_count, sizeof(IR_temp_id));
-    if (!temps) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      return 1;
-    }
+    CLEAF_ASSERT(temps!= NULL, "out of memory");
+
     for (size_t i = 0; i < stmt->asm_stmt.arg_count; i++) {
       if (IR_lower_expression(
             hir, stmt->asm_stmt.args[i], func) != 0) {
@@ -795,20 +722,11 @@ int IR_lower_asm_statement(
   }
 
   IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
-  if (!instr) {
-    free(temps);
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return 1;
-  }
+  CLEAF_ASSERT(instr != NULL, "out of memory");
 
   instr->asm_data.strings = 
     calloc(stmt->asm_stmt.instr_count, sizeof(char*));
-  if (!instr->asm_data.strings) {
-    free(temps);
-    free(instr);
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return 1;
-  }
+  CLEAF_ASSERT(instr->asm_data.strings != NULL, "out of memory");
 
   instr->kind = IR_ASM;
   instr->asm_data.string_count = stmt->asm_stmt.instr_count;
@@ -817,15 +735,8 @@ int IR_lower_asm_statement(
 
   for (size_t i = 0; i < stmt->asm_stmt.instr_count; i++) {
     instr->asm_data.strings[i] = strdup(stmt->asm_stmt.instr[i]);
-    if (!instr->asm_data.strings[i]) {
-      for (size_t j = 0; j < i; j++)
-        free(instr->asm_data.strings[j]);
-      free(instr->asm_data.strings);
-      free(temps);
-      free(instr);
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      return 1;
-    }
+    CLEAF_ASSERT(
+        instr->asm_data.strings[i] != NULL, "out of memory");
   }
 
   da_append(func->code, instr);
@@ -846,17 +757,14 @@ int IR_lower_for_statement(
     return 1;
 
   char* main_chunk = calloc(2 + RAND_CHUNK_LEN, sizeof(char));
-  if (!main_chunk) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return 1;
-  }
+  CLEAF_ASSERT(main_chunk != NULL, "out of memory");
+
   hir->gen_chunk(hir->chunk_ctx, main_chunk);
 
-  IR_instruction_t* main_label = calloc(1, sizeof(IR_instruction_t));
-  if (!main_label) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return 1;
-  }
+  IR_instruction_t* main_label = 
+    calloc(1, sizeof(IR_instruction_t));
+  CLEAF_ASSERT(main_label != NULL, "out of memory");
+
   main_label->kind = IR_CHUNK;
   main_label->chunk_name = strdup(main_chunk);
   da_append(func->code, main_label);
@@ -874,10 +782,8 @@ int IR_lower_for_statement(
     return 1;
 
   IR_instruction_t* jump = calloc(1, sizeof(IR_instruction_t));
-  if (!jump) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return 1;
-  }
+  CLEAF_ASSERT(jump != NULL, "out of memory");
+
   jump->chunk_name = strdup(main_chunk);
   switch (stmt->for_stmt.condition->binary.op) {
   case BINARY_EQ:
@@ -914,17 +820,13 @@ int IR_lower_while_statement(
     IR_function_t* func)
 {
   char* condition_chunk = calloc(2 + RAND_CHUNK_LEN, sizeof(char));
-  if (!condition_chunk) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return 1; 
-  }
+  CLEAF_ASSERT(condition_chunk != NULL, "out of memory");
   hir->gen_chunk(hir->chunk_ctx, condition_chunk);
 
-  IR_instruction_t* condition_label = calloc(1, sizeof(IR_instruction_t));
-  if (!condition_label) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return 1;
-  }
+  IR_instruction_t* condition_label = 
+    calloc(1, sizeof(IR_instruction_t));
+  CLEAF_ASSERT(condition_label != NULL, "out of memory");
+
   condition_label->kind = IR_CHUNK;
   condition_label->chunk_name = strdup(condition_chunk);
   da_append(func->code, condition_label);
@@ -933,17 +835,13 @@ int IR_lower_while_statement(
     return 1;
 
   char* next_chunk = calloc(2 + RAND_CHUNK_LEN, sizeof(char));
-  if (!next_chunk) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return 1;
-  }
+  CLEAF_ASSERT(next_chunk != NULL, "out of memory");
+
   hir->gen_chunk(hir->chunk_ctx, next_chunk);
 
   IR_instruction_t* jump = calloc(1, sizeof(IR_instruction_t));
-  if (!jump) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return 1;
-  }
+  CLEAF_ASSERT(jump != NULL, "out of memory");
+
   jump->chunk_name = strdup(next_chunk);
   switch (stmt->while_stmt.condition->binary.op) {
   case BINARY_EQ:
@@ -976,20 +874,18 @@ int IR_lower_while_statement(
       return 1;
   }
 
-  IR_instruction_t* jump_back = calloc(1, sizeof(IR_instruction_t));
-  if (!jump_back) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return 1;
-  }
+  IR_instruction_t* jump_back = 
+    calloc(1, sizeof(IR_instruction_t));
+  CLEAF_ASSERT(jump_back != NULL, "out of memory");
+
   jump_back->kind = IR_JMP;
   jump_back->chunk_name = strdup(condition_chunk);
   da_append(func->code, jump_back);
 
-  IR_instruction_t* next_label = calloc(1, sizeof(IR_instruction_t));
-  if (!next_label) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return 1; 
-  }
+  IR_instruction_t* next_label = 
+    calloc(1, sizeof(IR_instruction_t));
+  CLEAF_ASSERT(next_label != NULL, "out of memory");
+
   next_label->kind = IR_CHUNK;
   next_label->chunk_name = strdup(next_chunk);
   da_append(func->code, next_label);
@@ -1010,18 +906,13 @@ int IR_lower_if_statement(HIR_parser_t* hir,
     return 1;
 
   char* chunk = calloc(RAND_CHUNK_LEN + 2, sizeof(char));
-  if (!chunk) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
-    return 1;
-  }
+  CLEAF_ASSERT(chunk != NULL, "out of memory");
+
   hir->gen_chunk(hir->chunk_ctx, chunk);
 
   char* else_chunk = calloc(RAND_CHUNK_LEN + 2, sizeof(char));
-  if (!else_chunk) {
-    free(chunk);
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return 1;
-  }
+  CLEAF_ASSERT(else_chunk != NULL, "out of memory");
+  
   // TODO: this is src.id bit ugly but whatever for now
   if (stmt->if_stmt.else_branch) {
     hir->gen_chunk(hir->chunk_ctx, else_chunk); 
@@ -1032,10 +923,8 @@ int IR_lower_if_statement(HIR_parser_t* hir,
   }
 
   IR_instruction_t* jump = calloc(1, sizeof(IR_instruction_t));
-  if (!jump) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return 1;
-  }
+  CLEAF_ASSERT(jump != NULL, "out of memory");
+
   if (else_chunk)
     jump->chunk_name = strdup(else_chunk);
   else
@@ -1073,21 +962,17 @@ int IR_lower_if_statement(HIR_parser_t* hir,
   }
 
   if (else_chunk) {
-    IR_instruction_t* jump_else = calloc(1, sizeof(IR_instruction_t)); 
-    if (!jump_else) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      return 1;
-    }
+    IR_instruction_t* jump_else = 
+      calloc(1, sizeof(IR_instruction_t)); 
+    CLEAF_ASSERT(jump_else != NULL, "out of memory");
 
     jump_else->kind = IR_JMP;
     jump_else->chunk_name = strdup(chunk);
     da_append(func->code, jump_else);
 
-    IR_instruction_t* chunk_else_label = calloc(1, sizeof(IR_instruction_t));
-    if (!chunk_else_label) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      return 1;
-    }
+    IR_instruction_t* chunk_else_label = 
+      calloc(1, sizeof(IR_instruction_t));
+    CLEAF_ASSERT(chunk_else_label != NULL, "out of memory");
 
     chunk_else_label->kind = IR_CHUNK;
     chunk_else_label->chunk_name = else_chunk;
@@ -1100,11 +985,9 @@ int IR_lower_if_statement(HIR_parser_t* hir,
     }
   }
 
-  IR_instruction_t* chunk_label = calloc(1, sizeof(IR_instruction_t));
-  if (!chunk_label) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
-    return 1;
-  }
+  IR_instruction_t* chunk_label = 
+    calloc(1, sizeof(IR_instruction_t));
+  CLEAF_ASSERT(chunk_label != NULL, "out of memory");
 
   chunk_label->kind = IR_CHUNK;
   chunk_label->chunk_name = strdup(chunk);
@@ -1124,23 +1007,20 @@ int IR_lower_return_statement(HIR_parser_t* hir,
     return -1;
 
   IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
-  if (!instr) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return -1;
-  }
+  CLEAF_ASSERT(instr != NULL, "out of memory");
 
-  if (strcmp(func->name, "main") == 0 || strcmp(func->name, "start") == 0) {
+  if (strcmp(func->name, "main") == 0 || 
+      strcmp(func->name, "start") == 0) {
     instr->kind = IR_EXIT;
     instr->dest.id = func->next_temp_id;
     instr->dest.size = func->code->items[func->code->count - 1]->dest.size;
   }
   else {
     // TODO: what append if we return void ?
-    IR_instruction_t* return_var = calloc(1, sizeof(IR_instruction_t));
-    if (!return_var) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      return 1;
-    }
+    IR_instruction_t* return_var = 
+      calloc(1, sizeof(IR_instruction_t));
+    CLEAF_ASSERT(return_var != NULL, "out of memory");
+
     return_var->kind = IR_MOV;
     return_var->dest.id = -1;
     return_var->src.id = func->next_temp_id;
@@ -1199,10 +1079,8 @@ static int IR_lower_function_params(
 {
   for (int i = 0; i < (int) function->func.params.count; ++i) {
     IR_instruction_t* mov = calloc(1, sizeof(IR_instruction_t));
-    if (!mov) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      return -1;
-    }
+    CLEAF_ASSERT(mov != NULL, "out of memory");
+
     mov->kind = IR_MOV;
     mov->dest.id = func->next_temp_id;
     mov->dest.size = function->func.params.items[i].type.size;
@@ -1221,16 +1099,12 @@ static int IR_lower_function_params(
     da_append(func->code, mov);
 
     IR_instruction_t* str = calloc(1, sizeof(IR_instruction_t));
-    if (!str) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      return -1;
-    }
+    CLEAF_ASSERT(str != NULL, "out of memory");
+
     str->kind = IR_STORE_VAR;
     str->var.name = strdup(function->func.params.items[i].ident_name);
-    if (!str->var.name) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      return -1;
-    }
+    CLEAF_ASSERT(str->var.name != NULL, "out of memory");
+
     str->var.is_init = 1;
     str->src.id = func->next_temp_id++;
     str->src.size = function->func.params.items[i].type.element_size;
@@ -1250,25 +1124,18 @@ int IR_lower_function(HIR_parser_t* hir,
     return 0;
 
   IR_function_t* func = calloc(1, sizeof(IR_function_t));
-  if (!func) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return -1;
-  }
+  CLEAF_ASSERT(func != NULL, "out of memory");
 
-  func->name = IR_mangle_function_name(hir->current_module, function->func.name);
-  if (!func->name) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return -1;
-  }
+  func->name = IR_mangle_function_name(
+        hir->current_module, function->func.name);
+
+  CLEAF_ASSERT(func->name != NULL, "out of memory");
 
   func->next_temp_id = 0;
   func->stack_reserve_size = 0;
 
   func->code = calloc(1, sizeof(IR_instruction_block));
-  if (!func->code) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return -1;
-  }
+  CLEAF_ASSERT(func->code != NULL, "out of memory");
 
   // TODO: behavior is different for _start but whatever for now
   if (IR_lower_function_params(func, function) != 0)

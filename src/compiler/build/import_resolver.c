@@ -1,6 +1,7 @@
 #include "import_resolver.h"
 #include "frontend/symbols.h"
 #include "thirdparty/error.h"
+#include "thirdparty/assertion.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -62,10 +63,7 @@ bool semantic_resolve_imports(
     semantic_analyzer_t* analyzer)
 {
   analyzer->imported_functions = calloc(1, sizeof(hashmap_t));
-  if (!analyzer->imported_functions) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return false;
-  }
+  CLEAF_ASSERT(analyzer->imported_functions != NULL, "out of memory");
 
   da_foreach(declaration_t*, it, &unit->program) {
     declaration_t* decl = *it;
@@ -82,10 +80,7 @@ bool semantic_resolve_imports(
     const char* qualifier   = path->items[path->count - 2];
 
     char* module_name = join_path_segments(path->items, path->count - 1);
-    if (!module_name) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      return false;
-    }
+    CLEAF_ASSERT(module_name != NULL, "out of memory");
 
     module_unit_array* target_units =
       (module_unit_array*) hashmap_get(ctx->registry, module_name);
@@ -111,11 +106,7 @@ bool semantic_resolve_imports(
     }
 
     imported_symbol_t* isym = calloc(1, sizeof(imported_symbol_t));
-    if (!isym) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      free(module_name);
-      return false;
-    }
+    CLEAF_ASSERT(isym != NULL, "out of memory");
 
     isym->fs = fs;
     isym->module_name = module_name;

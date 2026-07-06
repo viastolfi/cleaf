@@ -1,4 +1,5 @@
 #include "compiler/build/dep_graph.h"
+#include "thirdparty/assertion.h"
 
 static void dep_graph_free(dep_graph_t* graph)
 {
@@ -45,10 +46,7 @@ bool build_dep_graph(build_context_t* ctx)
   dep_graph_t graph = {0};
 
   graph.index = calloc(1, sizeof(hashmap_t));
-  if (!graph.index) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return false;
-  }
+  CLEAF_ASSERT(graph.index != NULL, "out of memory");
 
   for (size_t i = 0; i < HASH_SIZE; ++i) {
     hashmap_entry_t* e = ctx->registry->buckets[i]; 
