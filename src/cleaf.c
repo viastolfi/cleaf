@@ -253,6 +253,12 @@ int main(int argc, char** argv)
         unit->file_path, unit->module_name ? unit->module_name : "-");
     semantic_analyze(&analyzer);
 
+    if (log_is_dump()) {
+      log_section_begin("AST after semantic");
+      ast_print_program(&unit->program);
+      log_section_end();
+    }
+
     if (analyzer.error_count > 0) {
       had_errors = 1;
       semantic_free_program_definition(&analyzer);

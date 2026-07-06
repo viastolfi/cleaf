@@ -20,7 +20,7 @@ _start:
 _add:
     push rbp
     mov rbp, rsp
-    sub rsp, 0
+    sub rsp, 16
     mov rbx, rax
     mov [rbp - 8], ebx
     mov r11, rdi
@@ -29,6 +29,6 @@ _add:
     mov r14d, [rbp - 16]
     add r14d, r13d
     mov rax, r14
-    add rsp, 0
+    add rsp, 16
     pop rbp
     ret

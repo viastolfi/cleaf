@@ -1194,8 +1194,8 @@ int IR_lower_statement(HIR_parser_t* hir,
   return 1;
 }
 
-static int IR_lower_function_params(IR_function_t* func,
-    declaration_t* function)
+static int IR_lower_function_params(
+    IR_function_t* func, declaration_t* function)
 {
   for (int i = 0; i < (int) function->func.params.count; ++i) {
     IR_instruction_t* mov = calloc(1, sizeof(IR_instruction_t));
@@ -1235,6 +1235,8 @@ static int IR_lower_function_params(IR_function_t* func,
     str->src.id = func->next_temp_id++;
     str->src.size = function->func.params.items[i].type.element_size;
 
+    // TODO: this might be wrong way of computing stack size
+    func->stack_reserve_size += 8;
     da_append(func->code, str);
   }
 
