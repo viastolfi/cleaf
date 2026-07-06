@@ -8,6 +8,7 @@
 #define LOG_LIB_IMPLEMENTATION
 #include "thirdparty/log.h"
 
+#include "thirdparty/assertion.h"
 #include "frontend/ast_definition.h"
 #include "frontend/ast.h"
 #include "frontend/ast_printer.h"
@@ -75,11 +76,7 @@ int main(int argc, char** argv)
   build_context_t build_ctx = {0};
   if (is_build_mode) {
     build_ctx.registry = calloc(1, sizeof(hashmap_t));
-    if (!build_ctx.registry) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      compiler_resources_free(res);
-      return 1;
-    }
+    CLEAF_ASSERT(build_ctx.registry != NULL, "out of memory");
   }
 
   da_foreach(char*, it, &res->files) {
@@ -214,12 +211,7 @@ int main(int argc, char** argv)
   }
 
   res->hir_program = calloc(1, sizeof(IR_function_array));
-  if (!res->hir_program) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    build_context_free(&build_ctx);
-    compiler_resources_free(res);
-    return 1;
-  }
+  CLEAF_ASSERT(res->hir_program != NULL, "out of memory");
 
   rand_t chunk_rng;
   rand_init(&chunk_rng);
@@ -289,7 +281,8 @@ int main(int argc, char** argv)
     if (log_is_dump()) {
       log_section_begin("HIR");
       for (size_t i = hir_before; i < res->hir_program->count; ++i) {
-        char* hir_text = IR_generate_string_program(res->hir_program->items[i]);
+        char* hir_text = 
+          IR_generate_string_program(res->hir_program->items[i]);
         fprintf(stderr, "%s", hir_text);
         free(hir_text);
       }
@@ -305,14 +298,13 @@ int main(int argc, char** argv)
         if (decl->type != DECLARATION_FUNC) continue;
 
         char* mangled =
-          IR_mangle_function_name(unit->module_name, decl->func.name);
-        if (!mangled) {
-          error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-          had_errors = 1;
-          continue;
-        }
+          IR_mangle_function_name(
+              unit->module_name, decl->func.name);
 
-        if (!decl->func.is_internal || strcmp(mangled, "start") == 0)
+        CLEAF_ASSERT(mangled != NULL, "out of memory");
+
+        if (!decl->func.is_internal || 
+            strcmp(mangled, "start") == 0)
           target->emit_global(&module_sb, mangled);
 
         free(mangled);
@@ -373,13 +365,7 @@ int main(int argc, char** argv)
     }
 
     char* base = build_object_basename(unit);
-    if (!base) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      had_errors = 1;
-      da_free(&module_sb);
-      semantic_free_program_definition(&analyzer);
-      continue;
-    }
+    CLEAF_ASSERT(base != NULL, "out of memory");
 
     char asm_path[512];
     snprintf(asm_path, sizeof(asm_path), "build/%s.asm", base);

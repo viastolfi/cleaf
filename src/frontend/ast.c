@@ -2,6 +2,7 @@
 
 #define DA_LIB_IMPLEMENTATION
 #include "../thirdparty/da.h"
+#include "thirdparty/assertion.h"
 #include "error.h"
 
 void free_expression(expression_t* e) 
@@ -319,10 +320,7 @@ expression_t*  ast_parse_expr_int_lit(parser_t* p)
 {
   expression_t* e = (expression_t*) malloc(sizeof(expression_t));
   
-  if (!e) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return NULL;
-  }
+  CLEAF_ASSERT(e != NULL, "out of memory");
 
   memset(e, 0, sizeof(expression_t));
   e->type = EXPRESSION_INT_LIT;
@@ -337,10 +335,9 @@ expression_t*  ast_parse_expr_int_lit(parser_t* p)
 expression_t* ast_parse_expr_var(parser_t* p) 
 {
   expression_t* e = (expression_t*) malloc(sizeof(expression_t));
-  if (!e) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return NULL;
-  }
+
+  CLEAF_ASSERT(e != NULL, "out of memory");
+  
   memset(e, 0, sizeof(expression_t));
 
   e->type = EXPRESSION_VAR;
@@ -376,10 +373,7 @@ expression_t* ast_parse_expr_var(parser_t* p)
 expression_t* ast_parse_expr_array_composite_literal(parser_t* p)
 {
   expression_t* e = calloc(1, sizeof(expression_t));
-  if (!e) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return NULL;
-  }
+  CLEAF_ASSERT(e != NULL, "out of memory");
 
   e->type = EXPRESSION_COMPOSITE_LITERAL;
   e->source_pos = peek(p)->source_pos;
@@ -426,10 +420,7 @@ expression_t* ast_parse_expr_array_composite_literal(parser_t* p)
 expression_t* ast_parse_expr_composite_literal(parser_t* p)
 {
   expression_t* e = calloc(1, sizeof(expression_t));
-  if (!e) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return NULL;
-  }
+  CLEAF_ASSERT(e != NULL, "out of memory");
 
   e->type = EXPRESSION_COMPOSITE_LITERAL;
   e->source_pos = peek(p)->source_pos;
@@ -473,10 +464,8 @@ expression_t* ast_parse_expr_composite_literal(parser_t* p)
 expression_t* ast_parse_expr_assign(parser_t* p)
 {
   expression_t* e = (expression_t*) malloc(sizeof(expression_t));
-  if (!e) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return NULL; 
-  }
+  CLEAF_ASSERT(e != NULL, "out of memory");
+  
   memset(e, 0, sizeof(expression_t));
 
   e->type = EXPRESSION_ASSIGN;
@@ -484,11 +473,8 @@ expression_t* ast_parse_expr_assign(parser_t* p)
   
   // We compute lhs here otherwise we fallback in infinit loop 'id ='
   expression_t* lhs = (expression_t*) malloc(sizeof(expression_t));
-  if (!lhs) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    free_expression(e);
-    return NULL;
-  }
+  CLEAF_ASSERT(lhs != NULL, "out of memory");
+  
   memset(lhs, 0, sizeof(expression_t));
 
   lhs->type = EXPRESSION_VAR;
@@ -505,12 +491,7 @@ expression_t* ast_parse_expr_assign(parser_t* p)
   }
 
   lhs->var.ident.ident_name = strdup(var_tok->string_value);
-  if (!lhs->var.ident.ident_name) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    free_expression(e);
-    free_expression(lhs);
-    return NULL;
-  }
+  CLEAF_ASSERT(lhs->var.ident.ident_name != NULL, "out of memory");
 
   e->assign.lhs = lhs;
 
@@ -566,11 +547,8 @@ expression_t* ast_parse_expr_binary(parser_t* p, int min_bp)
     if (lbp < min_bp) break;
 
     expression_t* e = (expression_t*) calloc(1, sizeof(expression_t));
-    if (!e) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      free_expression(expr);
-      return NULL;
-    }
+
+    CLEAF_ASSERT(e != NULL, "out of memory");
 
     advance(p);
 
@@ -640,10 +618,7 @@ binary_done:
 expression_t* ast_parse_expr_index(parser_t* p)
 {
   expression_t* e = calloc(1, sizeof(expression_t));
-  if (!e) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return NULL;
-  }
+  CLEAF_ASSERT(e != NULL, "out of memory");
   e->type = EXPRESSION_INDEX;
   e->source_pos = peek(p)->source_pos;
 
@@ -671,10 +646,7 @@ expression_t* ast_parse_expr_index(parser_t* p)
 expression_t* ast_parse_expr_call(parser_t* p) 
 {
   expression_t* e = calloc(1, sizeof(expression_t));
-  if (!e) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return NULL;
-  }
+  CLEAF_ASSERT(e != NULL, "out of memory");
   e->type = EXPRESSION_CALL;
   e->source_pos = peek(p)->source_pos;
 
@@ -689,11 +661,7 @@ expression_t* ast_parse_expr_call(parser_t* p)
     }
   
     e->call.qualifier = strdup(qualifier_tok->string_value);
-    if (!e->call.qualifier) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      free_expression(e);
-      return NULL;
-    }
+    CLEAF_ASSERT(e->call.qualifier != NULL, "out of memory");
 
     // consume '::'
     advance(p);
@@ -708,11 +676,7 @@ expression_t* ast_parse_expr_call(parser_t* p)
     return NULL;
   }
   e->call.callee = strdup(name_tok->string_value);
-  if (!e->call.callee) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    free_expression(e);
-    return NULL;
-  }
+  CLEAF_ASSERT(e->call.callee != NULL, "out of memory");
 
   // consume '('
   advance(p);
@@ -772,10 +736,7 @@ expression_t* ast_parse_expr_call(parser_t* p)
 expression_t* ast_parse_expr_unary(parser_t* p) 
 {
   expression_t* e = (expression_t*) malloc(sizeof(expression_t));
-  if (!e) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return NULL;
-  }
+  CLEAF_ASSERT(e != NULL, "out of memory");
   memset(e, 0, sizeof(expression_t));
   
   e->type = EXPRESSION_UNARY;
@@ -873,10 +834,7 @@ expression_t* parse_primary(parser_t* p)
 expression_t* ast_parse_expr_char_lit(parser_t* p) 
 {
   expression_t* expr = calloc(1, sizeof(expression_t));
-  if (!expr) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return NULL;
-  }
+  CLEAF_ASSERT(expr != NULL, "out of memory");
   expr->type = EXPRESSION_CHAR_LIT;
 
   token_t* char_tok = advance(p);
@@ -909,18 +867,14 @@ expression_t* parse_expression(parser_t* p)
     advance(p);
     expression_t* rhs = parse_expression(p);
     if (!rhs) {
-      error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
-                            "expected expression on right side of assignment");
+      error_report_at_token(
+          p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+          "expected expression on right side of assignment");
       free_expression(expr);
       return NULL;
     }
     expression_t* assign = calloc(1, sizeof(expression_t));
-    if (!assign) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      free_expression(expr);
-      free_expression(rhs);
-      return NULL;
-    }
+    CLEAF_ASSERT(assign != NULL, "out of memory");
     assign->type = EXPRESSION_ASSIGN;
     assign->source_pos = expr->source_pos;
     assign->assign.lhs = expr;
@@ -933,11 +887,9 @@ expression_t* parse_expression(parser_t* p)
 
 declaration_t* ast_parse_function(parser_t* p)
 {
-  declaration_t* decl = (declaration_t*) malloc(sizeof(declaration_t));
-  if (!decl) { 
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return NULL; 
-  }
+  declaration_t* decl = 
+    (declaration_t*) malloc(sizeof(declaration_t));
+  CLEAF_ASSERT(decl != NULL, "out of memory");
   memset(decl, 0, sizeof(declaration_t));
 
   decl->type = DECLARATION_FUNC;
@@ -958,11 +910,7 @@ declaration_t* ast_parse_function(parser_t* p)
     token_t * name_tok = advance(p);
     if (name_tok->string_value) {
       decl->func.name = strdup(name_tok->string_value);
-      if (!decl->func.name) { 
-        error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-        free_declaration(decl); 
-        return NULL; 
-      }
+      CLEAF_ASSERT(decl->func.name != NULL, "out of memory");
     }
   } else {
     token_t* tok = peek(p);
@@ -1054,11 +1002,7 @@ declaration_t* ast_parse_function(parser_t* p)
     }
 
     param.ident_name = strdup(name_tok->string_value);
-    if (!param.ident_name) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      free_declaration(decl);
-      return NULL;
-    }
+    CLEAF_ASSERT(param.ident_name != NULL, "out of memory");
 
     param.source_pos = name_tok->source_pos;
 
@@ -1115,11 +1059,7 @@ declaration_t* ast_parse_function(parser_t* p)
 
   statement_t* s;
   statement_block_t* sb = (statement_block_t*) malloc(sizeof(statement_block_t));
-  if (!sb) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    free_declaration(decl);
-    return NULL;
-  }
+  CLEAF_ASSERT(sb != NULL, "out of memory");
   memset(sb, 0, sizeof(statement_block_t));
   while ((s = parse_statement(p)) != NULL)
     da_append(sb, s);
@@ -1137,10 +1077,7 @@ declaration_t* ast_parse_function(parser_t* p)
 declaration_t* ast_parse_var_decl(parser_t* p)
 {
   declaration_t* d = (declaration_t*) malloc(sizeof(declaration_t));
-  if (!d) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return NULL;
-  }
+  CLEAF_ASSERT(d != NULL, "out of memory");
   memset(d, 0, sizeof(declaration_t));
 
   d->type = DECLARATION_VAR;
@@ -1223,11 +1160,8 @@ declaration_t* ast_parse_var_decl(parser_t* p)
   }
 
   d->var_decl.ident.ident_name = strdup(name_tok->string_value);
-  if (!d->var_decl.ident.ident_name) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    free_declaration(d);
-    return NULL;
-  }
+  CLEAF_ASSERT(
+      d->var_decl.ident.ident_name != NULL, "out of memory");
 
   d->var_decl.ident.source_pos = name_tok->source_pos;
 
@@ -1265,10 +1199,7 @@ declaration_t* ast_parse_var_decl(parser_t* p)
 declaration_t* ast_parse_untype_var_decl(parser_t* p) 
 {
   declaration_t* d = (declaration_t*) malloc(sizeof(declaration_t));
-  if (!d) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return NULL;
-  }
+  CLEAF_ASSERT(d != NULL, "out of memory");
   memset(d, 0, sizeof(declaration_t));
 
   d->type = DECLARATION_VAR;
@@ -1295,11 +1226,8 @@ declaration_t* ast_parse_untype_var_decl(parser_t* p)
   }
 
   d->var_decl.ident.type.name = strdup(name_tok->string_value);
-  if (!d->var_decl.ident.type.name) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    free_declaration(d);
-    return NULL;
-  }
+  CLEAF_ASSERT(
+      d->var_decl.ident.type.name != NULL, "out of memory");
 
   d->var_decl.ident.source_pos = name_tok->source_pos;
 
@@ -1336,10 +1264,8 @@ declaration_t* ast_parse_untype_var_decl(parser_t* p)
 declaration_t* ast_parse_import_decl(parser_t* p)
 {
   declaration_t* decl = calloc(1, sizeof(declaration_t));
-  if (!decl) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return NULL;
-  }
+  CLEAF_ASSERT(decl != NULL, "out of memory");
+  
   decl->type = DECLARATION_IMPORT;
   decl->source_pos = peek(p)->source_pos;
 
@@ -1365,11 +1291,7 @@ declaration_t* ast_parse_import_decl(parser_t* p)
     }
 
     char* n = strdup(name_tok->string_value);
-    if (!n) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      free_declaration(decl);
-      return NULL;
-    }
+    CLEAF_ASSERT(n != NULL, "out of memory");
     da_append(&decl->import.path, n);
 
     if (!check(p, LEXER_token_coloncolon))
@@ -1394,11 +1316,7 @@ declaration_t* ast_parse_import_decl(parser_t* p)
     }
 
     char* alias = strdup(name_tok->string_value);
-    if (!alias) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      free_declaration(decl);
-      return NULL;
-    }
+    CLEAF_ASSERT(alias != NULL, "out of memory");
 
     decl->import.alias = alias;
   }
@@ -1409,10 +1327,7 @@ declaration_t* ast_parse_import_decl(parser_t* p)
 declaration_t* ast_parse_module_decl(parser_t* p)
 {
   declaration_t* decl = calloc(1, sizeof(declaration_t));
-  if (!decl) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return NULL;
-  }
+  CLEAF_ASSERT(decl != NULL, "out of memory");
   decl->type = DECLARATION_MODULE;
   decl->source_pos = peek(p)->source_pos;
 
@@ -1438,11 +1353,7 @@ declaration_t* ast_parse_module_decl(parser_t* p)
     }
 
     char* m = strdup(name_tok->string_value);
-    if (!m) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      free_declaration(decl);
-      return NULL;
-    }
+    CLEAF_ASSERT(m != NULL, "out of memory");
     da_append(&(decl->module.path), m);
 
     if (!check(p, LEXER_token_coloncolon))
@@ -1459,10 +1370,7 @@ declaration_t* ast_parse_struct_decl(parser_t* p)
 {
   size_t total_struct_size = 0;
   declaration_t* decl = calloc(1, sizeof(declaration_t));
-  if (!decl) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
-    return NULL;
-  }
+  CLEAF_ASSERT(decl != NULL, "out of memory");
 
   decl->type = DECLARATION_STRUCT;
   decl->source_pos = advance(p)->source_pos;
@@ -1471,12 +1379,7 @@ declaration_t* ast_parse_struct_decl(parser_t* p)
     token_t* name_tok = advance(p);   
     if (name_tok->string_value) {
       decl->struc.name = strdup(name_tok->string_value);   
-      if (!decl->struc.name) {
-        error_report_general(ERROR_SEVERITY_ERROR, 
-            "out of memory");
-        free_declaration(decl);
-        return NULL;
-      }
+      CLEAF_ASSERT(decl->struc.name != NULL, "out of memory");
     }
   } else {
     token_t* tok = peek(p);
@@ -1570,11 +1473,7 @@ declaration_t* ast_parse_struct_decl(parser_t* p)
     }
 
     member.ident_name= strdup(name_tok->string_value);
-    if (!member.ident_name) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      free_declaration(decl);
-      return NULL;
-    }
+    CLEAF_ASSERT(member.ident_name != NULL, "out of memory");
 
     member.source_pos = name_tok->source_pos;
     total_struct_size += type_info->size;
@@ -1655,10 +1554,7 @@ declaration_t* parse_declaration(parser_t* p)
 statement_t* ast_parse_return_stmt(parser_t* p) 
 {
   statement_t* s = (statement_t*) malloc(sizeof(statement_t));
-  if (s == NULL) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return NULL;
-  }
+  CLEAF_ASSERT(s != NULL, "out of memory");
   memset(s, 0, sizeof(statement_t));
 
   s->type = STATEMENT_RETURN;
@@ -1680,10 +1576,7 @@ statement_t* ast_parse_return_stmt(parser_t* p)
 statement_t* ast_parse_decl_stmt(parser_t* p) 
 {
   statement_t* s = (statement_t*) malloc(sizeof(statement_t));
-  if (s == NULL) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return NULL;
-  }
+  CLEAF_ASSERT(s != NULL, "out of memory");
   memset(s, 0, sizeof(statement_t));
   
   s->type = STATEMENT_DECL;
@@ -1702,10 +1595,7 @@ statement_t* ast_parse_decl_stmt(parser_t* p)
 statement_t* ast_parse_expr_stmt(parser_t* p) 
 {
   statement_t* s = (statement_t*) malloc(sizeof(statement_t));
-  if (!s) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return NULL;
-  }
+  CLEAF_ASSERT(s != NULL, "out of memory");
   memset(s, 0, sizeof(statement_t));
 
   s->type = STATEMENT_EXPR;
@@ -1729,10 +1619,7 @@ statement_t* ast_parse_expr_stmt(parser_t* p)
 statement_t* ast_parse_if_stmt(parser_t* p) 
 {
   statement_t* s = (statement_t*) malloc(sizeof(statement_t));
-  if (!s) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    return NULL; 
-  }
+  CLEAF_ASSERT(s != NULL, "out of memory");
   memset(s, 0, sizeof(statement_t));
 
   s->type = STATEMENT_IF;
@@ -1747,8 +1634,9 @@ statement_t* ast_parse_if_stmt(parser_t* p)
   }
   s->if_stmt.condition = parse_expression(p);
   if (!s->if_stmt.condition) {
-    error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
-             "expected condition"); 
+    error_report_at_token(
+        p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+        "expected condition"); 
     free_statement(s);
     return NULL;
   }
@@ -1763,12 +1651,9 @@ statement_t* ast_parse_if_stmt(parser_t* p)
     return NULL;  
   }
 
-  statement_block_t* then_sb = (statement_block_t*) malloc(sizeof(statement_block_t));
-  if (!then_sb) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    free_statement(s);
-    return NULL; 
-  }
+  statement_block_t* then_sb = 
+    (statement_block_t*) malloc(sizeof(statement_block_t));
+  CLEAF_ASSERT(then_sb != NULL, "out of memory");
   memset(then_sb, 0, sizeof(statement_block_t));
   s->if_stmt.then_branch = then_sb;
   
@@ -1788,7 +1673,8 @@ statement_t* ast_parse_if_stmt(parser_t* p)
     return NULL;
   }
 
-  if (check(p, LEXER_token_id) && strcmp(peek(p)->string_value, "else") == 0) {
+  if (check(p, LEXER_token_id) && 
+      strcmp(peek(p)->string_value, "else") == 0) {
     advance(p); 
 
     if (!expect(p, '{', "expected '{' after else stmt")) {
@@ -1796,22 +1682,15 @@ statement_t* ast_parse_if_stmt(parser_t* p)
       return NULL; 
     }
 
-    statement_block_t* else_sb = (statement_block_t*) malloc(sizeof(statement_block_t));
-    if (!else_sb) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-      free_statement(s);
-      return NULL;
-    }
+    statement_block_t* else_sb = 
+      (statement_block_t*) malloc(sizeof(statement_block_t));
+    CLEAF_ASSERT(else_sb != NULL, "out of memory");
     memset(else_sb, 0, sizeof(statement_block_t));
     s->if_stmt.else_branch = else_sb;
     
     while (!check(p, '}')) {
       statement_t* stmt = parse_statement(p);
-      if (!stmt) {
-        error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-        free_statement(s);
-        return NULL;
-      } 
+      CLEAF_ASSERT(stmt != NULL, "out of memory");
       da_append(else_sb, stmt);
     }
 
@@ -1827,10 +1706,7 @@ statement_t* ast_parse_if_stmt(parser_t* p)
 statement_t* ast_parse_while_stmt(parser_t* p)
 {
   statement_t* s = (statement_t*) malloc(sizeof(statement_t));
-  if (!s) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return NULL;
-  }
+  CLEAF_ASSERT(s != NULL, "out of memory");
   memset(s, 0, sizeof(statement_t));
 
   s->type = STATEMENT_WHILE;
@@ -1865,11 +1741,7 @@ statement_t* ast_parse_while_stmt(parser_t* p)
   }
 
   statement_block_t* block = (statement_block_t*) malloc(sizeof(statement_block_t));
-  if (!block) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    free_statement(s);
-    return NULL;
-  }
+  CLEAF_ASSERT(block != NULL, "out of memory");
   memset(block, 0, sizeof(statement_block_t));
   s->while_stmt.body = block;
   
@@ -1895,10 +1767,7 @@ statement_t* ast_parse_while_stmt(parser_t* p)
 statement_t* ast_parse_for_stmt(parser_t* p)
 {
   statement_t* s = (statement_t*) malloc(sizeof(statement_t));
-  if (!s) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return NULL;
-  }
+  CLEAF_ASSERT(s != NULL, "out of memory");
   memset(s, 0, sizeof(statement_t));
 
   s->type = STATEMENT_FOR;
@@ -1972,19 +1841,17 @@ statement_t* ast_parse_for_stmt(parser_t* p)
     return NULL;
   }
 
-  statement_block_t* body = (statement_block_t*) malloc(sizeof(statement_block_t));
-  if (!body) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");
-    free_statement(s);
-    return NULL;
-  }
+  statement_block_t* body = 
+    (statement_block_t*) malloc(sizeof(statement_block_t));
+  CLEAF_ASSERT(body != NULL, "out of memory");
   memset(body, 0, sizeof(statement_block_t));
   s->for_stmt.body = body;
 
   while(!check(p, '}')) {
     statement_t* stmt = parse_statement(p); 
     if (!stmt) {
-      error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+      error_report_at_token(
+          p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
          "expected statement"); 
       free_statement(s);
       return NULL;
@@ -2003,10 +1870,7 @@ statement_t* ast_parse_for_stmt(parser_t* p)
 statement_t* ast_parse_asm_stmt(parser_t* p)
 {
   statement_t* stmt = calloc(1, sizeof(statement_t));
-  if (!stmt) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return NULL;
-  }
+  CLEAF_ASSERT(stmt != NULL, "out of memory");
   stmt->type = STATEMENT_ASM;
   stmt->source_pos = peek(p)->source_pos;
 
@@ -2045,10 +1909,7 @@ statement_t* ast_parse_asm_stmt(parser_t* p)
     if (check(p, LEXER_token_dqstring)) {
       stmt->asm_stmt.instr[stmt->asm_stmt.instr_count++] =
         strdup(peek(p)->string_value);
-      if (!stmt->asm_stmt.instr[stmt->asm_stmt.instr_count - 1]) {
-        error_report_general(
-            ERROR_SEVERITY_ERROR, "out of memory"); 
-      }
+      CLEAF_ASSERT(stmt->asm_stmt.instr[stmt->asm_stmt.instr_count - 1] != NULL, "out of memory");
 
       advance(p);
     } else {
@@ -2072,10 +1933,7 @@ statement_t* ast_parse_asm_stmt(parser_t* p)
 statement_t* ast_parse_free_stmt(parser_t* p)
 {
   statement_t* stmt = calloc(1, sizeof(statement_t));
-  if (!stmt) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return NULL;
-  }
+  CLEAF_ASSERT(stmt != NULL, "out of memory");
   stmt->type = STATEMENT_FREE;
 
   // consume 'free'

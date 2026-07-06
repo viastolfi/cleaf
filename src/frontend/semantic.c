@@ -1,4 +1,5 @@
 #include "semantic.h"
+#include "thirdparty/assertion.h"
 
 static void semantic_resolve_type_size(
     semantic_analyzer_t* analyzer, known_type_t* t)
@@ -165,10 +166,7 @@ int analyze_declaration(semantic_analyzer_t* analyzer,
     size_t total_found = 0;
     char** founds = 
       calloc(struc_sym->members_count, sizeof(char*));
-    if (!founds) {
-      error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-      return 0;
-    }
+    CLEAF_ASSERT(founds != NULL, "out of memory");
 
     for (size_t j = 0; j < e->composite_literal.count; ++j) {
       expression_t* assign = e->composite_literal.values[j];  
@@ -852,10 +850,7 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
                           scope_t* scope)
 {
   scope_t* local_scope = scope_enter(scope);
-  if (!local_scope) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return;
-  }
+  CLEAF_ASSERT(local_scope != NULL, "out of memory");
 
   da_foreach(statement_t*, it, body) {
     statement_t* stmt = *it; 
@@ -944,16 +939,11 @@ void semantic_load_program_definition(semantic_analyzer_t* analyzer)
 {
   // TODO: return some sort of status code to make this stop the compiler
   hashmap_t* func_sym = (hashmap_t*) malloc(sizeof(hashmap_t));
-  if (!func_sym) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory");  
-    return;
-  }
+  CLEAF_ASSERT(func_sym != NULL, "out of memory");
   memset(func_sym, 0, sizeof(hashmap_t));
+
   hashmap_t* struct_sym = calloc(1, sizeof(hashmap_t));
-  if (!struct_sym) {
-    error_report_general(ERROR_SEVERITY_ERROR, "out of memory"); 
-    return;
-  }
+  CLEAF_ASSERT(struct_sym != NULL, "out of memory");
 
   da_foreach(declaration_t*, it, analyzer->ast) {
     if ((*it)->type == DECLARATION_FUNC) {
@@ -973,13 +963,7 @@ void semantic_load_program_definition(semantic_analyzer_t* analyzer)
 
       function_symbol_t* value = 
         (function_symbol_t*) malloc(sizeof(function_symbol_t));
-      if (!value) {
-        error_report_general(ERROR_SEVERITY_ERROR, 
-            "out of memory"); 
-        hashmap_free(func_sym, 1);
-        hashmap_free(struct_sym, 1);
-        return; 
-      }
+      CLEAF_ASSERT(value != NULL, "out of memory");
       memset(value, 0, sizeof(function_symbol_t));
 
       value->return_type.kind = (*it)->func.return_type.kind;
@@ -991,23 +975,12 @@ void semantic_load_program_definition(semantic_analyzer_t* analyzer)
       size_t actual_count = 0;
       value->params_name = 
         calloc((*it)->func.params.count, sizeof(char*));
-      if (!value->params_name) {
-        error_report_general(ERROR_SEVERITY_ERROR, 
-            "out of memory"); 
-        hashmap_free(func_sym, 1);
-        hashmap_free(struct_sym, 1);
-        return ;
-      }
+      CLEAF_ASSERT(value->params_name != NULL, "out of memory");
 
       value->params_type = 
         calloc((*it)->func.params.count, sizeof(variable_symbol_t));
-      if (!value->params_type) {
-        error_report_general(ERROR_SEVERITY_ERROR, 
-            "out of memory"); 
-        hashmap_free(func_sym, 1);
-        hashmap_free(struct_sym, 1);
-        return;
-      }
+      CLEAF_ASSERT(value->params_type != NULL, "out of memory");
+
       value->params_count = (*it)->func.params.count;
 
       for (size_t i = 0; i < (*it)->func.params.count; ++i) {
@@ -1045,13 +1018,7 @@ hash_func_put:
       }
 
       struct_symbol_t* value = calloc(1, sizeof(struct_symbol_t));
-      if (!value) {
-        error_report_general(ERROR_SEVERITY_ERROR,
-           "out of memory"); 
-        hashmap_free(func_sym, 1);
-        hashmap_free(struct_sym, 1);
-        return;
-      }
+      CLEAF_ASSERT(value != NULL, "out of memory");
 
       // we still store the struct for redeclaration error but with dumie values
       if ((*it)->struc.members.count <= 0) {
@@ -1063,23 +1030,11 @@ hash_func_put:
       value->members_count = (*it)->struc.members.count;
       value->members_name =
         calloc(value->members_count, sizeof(char*));
-      if (!value->members_name) {
-        error_report_general(ERROR_SEVERITY_ERROR, 
-            "out of memory"); 
-        hashmap_free(func_sym, 1);
-        hashmap_free(struct_sym, 1);
-        return ;
-      }
+      CLEAF_ASSERT(value->members_name != NULL, "out of memory");
 
       value->members_type = 
         calloc(value->members_count, sizeof(variable_symbol_t));
-      if (!value->members_type) {
-        error_report_general(ERROR_SEVERITY_ERROR, 
-            "out of memory"); 
-        hashmap_free(func_sym, 1);
-        hashmap_free(struct_sym, 1);
-        return;
-      }
+      CLEAF_ASSERT(value->members_type != NULL, "out of memory");
 
       size_t actual_count = 0;
       for (size_t i = 0; i < (*it)->struc.members.count; ++i) {
