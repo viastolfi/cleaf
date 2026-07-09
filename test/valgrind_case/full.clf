@@ -8,6 +8,7 @@ struct v2 {
 fn main(): int {
   var a = bar(0);
   int b = bar(0);
+  string s = "test";
   v2 x;
   free(x);
   v2 z = { .x = 3, . y = 4 };

@@ -71,6 +71,11 @@ void free_expression(expression_t* e)
      free_expression(e->index.index);
   }
 
+  if (e->type == EXPRESSION_STRING) {
+    if (e->string_lit.value)
+     free(e->string_lit.value); 
+  }
+
   free(e);
 }
 
@@ -272,8 +277,9 @@ bool check_is_type(parser_t* p)
     // TODO: this can edge effect that show errors and let the compilation works fine
     // May need to remove it later
     if (p->error_ctx) {
-      error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR, 
-                           "expected type name");
+      error_report_at_token(
+          p->error_ctx, tok, ERROR_SEVERITY_ERROR, 
+          "expected type name");
     }
     return false;
   }
@@ -843,6 +849,20 @@ expression_t* ast_parse_expr_char_lit(parser_t* p)
   return expr;
 }
 
+expression_t* ast_parse_expr_string(parser_t* p)
+{
+  expression_t* expr = calloc(1, sizeof(expression_t));
+  CLEAF_ASSERT(expr != NULL, "out of memory");
+  expr->type = EXPRESSION_STRING;
+
+  token_t* string_tok = advance(p);
+  expr->string_lit.value = strdup(string_tok->string_value);
+  CLEAF_ASSERT(expr->string_lit.value != NULL, "out of memory");
+  expr->string_lit.len = string_tok->string_len;
+
+  return expr;
+}
+
 expression_t* parse_expression(parser_t* p) 
 {
   if (check(p, '{') && check_next(p, '.', 1))
@@ -853,6 +873,9 @@ expression_t* parse_expression(parser_t* p)
 
   if (check(p, LEXER_token_charlit))
     return ast_parse_expr_char_lit(p);
+
+  if (check(p, LEXER_token_dqstring)) 
+    return ast_parse_expr_string(p);
 
   if (check(p, LEXER_token_plusplus) ||
       check(p, LEXER_token_minusminus) ||

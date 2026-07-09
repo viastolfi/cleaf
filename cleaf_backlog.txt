@@ -15,3 +15,5 @@ x 2026-07-01 2026-07-01 make language documentation @docs
 (A) add type casting @global
 (B) add way to get var address @global
 x 2026-06-11 2026-06-11 add memory deallocation function @global
+(B) Add string type
+(C) Add "copy" keyword to copy data structs

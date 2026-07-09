@@ -1,0 +1,8 @@
+module test
+
+import math::mul
+
+fn main(): int {
+  var a = mul(1, 2);
+  return a;
+}
