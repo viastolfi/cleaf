@@ -94,6 +94,11 @@ known_type_t semantic_check_expr_char_lit(
     expression_t* expr,
     scope_t* scope);
 
+known_type_t semantic_check_expr_string(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope);
+
 known_type_t semantic_check_expr_var(
     semantic_analyzer_t* analyzer,
     expression_t* expr,

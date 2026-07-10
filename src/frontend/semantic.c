@@ -10,7 +10,12 @@ static void semantic_resolve_type_size(
   if (t->kind == TYPE_INT) {
     t->size = 8;
     t->name = "int";
-  } else if (t->kind == TYPE_CUSTOM && t->name) {
+  } 
+  else if (t->kind == TYPE_STRING) {
+    t->size = 8;
+    t->name = "string";  
+  } 
+  else if (t->kind == TYPE_CUSTOM && t->name) {
     struct_symbol_t* sym =
       (struct_symbol_t*) hashmap_get(
           analyzer->struct_symbols, t->name);
@@ -243,6 +248,21 @@ known_type_t semantic_check_expr_int_lit(
   };
 }
 
+known_type_t semantic_check_expr_string(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope)
+{
+  (void) analyzer;
+  (void) expr;
+  (void) scope;
+  return (known_type_t){
+    .kind = TYPE_STRING,
+    .name = types_description[TYPE_STRING].name,
+    .element_size = types_description[TYPE_STRING].size,
+  };
+}
+
 known_type_t semantic_check_expr_char_lit(
     semantic_analyzer_t* analyzer,
     expression_t* expr,
@@ -317,8 +337,10 @@ known_type_t semantic_check_expr_binary(
   expression_t* lhs = expr->binary.left;
   expression_t* rhs = expr->binary.right;
 
-  known_type_t lhs_type = semantic_check_expression(analyzer, lhs, scope);
-  known_type_t rhs_type = semantic_check_expression(analyzer, rhs, scope);
+  known_type_t lhs_type = 
+    semantic_check_expression(analyzer, lhs, scope);
+  known_type_t rhs_type = 
+    semantic_check_expression(analyzer, rhs, scope);
 
   if (lhs_type.kind == TYPE_ERROR && 
       rhs_type.kind != TYPE_ERROR) {
@@ -328,20 +350,36 @@ known_type_t semantic_check_expr_binary(
       rhs_type.kind == TYPE_ERROR) {
     return lhs_type; 
   } 
-  else if (lhs_type.kind == rhs_type.kind) {
+
+  if (!types_is_numeric(lhs_type.kind) || 
+      !types_is_numeric(rhs_type.kind)) {
+    // For now, we just error on every non numerical binary operatin
+    // In the future, we might be handle to hanlde this and then uncomment this
+    /*
+    if (lhs_type.kind == rhs_type.kind) {
+      return lhs_type;
+    }
+
+    semantic_error_register(analyzer, 
+        rhs->source_pos - 1,
+        "incompatible types for binary operation");
+    */
+
+    semantic_error_register(analyzer,
+        lhs->source_pos - 1,
+        "compiler can't perform binary operation on non "
+        "numerical variable for now");
+    return (known_type_t){.kind = TYPE_ERROR};
+  }
+
+  if (lhs_type.kind == rhs_type.kind) {
     return lhs_type;
   } 
   else if (lhs_type.kind < rhs_type.kind) {
     return rhs_type; 
   }
-  else if (lhs_type.kind > rhs_type.kind) {
-    return lhs_type; 
-  }
   else {
-    semantic_error_register(analyzer, 
-        rhs->source_pos - 1,
-        "wrong type conversion");
-    return (known_type_t){.kind = TYPE_ERROR};
+    return lhs_type; 
   }
 }
 
@@ -609,6 +647,9 @@ known_type_t semantic_check_expression(
     expression_t* expr,
     scope_t* scope)
 {
+  if (expr->type == EXPRESSION_STRING)
+    return semantic_check_expr_string(analyzer, expr, scope);
+
   if (expr->type == EXPRESSION_INT_LIT)
     return semantic_check_expr_int_lit(analyzer, expr, scope);
 
@@ -692,15 +733,18 @@ void semantic_check_for_statement(semantic_analyzer_t* analyzer,
 
       variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
 
-      if (vs && decl->var_decl.ident.type.kind != TYPE_VAR) {
-        vs->type = inferred;
+      if (vs) {
+        if (decl->var_decl.ident.type.kind == TYPE_VAR &&
+            inferred.kind != TYPE_STRING) {
+          vs->type = (known_type_t) {
+            .kind = TYPE_INT,
+            .name = types_description[TYPE_INT].name,
+            .element_size = types_description[TYPE_INT].size,
+          };
+        } else {
+          vs->type = inferred;
+        }
         semantic_resolve_type_size(analyzer, &vs->type);
-      } else {
-        vs->type = (known_type_t) {
-          .kind = TYPE_INT,
-          .name = types_description[TYPE_INT].name,
-          .element_size = types_description[TYPE_INT].size,
-        };
       }
       vs->is_constant = false;
       decl->var_decl.ident.type = vs->type;
@@ -803,11 +847,15 @@ void semantic_check_var_declaration(
 var_def_put:
   variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
   if (expected_type.kind == TYPE_VAR) {
-    vs->type = (known_type_t) {
-      .kind = TYPE_INT,
-      .name = types_description[TYPE_INT].name,
-      .element_size = types_description[TYPE_INT].size,
-    };
+    if (actual_type.kind == TYPE_STRING) {
+      vs->type = actual_type;
+    } else {
+      vs->type = (known_type_t) {
+        .kind = TYPE_INT,
+        .name = types_description[TYPE_INT].name,
+        .element_size = types_description[TYPE_INT].size,
+      };
+    }
   } 
   else {
     vs->type = expected_type;
