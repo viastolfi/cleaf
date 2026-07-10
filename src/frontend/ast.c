@@ -845,6 +845,7 @@ expression_t* ast_parse_expr_char_lit(parser_t* p)
 
   token_t* char_tok = advance(p);
 
+  expr->source_pos = char_tok->source_pos;
   expr->char_lit.value = (unsigned char) char_tok->int_value;
   return expr;
 }
@@ -856,6 +857,7 @@ expression_t* ast_parse_expr_string(parser_t* p)
   expr->type = EXPRESSION_STRING;
 
   token_t* string_tok = advance(p);
+  expr->source_pos = string_tok->source_pos;
   expr->string_lit.value = strdup(string_tok->string_value);
   CLEAF_ASSERT(expr->string_lit.value != NULL, "out of memory");
   expr->string_lit.len = string_tok->string_len;

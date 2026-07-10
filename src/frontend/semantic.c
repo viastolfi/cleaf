@@ -534,7 +534,9 @@ known_type_t semantic_check_expr_call(
 
     if (analyzer->imported_functions) {
       size_t key_len =
-        strlen(expr->call.qualifier) + 2 + strlen(expr->call.callee) + 1;
+        strlen(expr->call.qualifier) + 2 + 
+        strlen(expr->call.callee) + 1;
+
       char* key = malloc(key_len);
       if (key) {
         snprintf(key, key_len, "%s::%s",
