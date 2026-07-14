@@ -18,19 +18,22 @@ typedef struct {
   int idx_id;
   size_t elem_size;
 } lvalue_t;
-
+ 
 typedef struct 
 {
   error_context_t* error_ctx;
   int error_count;
 
   chunk_name_gen_t gen_chunk;
+  chunk_name_gen_t gen_string_id;
   void* chunk_ctx;
 
   const char* current_module;
 
   hashmap_t* struct_symbols;
   IR_function_array* hir_program;
+
+  hashmap_t* strings;
 } HIR_parser_t;
 
 char* IR_mangle_function_name(
@@ -67,6 +70,7 @@ int IR_lower_expr_assign(
     HIR_parser_t* hir,
     expression_t* expr,
     IR_function_t* func);
+void IR_print_data_section(HIR_parser_t* hir);
 void IR_display_function(IR_function_t* function);
 void IR_free_function(IR_function_t* func);
 void IR_free_instruction(IR_instruction_t* instr);
@@ -113,6 +117,10 @@ int IR_lower_lvalue(
     IR_function_t* func,
     lvalue_t* lv);
 int IR_lower_index_expression(
+    HIR_parser_t* hir,
+    expression_t* expr,
+    IR_function_t* func);
+int IR_lower_string(
     HIR_parser_t* hir,
     expression_t* expr,
     IR_function_t* func);

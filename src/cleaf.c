@@ -262,6 +262,8 @@ int main(int argc, char** argv)
     hir_parser.hir_program = res->hir_program;
     hir_parser.struct_symbols = analyzer.struct_symbols;
     hir_parser.current_module = unit->module_name;
+    hir_parser.strings = calloc(1, sizeof(hashmap_t));
+    CLEAF_ASSERT(hir_parser.strings != NULL, "out of memory");
     HIR_PARSER_USE_RNG(hir_parser, &chunk_rng);
 
     size_t hir_before = res->hir_program->count;
@@ -280,6 +282,7 @@ int main(int argc, char** argv)
 
     if (log_is_dump()) {
       log_section_begin("HIR");
+      IR_print_data_section(&hir_parser);
       for (size_t i = hir_before; i < res->hir_program->count; ++i) {
         char* hir_text = 
           IR_generate_string_program(res->hir_program->items[i]);

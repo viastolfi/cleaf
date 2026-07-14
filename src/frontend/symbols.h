@@ -31,4 +31,10 @@ typedef struct {
   char*               qualifier;
 } imported_symbol_t;
 
+typedef struct {
+  char*   value;
+  size_t  len;
+  char*   id;
+} string_symbol_t;
+
 #endif // SYMBOLS_H

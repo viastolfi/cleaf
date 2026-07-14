@@ -32,7 +32,9 @@ static inline uint64_t rand_next(rand_t* r)
 
 static inline void rand_chunk(rand_t* r, char* out)
 {
-  static const char charset[] = "abcdefghijklmnopqrstuvwxyz0123456789";
+  static const char charset[] = 
+    "abcdefghijklmnopqrstuvwxyz0123456789";
+
   out[0] = '.';
   uint64_t val = rand_next(r);
   for (int i = 1; i <= RAND_CHUNK_LEN; i++) {
@@ -40,6 +42,25 @@ static inline void rand_chunk(rand_t* r, char* out)
     val /= 36;
   }
   out[RAND_CHUNK_LEN + 1] = '\0';
+}
+
+static inline void rand_string_id(rand_t* r, char* out) 
+{
+  static const char charset[] = 
+    "abcdefghijklmnopqrstuvwxyz0123456789";
+
+  uint64_t val = rand_next(r);
+  for (int i = 0; i <= RAND_CHUNK_LEN; i++) {
+    out[i] = charset[val % 36];
+    val /= 36;
+  }
+
+  out[RAND_CHUNK_LEN + 1] = '\0';
+}
+
+static inline void rand_string_id_gen(void* ctx, char* out)
+{
+  rand_string_id((rand_t*)ctx, out);
 }
 
 static inline void rand_chunk_gen(void* ctx, char* out)

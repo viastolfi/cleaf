@@ -12,6 +12,7 @@ typedef void (*chunk_name_gen_t)(void* ctx, char* out);
 #define HIR_PARSER_USE_RNG(parser, rng_ptr) \
   do { \
     (parser).gen_chunk = rand_chunk_gen; \
+    (parser).gen_string_id = rand_string_id_gen; \
     (parser).chunk_ctx = (void*)(rng_ptr); \
   } while(0)
 
@@ -20,6 +21,7 @@ typedef enum
   IR_NOP,
 
   IR_MOV,
+  IR_MOV_ADDRESS,
   IR_MOV_OFFSET,
 
   IR_CHUNK,
