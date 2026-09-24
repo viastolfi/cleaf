@@ -212,7 +212,8 @@ int CODEGEN_write_function(
       break;
     default:
       error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED, 
-          "unknown IR instruction");
+          "unknown IR instruction : %s\n", 
+          IR_instr_to_str((*it)->kind));
       return 1;
     } 
   }

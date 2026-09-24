@@ -1222,7 +1222,8 @@ void IR_print_data_section(HIR_parser_t* hir)
     while (e) {
       string_symbol_t* s_sym = (string_symbol_t*) e->value;
       if (s_sym) {
-        sb_append_fmt(&sb, "%s     : %s\n%s_len : %d\n", s_sym->id, s_sym->value, s_sym->id, s_sym->len);
+        sb_append_fmt(&sb, "%s     : %s\n%s_len : %d\n", 
+            s_sym->id, s_sym->value, s_sym->id, s_sym->len);
       }
       e = e->next;
     }
@@ -1407,6 +1408,83 @@ char* IR_generate_string_program(IR_function_t* function)
     } 
   }
   return sb.items;
+}
+
+char* IR_instr_to_str(IR_instruction_kind kind) 
+{
+  switch(kind) 
+  {
+    case IR_NOP:
+      return "IR_NOP";
+
+    case IR_MOV:
+      return "IR_MOV";
+    case IR_MOV_ADDRESS:
+      return "IR_MOV_ADDRESS";
+    case IR_MOV_OFFSET:
+      return "IR_MOV_OFFSET";
+
+    case IR_CHUNK:
+      return "IR_CHUNK";
+
+    case IR_INT_CONST:
+      return "IR_INT_CONST";
+
+    case IR_BINARY:
+      return "IR_BINARY";
+    case IR_DIRECT_MUL:
+      return "IR_DIRECT_MUL";
+
+    case IR_INC:
+      return "IR_INC";
+    case IR_DEC:
+      return "IR_DEC";
+
+    case IR_LOAD_VAR:
+      return "IR_LOAD_VAR";
+    case IR_STORE_VAR:
+      return "IR_STORE_VAR";
+
+    case IR_LOAD_ELEM:
+      return "IR_LOAD_ELEM";
+    case IR_STORE_ELEM:
+      return "IR_STORE_ELEM";
+
+    case IR_JMP:
+      return "IR_JMP";
+    case IR_JMP_EQUAL:
+      return "IR_JMP_EQUAL";
+    case IR_JMP_NOT_EQUAL:
+      return "IR_JMP_NOT_EQUAL";
+    case IR_JMP_GREATER_THAN:
+      return "IR_JMP_GREATER_THAN";
+    case IR_JMP_GREATER_THAN_EQUAL:
+      return "IR_JMP_GREATER_THAN_EQUAL";
+    case IR_JMP_LOWER_THAN:
+      return "IR_JMP_LOWER_THAN";
+    case IR_JMP_LOWER_THAN_EQUAL:
+      return "IR_JMP_LOWER_THAN_EQUAL";
+
+    case IR_RETURN:
+      return "IR_RETURN";
+    case IR_EXIT:
+      return "IR_EXIT";
+
+    case IR_ALLOC:
+      return "IR_ALLOC";
+    case IR_DEALLOC:
+      return "IR_DEALLOC";
+
+    case IR_CALL:
+      return "IR_CALL";
+
+    case IR_ASM:
+      return "IR_ASM";
+    default:
+      return "NON EXISTING IR";
+  }
+
+  return "ERROR";
 }
 
 void IR_display_function(IR_function_t* function) 

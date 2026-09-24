@@ -59,6 +59,8 @@ typedef enum
   IR_ASM
 } IR_instruction_kind;
 
+char* IR_instr_to_str(IR_instruction_kind kind);
+
 typedef enum 
 {
   IR_BINARY_ADD,
