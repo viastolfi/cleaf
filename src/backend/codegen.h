@@ -25,4 +25,12 @@ int CODEGEN_write_function(
     IR_function_t* func,
     const target_t* target);
 
+int CODEGEN_write_data_section(
+    string_builder_t* sb,
+    hashmap_t* strings,
+    const target_t* target);
+
+int CODEGEN_write_setup(
+    string_builder_t* sb, const target_t* target);
+
 #endif //CODEGEN_H

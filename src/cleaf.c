@@ -347,6 +347,21 @@ int main(int argc, char** argv)
     }
 
     int codegen_error = 0;
+    codegen_error = CODEGEN_write_data_section(
+        &module_sb, hir_parser.strings, target);
+    
+    if (codegen_error) {
+      exit(1);
+      // TODO: enhance this error message  
+    }
+    
+    codegen_error = CODEGEN_write_setup(&module_sb, target);
+
+    if (codegen_error) {
+      exit(1);
+      // TODO: enhance this error message  
+    }
+
     for (size_t i = hir_before; i < res->hir_program->count; ++i) {
       if (CODEGEN_write_function(&module_sb, res->hir_program->items[i], target) != 0) {
         codegen_error = 1;
