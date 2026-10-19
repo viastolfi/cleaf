@@ -24,6 +24,12 @@ static void counter_chunk_gen(void* ctx, char* out)
   snprintf(out, RAND_CHUNK_LEN + 2, ".c%d", c->n++);
 }
 
+static void counter_string_gen(void* ctx, char* out)
+{
+  chunk_counter_t* c = (chunk_counter_t*)ctx;
+  snprintf(out, RAND_CHUNK_LEN + 2, "s%d", c->n++);
+}
+
 before_each(int, result, char* file_path, char* expected_path)
 {
   // --- Read source file ---
@@ -105,6 +111,7 @@ before_each(int, result, char* file_path, char* expected_path)
   hir_parser.strings = &strings;
   chunk_counter_t chunk_counter = {0};
   hir_parser.gen_chunk = counter_chunk_gen;
+  hir_parser.gen_string_id = counter_string_gen;
   hir_parser.chunk_ctx = &chunk_counter;
 
   da_foreach(declaration_t*, it, program) {
@@ -256,6 +263,10 @@ ct_test(codegen_test, asm_no_args, "test/codegen_case/asm_no_args.clf", "test/co
 
 ct_test(codegen_test, asm_with_arg, "test/codegen_case/asm_with_arg.clf", "test/codegen_case/asm_with_arg.asm") {
   ct_assert_eq(result, 0, "codegen gives right output for asm with variable interpolation");
+}
+
+ct_test(codegen_test, string_literals, "test/codegen_case/string_literals.clf", "test/codegen_case/string_literals.asm") {
+  ct_assert_eq(result, 0, "codegen emits string data before text and global setup");
 }
 
 ct_test(codegen_test, char_var_declaration, "test/codegen_case/char_var_declaration.clf", "test/codegen_case/char_var_declaration.asm") {
