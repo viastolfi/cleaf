@@ -101,6 +101,8 @@ before_each(int, result, char* file_path, char* expected_path)
   hir_parser.error_ctx = error_ctx;
   hir_parser.hir_program = hir_program;
   hir_parser.struct_symbols = analyzer.struct_symbols;
+  hashmap_t strings = {0};
+  hir_parser.strings = &strings;
   chunk_counter_t chunk_counter = {0};
   hir_parser.gen_chunk = counter_chunk_gen;
   hir_parser.chunk_ctx = &chunk_counter;
@@ -114,6 +116,8 @@ before_each(int, result, char* file_path, char* expected_path)
 
   // --- Codegen ---
   string_builder_t sb = {0};
+  CODEGEN_write_data_section(&sb, hir_parser.strings, &x86_64_target);
+  CODEGEN_write_setup(&sb, &x86_64_target);
   da_foreach(IR_function_t*, it, hir_parser.hir_program) {
     if (CODEGEN_write_function(&sb, *it, &x86_64_target) != 0) {
       fprintf(stderr, "codegen error in: %s\n", file_path);
