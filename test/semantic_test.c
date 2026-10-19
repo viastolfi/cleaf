@@ -830,3 +830,8 @@ ct_test(semantic_case, index_both_undef, "test/semantic_case/index_both_undef.cl
   ct_assert_eq(analyzer.error_count, 3, "Should have 3 errors: 2 undefined variables + type overflow from TYPE_ERROR");
   free_analyzer(&analyzer);
 }
+
+ct_test(semantic_case, string_var_decl_binary_op, "test/semantic_case/string_var_decl_and_op.clf") {
+  ct_assert_eq(analyzer.error_count, 2, "Should have 2 errors for binary op on string");
+  free_analyzer(&analyzer);
+}

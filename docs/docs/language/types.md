@@ -16,10 +16,25 @@ Cleaf is **statically typed**. Every variable and function parameter has a type 
 | `u8`  | 1 byte  | Unsigned 8-bit integer (0–255) |
 | `u16` | 2 bytes | Unsigned 16-bit integer (0–65535) |
 | `u64` | 8 bytes | Unsigned 64-bit integer |
+| `string` | 8 bytes | Address of a string literal |
 
 :::note
-`u32`, floats, booleans, and strings are planned but not yet implemented.
+`u32`, floats, and booleans are planned but not yet implemented.
 :::
+
+## Strings
+
+String literals use double quotes and can initialize explicitly typed or
+inferred variables:
+
+```cleaf
+string greeting = "Hello";
+var language = "Cleaf";  // inferred as string
+```
+
+The compiler emits string literal data as null-terminated data in the program's
+`.data` section. A string variable stores the address of that data. String
+binary operations are not supported yet; see [Operators](./operators).
 
 ## Type inference
 

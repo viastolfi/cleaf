@@ -1002,3 +1002,21 @@ ct_test(ast, non_internal_fn, "fn foo(): int { return 0; }")
   free_declaration(decl);
   da_free(&parser);
 }
+
+ct_test(ast, string_var_declaration, "string s = \"test\";")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "decl should not be NULL");
+  ct_assert_eq(decl->type, DECLARATION_VAR, "Declaration type should be VAR");
+  ct_assert_eq(decl->var_decl.ident.type.name, "string", "var type should be string");
+  ct_assert_eq(decl->var_decl.ident.ident_name, "s", "Variable name should be 's'");
+  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_STRING, "Variable type should be TYPE_STRING");
+  ct_assert_not_null(decl->var_decl.init, "Variable init expression should not be NULL");
+  ct_assert_eq(decl->var_decl.init->type, EXPRESSION_STRING, "Init expression should be string literal");
+  ct_assert_eq(decl->var_decl.init->string_lit.value, "test", "Init string value should be 'test'");
+  ct_assert_eq((int)decl->var_decl.init->string_lit.len, 4, "Init string len should be 4");
+
+  free_declaration(decl);
+  da_free(&parser);
+}

@@ -1,0 +1,5 @@
+fn main(): int {
+  string a = "test";
+  string b = "Hello, World !";
+  return 0;
+}

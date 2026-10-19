@@ -29,7 +29,8 @@ inline static unsigned hashmap_hash(const char* s)
   return h % HASH_SIZE;
 }
 
-inline static void hashmap_put(hashmap_t* map, const char* key, void* value)
+inline static void hashmap_put(
+    hashmap_t* map, const char* key, void* value)
 {
   if (!map || !key) return;
   unsigned idx = hashmap_hash(key);

@@ -167,6 +167,18 @@ typedef struct {
     void
       (*emit_extern)
       (string_builder_t*, const char* name);
+
+    void
+      (*emit_mov_address)
+      (string_builder_t* sb, const char* dst, char* chunk);
+
+    void
+      (*emit_data_section_setup)
+      (string_builder_t* sb);
+
+    void 
+      (*emit_data_section_entry)
+      (string_builder_t* sb, char* id, char* value, size_t len);
 } target_t;
 
 #endif // TARGET_H

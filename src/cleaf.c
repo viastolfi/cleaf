@@ -262,6 +262,8 @@ int main(int argc, char** argv)
     hir_parser.hir_program = res->hir_program;
     hir_parser.struct_symbols = analyzer.struct_symbols;
     hir_parser.current_module = unit->module_name;
+    hir_parser.strings = calloc(1, sizeof(hashmap_t));
+    CLEAF_ASSERT(hir_parser.strings != NULL, "out of memory");
     HIR_PARSER_USE_RNG(hir_parser, &chunk_rng);
 
     size_t hir_before = res->hir_program->count;
@@ -280,6 +282,7 @@ int main(int argc, char** argv)
 
     if (log_is_dump()) {
       log_section_begin("HIR");
+      IR_print_data_section(&hir_parser);
       for (size_t i = hir_before; i < res->hir_program->count; ++i) {
         char* hir_text = 
           IR_generate_string_program(res->hir_program->items[i]);
@@ -344,6 +347,31 @@ int main(int argc, char** argv)
     }
 
     int codegen_error = 0;
+    codegen_error = CODEGEN_write_data_section(
+        &module_sb, hir_parser.strings, target);
+    for (size_t i = 0; i < HASH_SIZE; ++i) {
+      hashmap_entry_t* e = hir_parser.strings->buckets[i];
+      while (e) {
+        string_symbol_t* s_sym = (string_symbol_t*) e->value;
+        if (s_sym) free(s_sym->id);
+        e = e->next;
+      }
+    }
+    hashmap_free(hir_parser.strings, 1);
+    free(hir_parser.strings);
+    
+    if (codegen_error) {
+      exit(1);
+      // TODO: enhance this error message  
+    }
+    
+    codegen_error = CODEGEN_write_setup(&module_sb, target);
+
+    if (codegen_error) {
+      exit(1);
+      // TODO: enhance this error message  
+    }
+
     for (size_t i = hir_before; i < res->hir_program->count; ++i) {
       if (CODEGEN_write_function(&module_sb, res->hir_program->items[i], target) != 0) {
         codegen_error = 1;
@@ -443,4 +471,3 @@ int main(int argc, char** argv)
   compiler_resources_free(res);
   return had_errors ? 1 : 0;
 }
-

@@ -28,6 +28,37 @@ static const char* CODEGEN_get_reg(
   return target->regs_8[ir_temp_id.id % target->reg_8_count];
 }
 
+int CODEGEN_write_data_section(
+    string_builder_t* sb,
+    hashmap_t* strings,
+    const target_t* target)
+{
+  target->emit_data_section_setup(sb);
+
+  for (size_t i = 0; i < HASH_SIZE; i++) {
+    hashmap_entry_t* e = strings->buckets[i];
+    while (e) {
+      string_symbol_t* s_sym = (string_symbol_t*) e->value;
+      if (s_sym) {
+        target->emit_data_section_entry(
+            sb, s_sym->id, s_sym->value, s_sym->len);
+      }
+      e = e->next;
+    }
+  }
+
+  return 0;
+}  
+
+int CODEGEN_write_setup(
+    string_builder_t* sb, const target_t* target)
+{
+    target->setup(sb);
+    target->emit_global(sb, "start");
+
+    return 0;
+}
+
 int CODEGEN_write_function(
     string_builder_t* sb,
     IR_function_t* func,
@@ -37,8 +68,6 @@ int CODEGEN_write_function(
   int actual_place = 1;
 
   if (strcmp(func->name, "main") == 0) {
-    target->setup(sb);
-    target->emit_global(sb, "start");
     target->func_write(sb, "start"); 
   }
   else {
@@ -202,7 +231,8 @@ int CODEGEN_write_function(
         const char* pct = strchr(s, '%');
         if (pct && arg_idx < (*it)->asm_data.arg_count) {
           const char* reg = 
-            CODEGEN_get_reg(target, (*it)->asm_data.args[arg_idx++], true);
+            CODEGEN_get_reg(target, 
+                (*it)->asm_data.args[arg_idx++], true);
           sb_append_fmt(sb, "    %.*s%s\n", (int)(pct - s), s, reg);
         } else {
           sb_append_fmt(sb, "    %s\n", s);
@@ -210,9 +240,15 @@ int CODEGEN_write_function(
       }
     }
       break;
+    case IR_MOV_ADDRESS: {
+      const char* dst = CODEGEN_get_reg(target, (*it)->dest, false);               
+      target->emit_mov_address(sb, dst, (*it)->chunk_name);
+    }
+      break;
     default:
       error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED, 
-          "unknown IR instruction");
+          "unknown IR instruction : %s\n", 
+          IR_instr_to_str((*it)->kind));
       return 1;
     } 
   }

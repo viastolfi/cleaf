@@ -21,6 +21,12 @@ static void counter_chunk_gen(void* ctx, char* out)
   snprintf(out, RAND_CHUNK_LEN + 2, ".c%d", c->n++);
 }
 
+static void counter_string_gen(void* ctx, char* out)
+{
+  chunk_counter_t* c = (chunk_counter_t*)ctx;
+  snprintf(out, RAND_CHUNK_LEN + 1, "s%d", c->n++);
+}
+
 before_each(int, result, char* file_path, char* expected_path)
 {
   FILE *f = fopen(file_path, "rb");
@@ -104,7 +110,9 @@ before_each(int, result, char* file_path, char* expected_path)
   hir_parser.struct_symbols = analyzer.struct_symbols;
   chunk_counter_t chunk_counter = {0};
   hir_parser.gen_chunk = counter_chunk_gen;
+  hir_parser.gen_string_id = counter_string_gen;
   hir_parser.chunk_ctx = &chunk_counter;
+  hir_parser.strings = calloc(1, sizeof(hashmap_t));
   da_foreach(declaration_t*, it, program) {
     int lowering_result = IR_lower_function(&hir_parser, *it);
     if (lowering_result != 0) {
@@ -231,6 +239,29 @@ ct_test(hir_test, struct_member_access_second, "test/hir_case/struct_member_acce
   ct_assert_eq(result, 0, "hir parsing gives right output for struct member access (second member, offset 8)");
 }
 
+ct_test(hir_test, random_labels_start_with_letters,
+    "test/hir_case/return_stmt.clf", "test/hir_case/return_stmt.res") {
+  ct_assert_eq(result, 0, "HIR setup remains valid");
+
+  rand_t rng;
+  rand_init(&rng);
+  char chunk[RAND_CHUNK_LEN + 2];
+  char string_id[RAND_CHUNK_LEN + 2];
+  int valid = 1;
+
+  for (int i = 0; i < 1000; ++i) {
+    rand_chunk(&rng, chunk);
+    rand_string_id(&rng, string_id);
+    if (chunk[1] < 'a' || chunk[1] > 'z' ||
+        string_id[0] < 'a' || string_id[0] > 'z') {
+      valid = 0;
+      break;
+    }
+  }
+
+  ct_assert(valid, "generated assembly labels start with letters");
+}
+
 ct_test(hir_test, u8_u16_u64_vars, "test/hir_case/u8_u16_u64_vars.clf", "test/hir_case/u8_u16_u64_vars.res") {
   ct_assert_eq(result, 0, "hir gives b/w/q prefixes for u8/u16/u64 typed variables");
 }
@@ -289,4 +320,8 @@ ct_test(hir_test, array_index_as_var, "test/hir_case/array_index_as_var.clf", "t
 
 ct_test(hir_test, array_elem_assign, "test/hir_case/array_elem_assign.clf", "test/hir_case/array_elem_assign.res") {
   ct_assert_eq(result, 0, "hir gives right output for array element assignment");
+}
+
+ct_test(hir_test, string_var_decl, "test/hir_case/string_var_decl.clf", "test/hir_case/string_var_decl.res") {
+  ct_assert_eq(result, 0, "hir gives right output for string variable declarations (naive lowering)");
 }

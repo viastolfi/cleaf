@@ -10,7 +10,8 @@ char* IR_mangle_function_name(const char* module_path, const char* func_name)
   if (!module_path)
     return strdup(func_name);
 
-  if (strcmp(module_path, "main") == 0 && strcmp(func_name, "main") == 0)
+  if (strcmp(module_path, "main") == 0 && 
+      strcmp(func_name, "main") == 0)
     return strdup("start");
 
   char* mangled_module = strdup(module_path);
@@ -69,6 +70,8 @@ void IR_free_instruction(IR_instruction_t* instr) {
       free(instr->asm_data.strings);
       free(instr->asm_data.args);
       break;
+    case  IR_MOV_ADDRESS:
+      free(instr->chunk_name);
     default:
       break;
   }
@@ -522,6 +525,42 @@ int IR_lower_expr_int_lit(HIR_parser_t* hir,
   return 0;
 }
 
+int IR_lower_string(
+    HIR_parser_t* hir, expression_t* expr, IR_function_t* func)
+{
+  char* string = expr->string_lit.value;
+  if (hashmap_get(hir->strings, string) == NULL) {
+    // char* key = strdup(string);
+    // CLEAF_ASSERT(key != NULL, "out of memory");
+    string_symbol_t* s_sym = calloc(1, sizeof(string_symbol_t));
+    CLEAF_ASSERT(s_sym != NULL, "out of memory");
+
+    s_sym->value = expr->string_lit.value;
+    s_sym->len = expr->string_lit.len;
+    s_sym->id = calloc(RAND_CHUNK_LEN + 2, sizeof(char));
+    CLEAF_ASSERT(s_sym->id != NULL, "out of memory");
+
+    hir->gen_string_id(hir->chunk_ctx, s_sym->id); 
+
+    hashmap_put(hir->strings, string, s_sym); 
+  }
+
+  string_symbol_t* s_sym = hashmap_get(hir->strings, string);  
+
+  IR_instruction_t* mov_s = calloc(1, sizeof(IR_instruction_t)); 
+  CLEAF_ASSERT(mov_s != NULL, "out of memory");
+
+  mov_s->kind = IR_MOV_ADDRESS;
+  mov_s->dest.id = func->next_temp_id;
+  mov_s->dest.size = 8;
+  mov_s->chunk_name = strdup(s_sym->id);
+  CLEAF_ASSERT(mov_s->chunk_name != NULL, "out of memory");
+
+  da_append(func->code, mov_s);
+
+  return 0;
+}
+
 int IR_lower_expr_char_lit(HIR_parser_t* hir,
     expression_t* expr,
     IR_function_t* func)
@@ -643,6 +682,9 @@ int IR_lower_expression(HIR_parser_t* hir,
   if (expr->type == EXPRESSION_CHAR_LIT)
     return IR_lower_expr_char_lit(hir, expr, func);
 
+  if (expr->type == EXPRESSION_STRING)
+    return IR_lower_string(hir, expr, func);
+
   if (expr->type == EXPRESSION_VAR)
     return IR_lower_expr_var(hir, expr, func);
 
@@ -673,6 +715,10 @@ int IR_lower_expression(HIR_parser_t* hir,
 
   if (expr->type == EXPRESSION_INDEX)
     return IR_lower_index_expression(hir, expr, func);
+
+  error_report_at_position(
+      hir->error_ctx, expr->source_pos - 1, ERROR_SEVERITY_ERROR,
+      "unknown expression type");
 
   return 1;
 }
@@ -1002,8 +1048,8 @@ int IR_lower_return_statement(HIR_parser_t* hir,
     statement_t* stmt,
     IR_function_t* func)
 {
-  int res = IR_lower_expression(hir, stmt->ret.value, func);
-  if (res != 0)
+  int err = IR_lower_expression(hir, stmt->ret.value, func);
+  if (err)
     return -1;
 
   IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
@@ -1013,7 +1059,8 @@ int IR_lower_return_statement(HIR_parser_t* hir,
       strcmp(func->name, "start") == 0) {
     instr->kind = IR_EXIT;
     instr->dest.id = func->next_temp_id;
-    instr->dest.size = func->code->items[func->code->count - 1]->dest.size;
+    instr->dest.size = 
+      func->code->items[func->code->count - 1]->dest.size;
   }
   else {
     // TODO: what append if we return void ?
@@ -1166,9 +1213,33 @@ static char IR_temp_letter(size_t size) {
 
 #define TEMP_STR(t) IR_temp_letter((t).size), (t).id
 
+void IR_print_data_section(HIR_parser_t* hir) 
+{
+  string_builder_t sb = {0};
+
+  sb_append_fmt(&sb, "DATA : \n");
+
+  for (size_t i = 0; i < HASH_SIZE; i++) {
+    hashmap_entry_t* e = hir->strings->buckets[i];
+    while (e) {
+      string_symbol_t* s_sym = (string_symbol_t*) e->value;
+      if (s_sym) {
+        sb_append_fmt(&sb, "%s     : %s\n%s_len : %d\n", 
+            s_sym->id, s_sym->value, s_sym->id, s_sym->len);
+      }
+      e = e->next;
+    }
+  }
+
+  puts(sb.items);
+
+  da_free(&sb);
+}
+
 char* IR_generate_string_program(IR_function_t* function) 
 {
   string_builder_t sb = {0};
+
   sb_append_fmt(&sb, "Function %s\n", function->name);
   for (size_t i = 0; i < function->code->count; ++i) {
     IR_instruction_t* instr = function->code->items[i];
@@ -1193,7 +1264,7 @@ char* IR_generate_string_program(IR_function_t* function)
       switch (instr->binary_op) {
         case IR_BINARY_ADD: 
           sb_append_fmt(&sb, "ADD %c%d %c%d\n", TEMP_STR(instr->dest), TEMP_STR(instr->src)); 
-        continue;
+          continue;
         case IR_BINARY_SUB:
           sb_append_fmt(&sb, "SUB %c%d %c%d\n", TEMP_STR(instr->dest), TEMP_STR(instr->src));          
           continue;
@@ -1335,9 +1406,89 @@ char* IR_generate_string_program(IR_function_t* function)
         sb_append_fmt(&sb, "MOV %c%d, [%c%d + %zu]\n", TEMP_STR(instr->dest), TEMP_STR(instr->src), instr->offset.size);
       }
     }
+
+    if (instr->kind == IR_MOV_ADDRESS) {
+      sb_append_fmt(&sb, "MOV %c%d, %s\n", TEMP_STR(instr->dest), instr->chunk_name);
+    } 
+  }
+  return sb.items;
+}
+
+char* IR_instr_to_str(IR_instruction_kind kind) 
+{
+  switch(kind) 
+  {
+    case IR_NOP:
+      return "IR_NOP";
+
+    case IR_MOV:
+      return "IR_MOV";
+    case IR_MOV_ADDRESS:
+      return "IR_MOV_ADDRESS";
+    case IR_MOV_OFFSET:
+      return "IR_MOV_OFFSET";
+
+    case IR_CHUNK:
+      return "IR_CHUNK";
+
+    case IR_INT_CONST:
+      return "IR_INT_CONST";
+
+    case IR_BINARY:
+      return "IR_BINARY";
+    case IR_DIRECT_MUL:
+      return "IR_DIRECT_MUL";
+
+    case IR_INC:
+      return "IR_INC";
+    case IR_DEC:
+      return "IR_DEC";
+
+    case IR_LOAD_VAR:
+      return "IR_LOAD_VAR";
+    case IR_STORE_VAR:
+      return "IR_STORE_VAR";
+
+    case IR_LOAD_ELEM:
+      return "IR_LOAD_ELEM";
+    case IR_STORE_ELEM:
+      return "IR_STORE_ELEM";
+
+    case IR_JMP:
+      return "IR_JMP";
+    case IR_JMP_EQUAL:
+      return "IR_JMP_EQUAL";
+    case IR_JMP_NOT_EQUAL:
+      return "IR_JMP_NOT_EQUAL";
+    case IR_JMP_GREATER_THAN:
+      return "IR_JMP_GREATER_THAN";
+    case IR_JMP_GREATER_THAN_EQUAL:
+      return "IR_JMP_GREATER_THAN_EQUAL";
+    case IR_JMP_LOWER_THAN:
+      return "IR_JMP_LOWER_THAN";
+    case IR_JMP_LOWER_THAN_EQUAL:
+      return "IR_JMP_LOWER_THAN_EQUAL";
+
+    case IR_RETURN:
+      return "IR_RETURN";
+    case IR_EXIT:
+      return "IR_EXIT";
+
+    case IR_ALLOC:
+      return "IR_ALLOC";
+    case IR_DEALLOC:
+      return "IR_DEALLOC";
+
+    case IR_CALL:
+      return "IR_CALL";
+
+    case IR_ASM:
+      return "IR_ASM";
+    default:
+      return "NON EXISTING IR";
   }
 
-  return sb.items;
+  return "ERROR";
 }
 
 void IR_display_function(IR_function_t* function) 

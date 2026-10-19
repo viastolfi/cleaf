@@ -1,0 +1,10 @@
+module main
+
+fn main() {
+  var h = "hello";
+  string w = "world";
+  var a = 12;
+
+  var b = h + w;
+  var d = h + a;
+}

@@ -41,9 +41,12 @@ CFLAGS = -Wall -Wextra -g -Isrc
 VALGRIND = valgrind --error-exitcode=42 --leak-check=full --show-leak-kinds=all
 
 .PRECIOUS: build/cleaf
-.PHONY: all clean test ast-test semantic-test asan-test valgrind-test hir-test hir-module-test codegen-test build-test integration-test setup
+.PHONY: all clean test ast-test semantic-test asan-test valgrind-test hir-test hir-module-test codegen-test build-test integration-test setup run
 
 all: $(BUILD)/cleaf
+
+run: $(BUILD)/cleaf
+	./build/cleaf build
 
 $(BUILD)/cleaf: $(OBJ)
 	$(CC) -o $@ $^ -lm
