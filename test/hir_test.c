@@ -239,6 +239,29 @@ ct_test(hir_test, struct_member_access_second, "test/hir_case/struct_member_acce
   ct_assert_eq(result, 0, "hir parsing gives right output for struct member access (second member, offset 8)");
 }
 
+ct_test(hir_test, random_labels_start_with_letters,
+    "test/hir_case/return_stmt.clf", "test/hir_case/return_stmt.res") {
+  ct_assert_eq(result, 0, "HIR setup remains valid");
+
+  rand_t rng;
+  rand_init(&rng);
+  char chunk[RAND_CHUNK_LEN + 2];
+  char string_id[RAND_CHUNK_LEN + 2];
+  int valid = 1;
+
+  for (int i = 0; i < 1000; ++i) {
+    rand_chunk(&rng, chunk);
+    rand_string_id(&rng, string_id);
+    if (chunk[1] < 'a' || chunk[1] > 'z' ||
+        string_id[0] < 'a' || string_id[0] > 'z') {
+      valid = 0;
+      break;
+    }
+  }
+
+  ct_assert(valid, "generated assembly labels start with letters");
+}
+
 ct_test(hir_test, u8_u16_u64_vars, "test/hir_case/u8_u16_u64_vars.clf", "test/hir_case/u8_u16_u64_vars.res") {
   ct_assert_eq(result, 0, "hir gives b/w/q prefixes for u8/u16/u64 typed variables");
 }

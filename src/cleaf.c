@@ -349,6 +349,16 @@ int main(int argc, char** argv)
     int codegen_error = 0;
     codegen_error = CODEGEN_write_data_section(
         &module_sb, hir_parser.strings, target);
+    for (size_t i = 0; i < HASH_SIZE; ++i) {
+      hashmap_entry_t* e = hir_parser.strings->buckets[i];
+      while (e) {
+        string_symbol_t* s_sym = (string_symbol_t*) e->value;
+        if (s_sym) free(s_sym->id);
+        e = e->next;
+      }
+    }
+    hashmap_free(hir_parser.strings, 1);
+    free(hir_parser.strings);
     
     if (codegen_error) {
       exit(1);
@@ -461,4 +471,3 @@ int main(int argc, char** argv)
   compiler_resources_free(res);
   return had_errors ? 1 : 0;
 }
-

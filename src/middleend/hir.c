@@ -70,6 +70,8 @@ void IR_free_instruction(IR_instruction_t* instr) {
       free(instr->asm_data.strings);
       free(instr->asm_data.args);
       break;
+    case  IR_MOV_ADDRESS:
+      free(instr->chunk_name);
     default:
       break;
   }
@@ -528,14 +530,14 @@ int IR_lower_string(
 {
   char* string = expr->string_lit.value;
   if (hashmap_get(hir->strings, string) == NULL) {
-    char* key = strdup(string);
-    CLEAF_ASSERT(key != NULL, "out of memory");
+    // char* key = strdup(string);
+    // CLEAF_ASSERT(key != NULL, "out of memory");
     string_symbol_t* s_sym = calloc(1, sizeof(string_symbol_t));
     CLEAF_ASSERT(s_sym != NULL, "out of memory");
 
     s_sym->value = expr->string_lit.value;
     s_sym->len = expr->string_lit.len;
-    s_sym->id = calloc(RAND_CHUNK_LEN + 1, sizeof(char));
+    s_sym->id = calloc(RAND_CHUNK_LEN + 2, sizeof(char));
     CLEAF_ASSERT(s_sym->id != NULL, "out of memory");
 
     hir->gen_string_id(hir->chunk_ctx, s_sym->id); 
@@ -1230,6 +1232,8 @@ void IR_print_data_section(HIR_parser_t* hir)
   }
 
   puts(sb.items);
+
+  da_free(&sb);
 }
 
 char* IR_generate_string_program(IR_function_t* function) 
