@@ -8,6 +8,10 @@ sidebar_position: 4
 
 ## Arithmetic operators
 
+Binary operators currently require numeric operands. String literals and
+variables are supported, but string concatenation and string comparisons are
+not implemented.
+
 | Operator | Description |
 |----------|-------------|
 | `+`      | Addition |

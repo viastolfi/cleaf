@@ -14,7 +14,12 @@ Variables are declared with either an explicit type or `var` for inference.
 int x = 10;      // explicitly typed, initialized
 var y = x + 5;   // type inferred from the expression
 int z;           // explicitly typed, zero-initialized
+string name = "Cleaf";
+var greeting = "Hello"; // inferred as string
 ```
+
+String variables can be initialized from string literals. The variable holds
+the address of the literal's generated data in the program's `.data` section.
 
 ## Constant variables
 
@@ -59,7 +64,7 @@ for (var i = 0; i < 10; ++i) {
 
 The following identifiers are reserved and cannot be used as variable names:
 
-`int`, `u8`, `u16`, `u64`, `var`, `fn`, `return`, `if`, `else`, `while`, `for`, `struct`, `asm`
+`int`, `u8`, `u16`, `u64`, `string`, `var`, `fn`, `return`, `if`, `else`, `while`, `for`, `struct`, `asm`
 
 ## Examples
 
