@@ -1,5 +1,5 @@
 x 2026-06-08 2026-06-08 Add multiple int related types for better register usage @global
-(A) Add MIR @middleend
+(B) Add MIR @middleend
 x 2026-06-09 2026-06-09 Add "asm" function for inline assembly in the code base @global
 (B) Add "sizeof" compiler function @global
 (C) Add "type" keyword to create types at compile time @global
@@ -15,5 +15,6 @@ x 2026-07-01 2026-07-01 make language documentation @docs
 (A) add type casting @global
 (B) add way to get var address @global
 x 2026-06-11 2026-06-11 add memory deallocation function @global
-(B) Add string type
+x 2026-10-19 2026-10-19 Add string type
 (C) Add "copy" keyword to copy data structs
+(A) Add len() compiler function to get string and array len at runtime @string @array
