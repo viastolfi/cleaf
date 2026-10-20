@@ -17,4 +17,5 @@ x 2026-07-01 2026-07-01 make language documentation @docs
 x 2026-06-11 2026-06-11 add memory deallocation function @global
 x 2026-10-19 2026-10-19 Add string type
 (C) Add "copy" keyword to copy data structs
-(A) Add len() compiler function to get string and array len at runtime @string @array
+x 2026-10-20 2026-10-20 Add len() compiler function to get string and array len at runtime @string @array
+(C) make len builtin function works with array aswell
