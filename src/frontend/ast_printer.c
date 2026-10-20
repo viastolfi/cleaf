@@ -274,6 +274,12 @@ static void print_statement(statement_t* s, const char* prefix, bool is_last)
         print_expression(s->free_stmt.expr, cp, true);
       break;
 
+    case STATEMENT_LEN:
+      printf(CLR_STMT "FreeStmt\n" CLR_RESET);
+      if (s->free_stmt.expr)
+        print_expression(s->free_stmt.expr, cp, true);
+      break;
+
     case STATEMENT_ASM: {
       printf(CLR_STMT "AsmStmt" CLR_RESET " (%zu instr%s)\n",
              s->asm_stmt.instr_count,

@@ -640,6 +640,37 @@ ct_test(ast, char_var_decl, "char a = 'a';") {
   da_free(&parser);
 }
 
+// === LEN STATEMENTS ===
+
+ct_test(ast, len_stmt_var, "len(a);")
+{
+  statement_t* s = parse_statement(&parser);
+
+  ct_assert_not_null(s, "len statement should not be NULL");
+  ct_assert_eq(s->type, STATEMENT_LEN, "statement type should be STATEMENT_LEN");
+  ct_assert_not_null(s->len_stmt.expr, "len expression should not be NULL");
+  ct_assert_eq(s->len_stmt.expr->type, EXPRESSION_VAR, "len expression should be VAR");
+  ct_assert_eq(s->len_stmt.expr->var.ident.ident_name, "a", "len var name should be 'a'");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
+ct_test(ast, len_stmt_call, "len(get_ptr());")
+{
+  statement_t* s = parse_statement(&parser);
+
+  ct_assert_not_null(s, "len statement should not be NULL");
+  ct_assert_eq(s->type, STATEMENT_LEN, "statement type should be STATEMENT_LEN");
+  ct_assert_not_null(s->len_stmt.expr, "len expression should not be NULL");
+  ct_assert_eq(s->len_stmt.expr->type, EXPRESSION_CALL, "len expression should be a CALL");
+  ct_assert_eq(s->len_stmt.expr->call.callee, "get_ptr", "callee should be 'get_ptr'");
+  ct_assert_eq((int)s->len_stmt.expr->call.arg_count, 0, "call should have 0 args");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
 // === FREE STATEMENTS ===
 
 ct_test(ast, free_stmt_var, "free(a);")

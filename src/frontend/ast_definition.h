@@ -27,6 +27,7 @@ typedef enum
   STATEMENT_FOR,
   STATEMENT_ASM,
   STATEMENT_FREE,
+  STATEMENT_LEN,
 } statement_kind;
 
 typedef enum 
@@ -207,6 +208,9 @@ struct statement_t
       expression_t* loop; 
       statement_block_t* body;
     } for_stmt;
+    struct {
+      expression_t* expr; 
+    } len_stmt;
   };
 };
 
