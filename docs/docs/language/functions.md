@@ -79,6 +79,28 @@ fn main(): int {
 
 Function calls can appear as expressions (capturing the return value) or as standalone statements (discarding it).
 
+## Built-in functions
+
+### `len`
+
+`len` accepts exactly one `string` and returns its length as an `int`. The length
+counts bytes in the string contents and excludes the trailing null byte used in
+the generated data:
+
+```cleaf
+fn string_length(string value): int {
+    return len(value);
+}
+
+fn main(): int {
+    string greeting = "Hello";
+    int literal_length = len("Cleaf");  // 5
+    int greeting_length = len(greeting); // 5
+    int parameter_length = string_length(greeting); // 5
+    return 0;
+}
+```
+
 ## Restrictions
 
 - Recursive calls are syntactically valid, but full stack safety is not yet guaranteed.
