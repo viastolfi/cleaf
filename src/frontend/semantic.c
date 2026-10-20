@@ -88,7 +88,8 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
       if ((*it)->type == DECLARATION_FUNC) {
         scope_t* function_scope = scope_enter(NULL);
 
-        function_symbol_t* fs = (function_symbol_t*) hashmap_get(
+        function_symbol_t* fs =
+          (function_symbol_t*) hashmap_get(
             analyzer->function_symbols,
             (*it)->func.name);
 
@@ -101,7 +102,8 @@ void semantic_analyze(semantic_analyzer_t* analyzer)
             vs->type = fs->params_type[i].type;
             vs->is_constant = false;
             hashmap_put(
-                function_scope->symbols, fs->params_name[i], vs);
+                function_scope->symbols,
+                fs->params_name[i], vs);
           }
         }
 
