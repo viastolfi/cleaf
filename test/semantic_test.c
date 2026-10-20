@@ -274,6 +274,36 @@ ct_test(semantic_case, function_call_use_return, "test/semantic_case/function_ca
   free_analyzer(&analyzer);
 }
 
+ct_test(semantic_case, len_function_call, "test/semantic_case/len_function_call.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should have no errors for calling len with a string");
+
+  function_symbol_t* fs =
+      (function_symbol_t*) hashmap_get(analyzer.function_symbols, "len");
+  ct_assert_not_null(fs, "Function symbol 'len' should be in the symbol table");
+  ct_assert_eq((int)fs->params_count, 1, "len should have one parameter");
+  ct_assert_eq(fs->params_type[0].type.kind, TYPE_STRING,
+      "len parameter should have TYPE_STRING");
+  ct_assert_eq(fs->return_type.kind, TYPE_INT,
+      "len return type should be TYPE_INT");
+
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, len_wrong_argument_type, "test/semantic_case/len_wrong_argument_type.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for calling len with an incompatible argument type");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, len_too_few_arguments, "test/semantic_case/len_too_few_arguments.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for calling len without its required argument");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, len_too_many_arguments, "test/semantic_case/len_too_many_arguments.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error for calling len with too many arguments");
+  free_analyzer(&analyzer);
+}
+
 ct_test(semantic_case, function_declaration_reserved_keywords, "test/semantic_case/function_declaration_reserved_keywords.clf") {
   ct_assert_eq(analyzer.error_count, 6, "Should have 6 errors for different test case on function declaration with reserve keywords");
   free_analyzer(&analyzer);

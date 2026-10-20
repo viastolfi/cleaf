@@ -5,6 +5,12 @@ static size_t min(size_t a, size_t b) {
   return a < b ? a : b;
 }
 
+static int IR_lower_store_string_length(
+    HIR_parser_t* hir,
+    expression_t* expr,
+    const char* name,
+    IR_function_t* func);
+
 char* IR_mangle_function_name(const char* module_path, const char* func_name)
 {
   if (!module_path)
@@ -71,6 +77,7 @@ void IR_free_instruction(IR_instruction_t* instr) {
       free(instr->asm_data.args);
       break;
     case  IR_MOV_ADDRESS:
+    case IR_LOAD_DATA:
       free(instr->chunk_name);
     default:
       break;
@@ -98,7 +105,6 @@ int IR_lower_declaration(
     declaration_t* decl,
     IR_function_t* func)
 {
-  (void)hir;
   if (decl->type != DECLARATION_VAR) {
     error_report_general(ERROR_SEVERITY_ERROR, 
         "awaiting var declaration, getting something else");
@@ -160,7 +166,11 @@ int IR_lower_declaration(
   else {
     if (decl->var_decl.init) {
       instr->var.is_init = 1;
-      IR_lower_expression(hir, decl->var_decl.init, func);   
+      if (IR_lower_expression(hir, decl->var_decl.init, func) != 0) {
+        free(instr->var.name);
+        free(instr);
+        return 1;
+      }
       instr->src.id = func->next_temp_id;
     } else {
       if (decl->var_decl.ident.type.kind == TYPE_INT) {
@@ -169,6 +179,26 @@ int IR_lower_declaration(
     } 
     da_append(func->code, instr);
     func->stack_reserve_size += decl->var_decl.ident.type.element_size;
+
+    if (decl->var_decl.ident.type.kind == TYPE_STRING) {
+      if (decl->var_decl.init &&
+          IR_lower_store_string_length(
+            hir, decl->var_decl.init,
+            decl->var_decl.ident.ident_name, func) != 0)
+        return 1;
+      if (!decl->var_decl.init) {
+        IR_instruction_t* length_slot =
+          calloc(1, sizeof(IR_instruction_t));
+        CLEAF_ASSERT(length_slot != NULL, "out of memory");
+        length_slot->kind = IR_STORE_VAR;
+        length_slot->var.name =
+          strdup(decl->var_decl.ident.ident_name);
+        CLEAF_ASSERT(length_slot->var.name != NULL, "out of memory");
+        length_slot->var.is_string_len = 1;
+        da_append(func->code, length_slot);
+      }
+      func->stack_reserve_size += 8;
+    }
   }
 
   return 0;
@@ -421,15 +451,108 @@ int IR_lower_index_expression(
   return 0;
 }
 
+static string_symbol_t* IR_get_string_symbol(
+    HIR_parser_t* hir, expression_t* expr)
+{
+  char* string = expr->string_lit.value;
+  string_symbol_t* s_sym = hashmap_get(hir->strings, string);
+  if (s_sym)
+    return s_sym;
+
+  s_sym = calloc(1, sizeof(string_symbol_t));
+  CLEAF_ASSERT(s_sym != NULL, "out of memory");
+
+  s_sym->value = string;
+  s_sym->len = expr->string_lit.len;
+  s_sym->id = calloc(RAND_CHUNK_LEN + 2, sizeof(char));
+  CLEAF_ASSERT(s_sym->id != NULL, "out of memory");
+
+  hir->gen_string_id(hir->chunk_ctx, s_sym->id);
+  hashmap_put(hir->strings, string, s_sym);
+  return s_sym;
+}
+
+static int IR_lower_string_length(
+    HIR_parser_t* hir, expression_t* expr, IR_function_t* func)
+{
+  IR_instruction_t* load = calloc(1, sizeof(IR_instruction_t));
+  CLEAF_ASSERT(load != NULL, "out of memory");
+
+  load->dest.id = ++func->next_temp_id;
+  load->dest.size = 8;
+
+  if (expr->type == EXPRESSION_STRING) {
+    string_symbol_t* s_sym = IR_get_string_symbol(hir, expr);
+    size_t name_len = strlen(s_sym->id) + sizeof("_len");
+    load->kind = IR_LOAD_DATA;
+    load->chunk_name = malloc(name_len);
+    CLEAF_ASSERT(load->chunk_name != NULL, "out of memory");
+    snprintf(load->chunk_name, name_len, "%s_len", s_sym->id);
+  } else if (expr->type == EXPRESSION_VAR &&
+             expr->var.ident.type.kind == TYPE_STRING) {
+    load->kind = IR_LOAD_VAR;
+    load->var.name = strdup(expr->var.ident.ident_name);
+    CLEAF_ASSERT(load->var.name != NULL, "out of memory");
+    load->var.is_string_len = 1;
+  } else {
+    free(load);
+    error_report_at_position(
+        hir->error_ctx, expr->source_pos,
+        ERROR_SEVERITY_ERROR,
+        "cannot lower string length for this expression");
+    return 1;
+  }
+
+  da_append(func->code, load);
+  return 0;
+}
+
+static int IR_lower_store_string_length(
+    HIR_parser_t* hir,
+    expression_t* expr,
+    const char* name,
+    IR_function_t* func)
+{
+  if (IR_lower_string_length(hir, expr, func) != 0)
+    return 1;
+
+  IR_instruction_t* store = calloc(1, sizeof(IR_instruction_t));
+  CLEAF_ASSERT(store != NULL, "out of memory");
+  store->kind = IR_STORE_VAR;
+  store->src.id = func->next_temp_id;
+  store->src.size = 8;
+  store->var.name = strdup(name);
+  CLEAF_ASSERT(store->var.name != NULL, "out of memory");
+  store->var.is_init = 1;
+  store->var.is_string_len = 1;
+  da_append(func->code, store);
+  return 0;
+}
+
+int IR_lower_len_expression(
+    HIR_parser_t* hir, expression_t* expr, IR_function_t* func)
+{
+  if (expr->call.arg_count != 1) {
+    error_report_at_position(
+        hir->error_ctx, expr->source_pos,
+        ERROR_SEVERITY_ERROR, "len expects exactly one argument");
+    return 1;
+  }
+
+  return IR_lower_string_length(hir, expr->call.args[0], func);
+}
+
 int IR_lower_call_expression(
     HIR_parser_t* hir, expression_t* expr, IR_function_t* func)
 {
+  // String arguments occupy consecutive pointer and length registers.
+  size_t arg_register = 0;
   for (int i = 0; i < (int) expr->call.arg_count; ++i) {
     IR_instruction_t* set_arg = calloc(1, sizeof(IR_instruction_t)); 
     CLEAF_ASSERT(set_arg != NULL, "out of memory");
 
     set_arg->kind = IR_MOV;
-    set_arg->dest.id = -i - 1;
+    set_arg->dest.id = -(int)arg_register++ - 1;
 
     if (IR_lower_expression(hir, expr->call.args[i], func) != 0)
       return 1;
@@ -437,6 +560,24 @@ int IR_lower_call_expression(
     set_arg->src.id = func->next_temp_id;
     
     da_append(func->code, set_arg);
+
+    expression_t* arg = expr->call.args[i];
+    bool is_string = arg->type == EXPRESSION_STRING ||
+      (arg->type == EXPRESSION_VAR &&
+       arg->var.ident.type.kind == TYPE_STRING);
+    if (is_string) {
+      if (IR_lower_string_length(hir, arg, func) != 0)
+        return 1;
+
+      IR_instruction_t* set_len = calloc(1, sizeof(IR_instruction_t));
+      CLEAF_ASSERT(set_len != NULL, "out of memory");
+      set_len->kind = IR_MOV;
+      set_len->dest.id = -(int)arg_register++ - 1;
+      set_len->dest.size = 8;
+      set_len->src.id = func->next_temp_id;
+      set_len->src.size = 8;
+      da_append(func->code, set_len);
+    }
   } 
 
   IR_instruction_t* call = calloc(1, sizeof(IR_instruction_t));
@@ -528,24 +669,7 @@ int IR_lower_expr_int_lit(HIR_parser_t* hir,
 int IR_lower_string(
     HIR_parser_t* hir, expression_t* expr, IR_function_t* func)
 {
-  char* string = expr->string_lit.value;
-  if (hashmap_get(hir->strings, string) == NULL) {
-    // char* key = strdup(string);
-    // CLEAF_ASSERT(key != NULL, "out of memory");
-    string_symbol_t* s_sym = calloc(1, sizeof(string_symbol_t));
-    CLEAF_ASSERT(s_sym != NULL, "out of memory");
-
-    s_sym->value = expr->string_lit.value;
-    s_sym->len = expr->string_lit.len;
-    s_sym->id = calloc(RAND_CHUNK_LEN + 2, sizeof(char));
-    CLEAF_ASSERT(s_sym->id != NULL, "out of memory");
-
-    hir->gen_string_id(hir->chunk_ctx, s_sym->id); 
-
-    hashmap_put(hir->strings, string, s_sym); 
-  }
-
-  string_symbol_t* s_sym = hashmap_get(hir->strings, string);  
+  string_symbol_t* s_sym = IR_get_string_symbol(hir, expr);
 
   IR_instruction_t* mov_s = calloc(1, sizeof(IR_instruction_t)); 
   CLEAF_ASSERT(mov_s != NULL, "out of memory");
@@ -669,6 +793,12 @@ int IR_lower_expr_assign(HIR_parser_t* hir,
   }
 
   da_append(func->code, store);
+  if (lv.kind == LVALUE_VAR &&
+      expr->assign.lhs->var.ident.type.kind == TYPE_STRING &&
+      IR_lower_store_string_length(
+        hir, expr->assign.rhs, lv.var_name, func) != 0)
+    return 1;
+
   return 0;
 }
 
@@ -709,6 +839,10 @@ int IR_lower_expression(HIR_parser_t* hir,
 
   if (expr->type == EXPRESSION_UNARY)
     return IR_lower_unary_expression(hir, expr, func);
+
+  if (expr->type == EXPRESSION_CALL &&
+      strcmp(expr->call.callee, "len") == 0)
+    return IR_lower_len_expression(hir, expr, func);
 
   if (expr->type == EXPRESSION_CALL)
     return IR_lower_call_expression(hir, expr, func);
@@ -1124,6 +1258,7 @@ int IR_lower_statement(HIR_parser_t* hir,
 static int IR_lower_function_params(
     IR_function_t* func, declaration_t* function)
 {
+  size_t arg_register = 0;
   for (int i = 0; i < (int) function->func.params.count; ++i) {
     IR_instruction_t* mov = calloc(1, sizeof(IR_instruction_t));
     CLEAF_ASSERT(mov != NULL, "out of memory");
@@ -1131,7 +1266,7 @@ static int IR_lower_function_params(
     mov->kind = IR_MOV;
     mov->dest.id = func->next_temp_id;
     mov->dest.size = function->func.params.items[i].type.size;
-    mov->src.id = -i - 1;
+    mov->src.id = -(int)arg_register++ - 1;
 
     // This is done here and in the function return handling
     // We do this since we always store return values in `rax`
@@ -1159,6 +1294,34 @@ static int IR_lower_function_params(
     // TODO: this might be wrong way of computing stack size
     func->stack_reserve_size += 8;
     da_append(func->code, str);
+
+    if (function->func.params.items[i].type.kind == TYPE_STRING) {
+      IR_instruction_t* length_mov =
+        calloc(1, sizeof(IR_instruction_t));
+      CLEAF_ASSERT(length_mov != NULL, "out of memory");
+
+      length_mov->kind = IR_MOV;
+      length_mov->dest.id = func->next_temp_id;
+      length_mov->dest.size = 8;
+      length_mov->src.id = -(int)arg_register++ - 1;
+      length_mov->src.size = 8;
+      da_append(func->code, length_mov);
+
+      IR_instruction_t* length_store =
+        calloc(1, sizeof(IR_instruction_t));
+      CLEAF_ASSERT(length_store != NULL, "out of memory");
+      length_store->kind = IR_STORE_VAR;
+      length_store->var.name =
+        strdup(function->func.params.items[i].ident_name);
+      CLEAF_ASSERT(length_store->var.name != NULL, "out of memory");
+      length_store->var.is_init = 1;
+      length_store->var.is_string_len = 1;
+      length_store->src.id = func->next_temp_id++;
+      length_store->src.size = 8;
+      da_append(func->code, length_store);
+
+      func->stack_reserve_size += 8;
+    }
   }
 
   return 0;
@@ -1282,17 +1445,29 @@ char* IR_generate_string_program(IR_function_t* function)
 
     if (instr->kind == IR_STORE_VAR) {
       if (instr->var.is_init) {
-        sb_append_fmt(&sb, "STR slot(%s), %c%d\n", instr->var.name, TEMP_STR(instr->src));
+        sb_append_fmt(&sb, "STR slot(%s%s), %c%d\n",
+            instr->var.name,
+            instr->var.is_string_len ? ".len" : "",
+            TEMP_STR(instr->src));
         continue; 
       }
       else {
-        sb_append_fmt(&sb, "STR slot(%s), 0\n", instr->var.name);
+        sb_append_fmt(&sb, "STR slot(%s%s), 0\n", instr->var.name,
+            instr->var.is_string_len ? ".len" : "");
         continue; 
       }
     }
 
     if (instr->kind == IR_LOAD_VAR) {
-      sb_append_fmt(&sb, "LOAD %c%d, slot(%s)\n", TEMP_STR(instr->dest), instr->var.name); 
+      sb_append_fmt(&sb, "LOAD %c%d, slot(%s%s)\n",
+          TEMP_STR(instr->dest), instr->var.name,
+          instr->var.is_string_len ? ".len" : "");
+      continue;
+    }
+
+    if (instr->kind == IR_LOAD_DATA) {
+      sb_append_fmt(&sb, "LOAD_DATA %c%d, %s\n",
+          TEMP_STR(instr->dest), instr->chunk_name);
       continue;
     }
 
@@ -1425,6 +1600,8 @@ char* IR_instr_to_str(IR_instruction_kind kind)
       return "IR_MOV";
     case IR_MOV_ADDRESS:
       return "IR_MOV_ADDRESS";
+    case IR_LOAD_DATA:
+      return "IR_LOAD_DATA";
     case IR_MOV_OFFSET:
       return "IR_MOV_OFFSET";
 

@@ -74,6 +74,8 @@ typedef struct
 int string_array_contains(
     char** source, size_t source_len, const char* name);
 
+void semantic_load_compiler_functions(hashmap_t* func_sym);
+
 int analyze_declaration(
     semantic_analyzer_t* analyzer, 
     declaration_t* decl, 

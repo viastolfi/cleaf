@@ -1,0 +1,5 @@
+fn main(): int {
+  string value = "test";
+  int length = len(value);
+  return length;
+}

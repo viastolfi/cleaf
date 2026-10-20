@@ -325,3 +325,7 @@ ct_test(hir_test, array_elem_assign, "test/hir_case/array_elem_assign.clf", "tes
 ct_test(hir_test, string_var_decl, "test/hir_case/string_var_decl.clf", "test/hir_case/string_var_decl.res") {
   ct_assert_eq(result, 0, "hir gives right output for string variable declarations (naive lowering)");
 }
+
+ct_test(hir_test, len_string_parameter, "test/hir_case/len_string_parameter.clf", "test/hir_case/len_string_parameter.res") {
+  ct_assert_eq(result, 0, "HIR passes and loads string lengths for string parameters");
+}

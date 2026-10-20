@@ -12,6 +12,7 @@
 typedef struct {
   char* name;
   int place;
+  bool is_string_len;
 } var_pair_t;
 
 typedef struct {

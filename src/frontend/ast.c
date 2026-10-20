@@ -1934,7 +1934,9 @@ statement_t* ast_parse_asm_stmt(parser_t* p)
     if (check(p, LEXER_token_dqstring)) {
       stmt->asm_stmt.instr[stmt->asm_stmt.instr_count++] =
         strdup(peek(p)->string_value);
-      CLEAF_ASSERT(stmt->asm_stmt.instr[stmt->asm_stmt.instr_count - 1] != NULL, "out of memory");
+      CLEAF_ASSERT(
+          stmt->asm_stmt.instr[stmt->asm_stmt.instr_count - 1] !=
+          NULL, "out of memory");
 
       advance(p);
     } else {

@@ -491,6 +491,22 @@ ct_test(ast, asm_with_args, "asm(\"mov rdi,\", a);")
   da_free(&parser);
 }
 
+ct_test(ast, asm_with_call_arg, "asm(\"mov rdi,\", len(a));")
+{
+  statement_t* s = parse_statement(&parser);
+
+  ct_assert_not_null(s, "asm statement should not be NULL");
+  ct_assert_eq(s->type, STATEMENT_ASM, "statement type should be STATEMENT_ASM");
+  ct_assert_eq((int)s->asm_stmt.arg_count, 1, "asm statement should have 1 arg");
+  ct_assert_eq(s->asm_stmt.args[0]->type, EXPRESSION_CALL, "asm arg should be a call expression");
+  ct_assert_eq(s->asm_stmt.args[0]->call.callee, "len", "asm arg callee should be 'len'");
+  ct_assert_eq((int)s->asm_stmt.args[0]->call.arg_count, 1, "len should have 1 arg");
+  ct_assert_eq(s->asm_stmt.args[0]->call.args[0]->type, EXPRESSION_VAR, "len arg should be a variable");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
 ct_test(ast, asm_only_args, "asm(a, 42);")
 {
   statement_t* s = parse_statement(&parser);
@@ -637,6 +653,43 @@ ct_test(ast, char_var_decl, "char a = 'a';") {
 
 
   free_declaration(decl);
+  da_free(&parser);
+}
+
+// === LEN EXPRESSIONS ===
+
+ct_test(ast, len_expr_var, "len(a);")
+{
+  statement_t* s = parse_statement(&parser);
+
+  ct_assert_not_null(s, "len expression statement should not be NULL");
+  ct_assert_eq(s->type, STATEMENT_EXPR, "len should be parsed as an expression");
+  ct_assert_not_null(s->expr_stmt.expr, "len expression should not be NULL");
+  ct_assert_eq(s->expr_stmt.expr->type, EXPRESSION_CALL, "len should be a call expression");
+  ct_assert_eq(s->expr_stmt.expr->call.callee, "len", "callee should be 'len'");
+  ct_assert_eq((int)s->expr_stmt.expr->call.arg_count, 1, "len should have one argument");
+  ct_assert_eq(s->expr_stmt.expr->call.args[0]->type, EXPRESSION_VAR, "len argument should be a variable");
+  ct_assert_eq(s->expr_stmt.expr->call.args[0]->var.ident.ident_name, "a", "len argument name should be 'a'");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
+ct_test(ast, len_expr_nested_call, "len(get_ptr());")
+{
+  statement_t* s = parse_statement(&parser);
+
+  ct_assert_not_null(s, "len expression statement should not be NULL");
+  ct_assert_eq(s->type, STATEMENT_EXPR, "len should be parsed as an expression");
+  ct_assert_not_null(s->expr_stmt.expr, "len expression should not be NULL");
+  ct_assert_eq(s->expr_stmt.expr->type, EXPRESSION_CALL, "len should be a call expression");
+  ct_assert_eq(s->expr_stmt.expr->call.callee, "len", "callee should be 'len'");
+  ct_assert_eq((int)s->expr_stmt.expr->call.arg_count, 1, "len should have one argument");
+  ct_assert_eq(s->expr_stmt.expr->call.args[0]->type, EXPRESSION_CALL, "len argument should be a call expression");
+  ct_assert_eq(s->expr_stmt.expr->call.args[0]->call.callee, "get_ptr", "argument callee should be 'get_ptr'");
+  ct_assert_eq((int)s->expr_stmt.expr->call.args[0]->call.arg_count, 0, "argument call should have 0 args");
+
+  free_statement(s);
   da_free(&parser);
 }
 

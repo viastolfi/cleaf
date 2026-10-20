@@ -173,6 +173,10 @@ typedef struct {
       (string_builder_t* sb, const char* dst, char* chunk);
 
     void
+      (*emit_load_data)
+      (string_builder_t* sb, const char* dst, char* chunk);
+
+    void
       (*emit_data_section_setup)
       (string_builder_t* sb);
 
