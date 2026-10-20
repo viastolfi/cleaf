@@ -334,6 +334,12 @@ static void x86_emit_mov_address(
   sb_append_fmt(sb, "    mov %s, %s\n", dst, chunk);
 }
 
+static void x86_emit_load_data(
+    string_builder_t* sb, const char* dst, char* chunk)
+{
+  sb_append_fmt(sb, "    mov %s, [rel %s]\n", dst, chunk);
+}
+
 static void x86_emit_data_section_setup(string_builder_t* sb)
 {
   sb_append_fmt(sb, "section .data\n");
@@ -343,7 +349,7 @@ static void x86_emit_data_section_entry(
     string_builder_t* sb, char* id, char* value, size_t len)
 {
   sb_append_fmt(sb, "    %s db '%s', 0\n", id, value);
-  sb_append_fmt(sb, "    %s_len db %zu\n", id, len);
+  sb_append_fmt(sb, "    %s_len dq %zu\n", id, len);
 }
 
 const target_t x86_64_target = {
@@ -392,6 +398,7 @@ const target_t x86_64_target = {
   .emit_global = x86_emit_global,
   .emit_extern = x86_emit_extern,
   .emit_mov_address = x86_emit_mov_address,
+  .emit_load_data = x86_emit_load_data,
   .emit_data_section_setup = x86_emit_data_section_setup,
   .emit_data_section_entry = x86_emit_data_section_entry,
 };

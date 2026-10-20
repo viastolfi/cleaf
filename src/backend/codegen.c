@@ -1,9 +1,11 @@
 #include "codegen.h"
 
-static int CODEGEN_get_var_pos(var_array* vars, const char* name) 
+static int CODEGEN_get_var_pos(
+    var_array* vars, const char* name, bool is_string_len)
 {
   da_foreach(var_pair_t, it, vars) {
-    if (strcmp(it->name, name) == 0)
+    if (it->is_string_len == is_string_len &&
+        strcmp(it->name, name) == 0)
       return it->place;
   }
 
@@ -82,17 +84,23 @@ int CODEGEN_write_function(
     case IR_LOAD_VAR:
       {
         // since this append after semantic analyze this can't fail
-        int place = CODEGEN_get_var_pos(&vars, (*it)->var.name);
+        int place = CODEGEN_get_var_pos(
+            &vars, (*it)->var.name, (*it)->var.is_string_len);
         target->emit_mov_from_stack(sb, 
             CODEGEN_get_reg(target, (*it)->dest, false), place);
       }
       break;
     case IR_STORE_VAR:
-      int place = CODEGEN_get_var_pos(&vars, (*it)->var.name);
+      int place = CODEGEN_get_var_pos(
+          &vars, (*it)->var.name, (*it)->var.is_string_len);
       if (place == -1) {
         char* name = strdup((*it)->var.name);  
         place = actual_place++ * 8;
-        var_pair_t pair = {name, place};
+        var_pair_t pair = {
+          .name = name,
+          .place = place,
+          .is_string_len = (*it)->var.is_string_len,
+        };
         da_append(&vars, pair); 
       }
       // TODO: handle uninitialized var
@@ -243,6 +251,11 @@ int CODEGEN_write_function(
     case IR_MOV_ADDRESS: {
       const char* dst = CODEGEN_get_reg(target, (*it)->dest, false);               
       target->emit_mov_address(sb, dst, (*it)->chunk_name);
+    }
+      break;
+    case IR_LOAD_DATA: {
+      const char* dst = CODEGEN_get_reg(target, (*it)->dest, false);
+      target->emit_load_data(sb, dst, (*it)->chunk_name);
     }
       break;
     default:

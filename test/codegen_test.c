@@ -269,6 +269,10 @@ ct_test(codegen_test, string_literals, "test/codegen_case/string_literals.clf", 
   ct_assert_eq(result, 0, "codegen emits string data before text and global setup");
 }
 
+ct_test(codegen_test, len_string_parameter, "test/codegen_case/len_string_parameter.clf", "test/codegen_case/len_string_parameter.asm") {
+  ct_assert_eq(result, 0, "codegen passes string length to parameters and loads it in len");
+}
+
 ct_test(codegen_test, char_var_declaration, "test/codegen_case/char_var_declaration.clf", "test/codegen_case/char_var_declaration.asm") {
   ct_assert_eq(result, 0, "codegen gives right output for char var declaration");
 }

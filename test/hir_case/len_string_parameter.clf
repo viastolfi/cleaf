@@ -1,0 +1,10 @@
+fn print(string value): int {
+  return len(value);
+}
+
+fn main(): int {
+  string first = "first";
+  print(first);
+  print("second");
+  return 0;
+}

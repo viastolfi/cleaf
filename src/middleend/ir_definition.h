@@ -22,6 +22,7 @@ typedef enum
 
   IR_MOV,
   IR_MOV_ADDRESS,
+  IR_LOAD_DATA,
   IR_MOV_OFFSET,
 
   IR_CHUNK,
@@ -95,6 +96,7 @@ typedef struct
     struct {
       char* name;
       int is_init;
+      int is_string_len;
     } var;
 
     struct {
