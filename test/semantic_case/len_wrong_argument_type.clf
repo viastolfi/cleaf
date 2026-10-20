@@ -1,0 +1,4 @@
+fn main() {
+  u64 value = 4;
+  len(value);
+}

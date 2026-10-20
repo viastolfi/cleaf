@@ -987,6 +987,36 @@ void semantic_check_asm_statement(
   }
 }
 
+void semantic_load_compiler_functions(hashmap_t* func_sym)
+{
+  // 'len' function
+  {
+    function_symbol_t* value = 
+      (function_symbol_t*) malloc(sizeof(function_symbol_t));
+    CLEAF_ASSERT(value != NULL, "out of memory");
+    memset(value, 0, sizeof(function_symbol_t));
+
+    value->return_type.kind = TYPE_INT;
+
+    value->params_name = 
+      calloc(1, sizeof(char*));
+    CLEAF_ASSERT(value->params_name != NULL, "out of memory");
+
+    value->params_type = 
+      calloc(1, sizeof(variable_symbol_t));
+    CLEAF_ASSERT(value->params_type != NULL, "out of memory");
+
+    value->params_count = 1;
+
+    value->params_name[0] = "member";
+    // this should also accept array but whatever for now
+    value->params_type[0].type = (known_type_t){.kind = TYPE_STRING};
+    value->params_type[0].is_constant = false;
+
+    hashmap_put(func_sym, "len", value); 
+  }
+}
+
 void semantic_load_program_definition(semantic_analyzer_t* analyzer) 
 {
   // TODO: return some sort of status code to make this stop the compiler
@@ -996,6 +1026,9 @@ void semantic_load_program_definition(semantic_analyzer_t* analyzer)
 
   hashmap_t* struct_sym = calloc(1, sizeof(hashmap_t));
   CLEAF_ASSERT(struct_sym != NULL, "out of memory");
+
+  // call to load compiler existing functions
+  semantic_load_compiler_functions(func_sym);
 
   da_foreach(declaration_t*, it, analyzer->ast) {
     if ((*it)->type == DECLARATION_FUNC) {
