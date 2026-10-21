@@ -133,6 +133,7 @@ int IR_lower_declaration(
 
       da_append(func->code, instr);
       if (decl->var_decl.init && 
+          decl->var_decl.init->type == EXPRESSION_COMPOSITE_LITERAL &&
           decl->var_decl.init->composite_literal.is_initializer) {
         int err = 
           IR_lower_composite_literal_expression(hir, decl, func);
@@ -155,6 +156,7 @@ int IR_lower_declaration(
 
     da_append(func->code, instr);
     if (decl->var_decl.init && 
+        decl->var_decl.init->type == EXPRESSION_COMPOSITE_LITERAL &&
         decl->var_decl.init->composite_literal.is_initializer) {
       int err = 
         IR_lower_composite_literal_expression(hir, decl, func);

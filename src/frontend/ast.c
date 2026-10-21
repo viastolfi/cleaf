@@ -352,8 +352,9 @@ expression_t* ast_parse_expr_var(parser_t* p)
   token_t* var_tok = advance(p);
   if (!var_tok->string_value) {
     if (p->error_ctx) {
-      error_report_at_token(p->error_ctx, var_tok, ERROR_SEVERITY_ERROR,
-                           "identifier has no value");
+      error_report_at_token(
+          p->error_ctx, var_tok, ERROR_SEVERITY_ERROR,
+          "identifier has no value");
     }
     free_expression(e);
     return NULL;
@@ -1108,7 +1109,7 @@ declaration_t* ast_parse_var_decl(parser_t* p)
   d->type = DECLARATION_VAR;
   d->source_pos = peek(p)->source_pos;
 
-  // For now, we assume that we can only fall back here if the newt token is a typedef
+  // For now, we assume that we can only fall back here if the new token is a typedef
   // Which mean that next token is an token_id with a string_value
   // This Might cause error later on
   token_t* type_tok = advance(p);
