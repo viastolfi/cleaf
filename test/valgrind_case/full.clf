@@ -17,6 +17,9 @@ fn main(): int {
   a = array[1];
   array[1] = 12;
 
+  v2 vec_test = z;
+  vec_test.x = 12;
+
   int! constant = 56;
 
   asm(
