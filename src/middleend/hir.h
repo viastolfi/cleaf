@@ -9,7 +9,7 @@
 #include "../thirdparty/string_builder.h"
 #include "ir_definition.h"
 
-typedef enum { LVALUE_VAR, LVALUE_ELEM } lvalue_kind;
+typedef enum { LVALUE_VAR, LVALUE_ELEM, LVALUE_MEMBER } lvalue_kind;
 
 typedef struct {
   lvalue_kind kind;
@@ -17,6 +17,7 @@ typedef struct {
   int base_id;
   int idx_id;
   size_t elem_size;
+  size_t offset;
 } lvalue_t;
  
 typedef struct 
