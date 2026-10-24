@@ -76,6 +76,39 @@ fn main(): int {
 }
 ```
 
+You can also assign to a field after the struct has been initialized:
+
+```cleaf
+fn update(): int {
+    Point p = { .x = 10, .y = 20 };
+    p.y = 42;
+    return p.y;  // 42
+}
+```
+
+## Copying a struct
+
+Initializing a new struct variable from an existing one copies its field values
+into separately allocated storage:
+
+```cleaf
+fn copy_point(): int {
+    Point original = { .x = 10, .y = 20 };
+    Point copy = original;
+
+    copy.x = 99;       // original.x remains 10
+    return original.x;
+}
+```
+
+This copy behavior applies to variable initialization. Passing a struct to a
+function still passes its pointer, as described below.
+
+:::caution
+Member assignment and struct copying currently assume fields have the same
+size. Mixed-size struct fields are not reliably supported by these operations.
+:::
+
 ## Passing structs to functions
 
 Because a struct variable is internally a pointer, passing it to a function passes that

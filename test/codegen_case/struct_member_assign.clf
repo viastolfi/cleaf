@@ -1,0 +1,10 @@
+struct pair {
+  int first;
+  int second;
+}
+
+fn main(): int {
+  pair value = { .first = 1, .second = 2 };
+  value.second = 42;
+  return value.second;
+}

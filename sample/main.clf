@@ -1,8 +1,11 @@
 module test
 
 import math::mul
+import stdio::print
 
 fn main(): int {
   var a = mul(1, 2);
+
+  print("Hello World!");
   return a;
 }

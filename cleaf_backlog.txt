@@ -19,3 +19,6 @@ x 2026-10-19 2026-10-19 Add string type
 (C) Add "copy" keyword to copy data structs
 x 2026-10-20 2026-10-20 Add len() compiler function to get string and array len at runtime @string @array
 (C) make len builtin function works with array aswell
+(B) add boolean type
+(B) add float type
+(A) Make it so struct_symbols store all different types and not only one

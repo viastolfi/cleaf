@@ -316,3 +316,11 @@ ct_test(codegen_test, array_index_as_var, "test/codegen_case/array_index_as_var.
 ct_test(codegen_test, array_elem_assign, "test/codegen_case/array_elem_assign.clf", "test/codegen_case/array_elem_assign.asm") {
   ct_assert_eq(result, 0, "codegen gives right output for array element assignment");
 }
+
+ct_test(codegen_test, struct_member_assign, "test/codegen_case/struct_member_assign.clf", "test/codegen_case/struct_member_assign.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for struct member assignment");
+}
+
+ct_test(codegen_test, struct_copy, "test/codegen_case/struct_copy.clf", "test/codegen_case/struct_copy.asm") {
+  ct_assert_eq(result, 0, "codegen gives right output for struct-to-struct copy");
+}

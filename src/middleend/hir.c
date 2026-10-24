@@ -11,7 +11,8 @@ static int IR_lower_store_string_length(
     const char* name,
     IR_function_t* func);
 
-char* IR_mangle_function_name(const char* module_path, const char* func_name)
+char* IR_mangle_function_name(
+    const char* module_path, const char* func_name)
 {
   if (!module_path)
     return strdup(func_name);
@@ -133,11 +134,65 @@ int IR_lower_declaration(
 
       da_append(func->code, instr);
       if (decl->var_decl.init && 
+          decl->var_decl.init->type == EXPRESSION_COMPOSITE_LITERAL &&
           decl->var_decl.init->composite_literal.is_initializer) {
         int err = 
           IR_lower_composite_literal_expression(hir, decl, func);
         if (err)
           return 1;
+      }
+      // When we assign a struct using another struct
+      // The condition statement is a bit of a guess,
+      // Could cause bug later on
+      else if (decl->var_decl.init &&
+               decl->var_decl.init->type == EXPRESSION_VAR) {
+        IR_instruction_t* load_base =
+          calloc(1, sizeof(IR_instruction_t));
+        CLEAF_ASSERT(alloc != NULL, "out of memory");
+        load_base->kind = IR_LOAD_VAR;
+        load_base->dest.id = func->next_temp_id++;
+        load_base->dest.size = 8;
+        load_base->var.is_init = 1;
+        load_base->var.name = 
+          strdup(decl->var_decl.init->var.ident.ident_name);
+        CLEAF_ASSERT(load_base->var.name != NULL, "out of memory");
+
+        da_append(func->code, load_base);
+
+        struct_symbol_t* struct_sym = 
+          hashmap_get(hir->struct_symbols, 
+              decl->var_decl.init->var.ident.type.name);
+
+        for (size_t i = 0; i < struct_sym->members_count; ++i) {
+          IR_instruction_t* mov_pre =
+            calloc(1, sizeof(IR_instruction_t)); 
+          CLEAF_ASSERT(mov_pre != NULL, "out of memory");
+
+          mov_pre->kind = IR_MOV_OFFSET;
+
+          mov_pre->src = load_base->dest;
+          mov_pre->dest.id = func->next_temp_id;
+          mov_pre->offset.timing = IR_POST_OFFSET;
+          mov_pre->offset.size = 
+            i * struct_sym->members_type->type.element_size;
+          da_append(func->code, mov_pre);
+
+          IR_instruction_t* mov_post =
+            calloc(1, sizeof(IR_instruction_t));
+          CLEAF_ASSERT(mov_post != NULL, "out of memory");
+
+          mov_post->kind = IR_MOV_OFFSET;
+
+          mov_post->src.id = func->next_temp_id;
+          // at this point, the new pointer is still in `rax`
+          // might cause bug later on
+          mov_post->dest.id = -1;
+          mov_post->offset.timing = IR_PRE_OFFSET;
+          mov_post->offset.size =
+            i * struct_sym->members_type->type.element_size;
+
+          da_append(func->code, mov_post);
+        }
       }
       func->stack_reserve_size += 8;
   } 
@@ -155,6 +210,7 @@ int IR_lower_declaration(
 
     da_append(func->code, instr);
     if (decl->var_decl.init && 
+        decl->var_decl.init->type == EXPRESSION_COMPOSITE_LITERAL &&
         decl->var_decl.init->composite_literal.is_initializer) {
       int err = 
         IR_lower_composite_literal_expression(hir, decl, func);
@@ -391,10 +447,37 @@ int IR_lower_lvalue(HIR_parser_t* hir,
     lvalue_t* lv)
 {
   if (expr->type == EXPRESSION_VAR) {
-    lv->kind = LVALUE_VAR;
-    lv->var_name = expr->var.ident.ident_name;
-    lv->elem_size = expr->var.ident.type.element_size;
-    return 0;
+    // We could also check if expr->var.member != NULL
+    // Could be a better optio, keep that in mind
+    if (expr->var.ident.type.kind != TYPE_CUSTOM) {
+      lv->kind = LVALUE_VAR;
+      lv->var_name = expr->var.ident.ident_name;
+      lv->elem_size = expr->var.ident.type.element_size;
+      return 0;
+    }
+    else {
+      expression_t* member = expr->var.member;
+      lv->kind = LVALUE_MEMBER;
+      lv->var_name = expr->var.ident.ident_name;
+      lv->elem_size = member->var.ident.type.element_size;
+
+      struct_symbol_t* struct_sym = 
+        hashmap_get(hir->struct_symbols, expr->var.ident.type.name);
+      CLEAF_ASSERT(struct_sym != NULL, 
+          "unknown struct at compile time");
+  
+      for (size_t i = 0; i < struct_sym->members_count; ++i) {
+        if (strcmp(
+              struct_sym->members_name[i], 
+              member->var.ident.ident_name) == 0) {
+          lv->offset = 
+            struct_sym->members_type->type.element_size * i; 
+          break;
+        }
+      }
+
+      return 0;
+    }
   }
 
   if (expr->type == EXPRESSION_INDEX) {
@@ -782,6 +865,23 @@ int IR_lower_expr_assign(HIR_parser_t* hir,
     store->var.name = strdup(lv.var_name);
     store->var.is_init = 1;
     CLEAF_ASSERT(store->var.name != NULL, "out of memory");
+  } else if (lv.kind == LVALUE_MEMBER) {
+    // This whole think as to be refactored out somedays
+    IR_instruction_t* load = calloc(1, sizeof(IR_instruction_t));
+    CLEAF_ASSERT(load != NULL, "out of memory");
+
+    load->kind = IR_LOAD_VAR;
+    load->var.name = strdup(lv.var_name);
+    load->dest.id = ++func->next_temp_id;
+
+    da_append(func->code, load);
+
+    store->kind = IR_MOV_OFFSET;
+    store->dest.id = func->next_temp_id;
+    store->src.id = rhs_temp;
+
+    store->offset.timing = IR_PRE_OFFSET;
+    store->offset.size = lv.offset;
   } else {
     store->kind = IR_STORE_ELEM;
     store->src.id = rhs_temp;
