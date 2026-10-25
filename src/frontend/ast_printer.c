@@ -17,6 +17,19 @@ static void print_known_type(const known_type_t* t)
            name, t->element_size);
 }
 
+static void print_type_name(const known_type_t* type, const char* name)
+{
+  if (!name) {
+    print_known_type(type);
+    return;
+  }
+
+  if (type->array_len > 0)
+    printf(CLR_TYPE "%s[%zu]" CLR_RESET, name, type->array_len);
+  else
+    printf(CLR_TYPE "%s" CLR_RESET, name);
+}
+
 static const char* binary_op_str(binary_op_kind op)
 {
   switch (op) {
@@ -305,7 +318,7 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
 
       for (size_t i = 0; i < d->func.params.count; i++) {
         typed_identifier_t* p = &d->func.params.items[i];
-        print_known_type(&p->type);
+        print_type_name(&p->type, p->type_name);
         if (p->is_constant) {
           printf(" : " CLR_CONST "const" CLR_RESET); 
         }
@@ -315,9 +328,10 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
       }
       printf(")");
 
-      if (d->func.return_type.kind != TYPE_UNTYPE) {
+      if (d->func.return_type_name) {
         printf(" -> ");
-        print_known_type(&d->func.return_type);
+        print_type_name(
+            &d->func.return_type, d->func.return_type_name);
       }
 
       printf("\n");
@@ -331,7 +345,9 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
       printf(CLR_DECL "VarDecl" CLR_RESET " '%s': ",
              d->var_decl.ident.ident_name ? 
               d->var_decl.ident.ident_name : "");
-      print_known_type(&d->var_decl.ident.type);
+      print_type_name(
+          &d->var_decl.ident.type,
+          d->var_decl.ident.type_name);
       if (d->var_decl.ident.is_constant) {
         printf(" : " CLR_CONST "const" CLR_RESET);
       }
@@ -349,7 +365,7 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
         print_branch(cp, last);
         printf(CLR_DECL "FieldDecl" CLR_RESET " '%s': ",
                m->ident_name ? m->ident_name : "");
-        print_known_type(&m->type);
+        print_type_name(&m->type, m->type_name);
         if (m->is_constant) {
           printf(" : " CLR_CONST "const" CLR_RESET);
         }
@@ -379,6 +395,13 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
       if (d->import.alias)
         printf(CLR_CONST " as %s" CLR_RESET, d->import.alias);
       printf("\n");
+      break;
+    }
+
+    case DECLARATION_TYPE: {
+      printf(CLR_DECL "TypeDecl" CLR_RESET " %s = %s\n",
+             d->type_decl.new_type ? d->type_decl.new_type : "?",
+             d->type_decl.ref_type ? d->type_decl.ref_type : "?");
       break;
     }
   }

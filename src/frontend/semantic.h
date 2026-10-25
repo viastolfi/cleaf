@@ -29,6 +29,7 @@ static const char* reserved_keywords[] = {
     "string",
     "struct",
     "true",
+    "type",
     "var",
     "while",
 };
@@ -66,6 +67,7 @@ typedef struct
 
   hashmap_t* function_symbols;
   hashmap_t* struct_symbols;
+  hashmap_t* type_symbols;
 
   hashmap_t* imported_functions;
   imported_symbol_array imported_owned;

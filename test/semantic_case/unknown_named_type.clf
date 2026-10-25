@@ -1,0 +1,4 @@
+fn main(): int {
+  mystery value;
+  return 0;
+}

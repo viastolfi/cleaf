@@ -50,9 +50,6 @@ static module_unit_t* load_module_unit(const char* path)
   }
   free(lex.string_storage);
 
-  unit->parser.types = calloc(1, sizeof(known_type_array));
-  populate_parser_known_type(unit->parser.types);
-
   while ((size_t) unit->parser.pos < unit->parser.count) {
     declaration_t* decl = parse_declaration(&unit->parser);
     if (!decl) break;

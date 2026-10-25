@@ -5,15 +5,6 @@ void module_unit_free(module_unit_t* unit)
 {
   if (!unit) return;
 
-  if (unit->parser.types) {
-    da_foreach(known_type_t, it, unit->parser.types) {
-      if (it->kind == TYPE_CUSTOM && it->name)
-        free(it->name);
-    }
-    da_free(unit->parser.types);
-    free(unit->parser.types);
-  }
-
   for (size_t i = 0; i < unit->parser.count; i++) {
     if (unit->parser.items[i].string_value)
       free(unit->parser.items[i].string_value);

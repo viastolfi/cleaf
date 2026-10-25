@@ -128,15 +128,6 @@ int main(int argc, char** argv)
 
     log_phase("lexing", "'%s': %zu tokens", filename, unit->parser.count);
 
-    unit->parser.types = calloc(1, sizeof(known_type_array));
-    if (!unit->parser.types) {
-      module_unit_free(unit);
-      compiler_resources_free(res);
-      build_context_free(&build_ctx);
-      return 1;
-    }
-    populate_parser_known_type(unit->parser.types);
-
     while ((size_t) unit->parser.pos < unit->parser.count) {
       declaration_t* decl = parse_declaration(&unit->parser);
       if (!decl) {
@@ -202,14 +193,6 @@ int main(int argc, char** argv)
     }
   }
 
-  da_foreach(module_unit_t*, it, &build_ctx) {
-    if (!semantic_build_export_table(*it)) {
-      build_context_free(&build_ctx);
-      compiler_resources_free(res);
-      return 1;
-    }
-  }
-
   res->hir_program = calloc(1, sizeof(IR_function_array));
   CLEAF_ASSERT(res->hir_program != NULL, "out of memory");
 
@@ -244,6 +227,13 @@ int main(int argc, char** argv)
     log_phase("semantic", "'%s' (module '%s')",
         unit->file_path, unit->module_name ? unit->module_name : "-");
     semantic_analyze(&analyzer);
+
+    if (!semantic_build_export_table(unit)) {
+      semantic_free_program_definition(&analyzer);
+      build_context_free(&build_ctx);
+      compiler_resources_free(res);
+      return 1;
+    }
 
     if (log_is_dump()) {
       log_section_begin("AST after semantic");

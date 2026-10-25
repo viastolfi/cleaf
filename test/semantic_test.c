@@ -60,9 +60,6 @@ before_each(semantic_analyzer_t, analyzer, char* file_path)
 
   free(storage);
 
-  p.types = calloc(1, sizeof(known_type_array));
-  populate_parser_known_type(p.types);
-
   while ((size_t)p.pos < p.count) {
     declaration_t* decl = parse_declaration(&p);
     da_append(program, decl);
@@ -141,6 +138,46 @@ ct_test(semantic_analyze, fn_duplicate_params, "test/semantic_case/fn_duplicate_
 
 ct_test(semantic_analyze, var_decl_typed, "test/semantic_case/var_decl_typed.clf") {
   ct_assert_eq(analyzer.error_count, 0, "Should have no errors for typed variable declaration");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, type_alias, "test/semantic_case/type_alias.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should resolve and use transparent type aliases");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, type_alias_signature, "test/semantic_case/type_alias_signature.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should resolve aliases in function parameters and return types");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, struct_type_alias, "test/semantic_case/struct_type_alias.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should resolve aliases to struct types");
+  declaration_t* fn = analyzer.ast->items[2];
+  declaration_t* var =
+    fn->func.body->items[0]->decl_stmt.decl;
+  ct_assert_eq(var->var_decl.ident.type.kind, TYPE_CUSTOM, "Alias should resolve to a struct type");
+  ct_assert_eq(var->var_decl.ident.type.name, "Point", "Alias should preserve canonical struct identity");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, unknown_named_type, "test/semantic_case/unknown_named_type.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Unknown named type should be a semantic error");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, unknown_function_types, "test/semantic_case/unknown_function_types.clf") {
+  ct_assert_eq(analyzer.error_count, 2, "Unknown parameter and return types should be semantic errors");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, unknown_struct_member_type, "test/semantic_case/unknown_struct_member_type.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Unknown struct member type should be a semantic error");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, unknown_type_alias_target, "test/semantic_case/unknown_type_alias_target.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Unknown alias target should be a semantic error");
   free_analyzer(&analyzer);
 }
 

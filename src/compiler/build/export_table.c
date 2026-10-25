@@ -16,7 +16,7 @@ bool semantic_build_export_table(module_unit_t* unit)
     function_symbol_t* fs = calloc(1, sizeof(function_symbol_t));
     CLEAF_ASSERT(fs != NULL, "out of memory");
 
-    fs->return_type.kind = decl->func.return_type.kind;
+    fs->return_type = decl->func.return_type;
     fs->params_count = decl->func.params.count;
 
     if (fs->params_count > 0) {

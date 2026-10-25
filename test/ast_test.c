@@ -28,9 +28,6 @@ before_each(parser_t, parser, char* source_code)
     da_append(&p, t);
   }
 
-  p.types = calloc(1, sizeof(known_type_array));
-  populate_parser_known_type(p.types);
-
   free(storage);
   parser = p;
 }
@@ -91,6 +88,35 @@ ct_test(ast, typed_int_var, "int i = 3;")
   ct_assert_not_null(decl->var_decl.init, "Variable init expression should not be NULL");
   ct_assert_eq(decl->var_decl.init->type, EXPRESSION_INT_LIT, "Init expression should be INT literal");
   ct_assert_eq(decl->var_decl.init->int_lit.value, 3, "Init int value should be 3");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, unknown_named_type_var, "mystery value = 3;")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "Unknown named types should parse");
+  ct_assert_eq(
+      decl->var_decl.ident.type.kind, TYPE_CUSTOM,
+      "Unknown named type should remain unresolved in the AST");
+  ct_assert_eq(
+      decl->var_decl.ident.type_name, "mystery",
+      "AST should retain the source type name");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, type_alias_declaration, "type int count;")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "Type alias declaration should parse");
+  ct_assert_eq(decl->type, DECLARATION_TYPE, "Declaration should be a type alias");
+  ct_assert_eq(decl->type_decl.ref_type, "int", "Alias target should be int");
+  ct_assert_eq(decl->type_decl.new_type, "count", "Alias name should be count");
 
   free_declaration(decl);
   da_free(&parser);
@@ -377,8 +403,12 @@ ct_test(ast, struct_declaration_var, "struct v1 { var a; int b }")
 ct_test(ast, struct_declaration_unknown_type, "struct v2 { dump a; int b; }") 
 {
   declaration_t* decl = parse_declaration(&parser);
-  ct_assert_null(decl, "decl should be NULL if defined with unkown type as one of its member");
+  ct_assert_not_null(decl, "Unknown struct member types should parse");
+  ct_assert_eq(
+      decl->struc.members.items[0].type_name, "dump",
+      "Struct member should retain its unresolved type name");
 
+  free_declaration(decl);
   da_free(&parser);
 }
 

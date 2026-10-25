@@ -15,6 +15,7 @@ typedef enum
   DECLARATION_STRUCT,
   DECLARATION_MODULE,
   DECLARATION_IMPORT,
+  DECLARATION_TYPE,
 } declaration_kind;
 
 typedef enum
@@ -91,18 +92,14 @@ typedef struct {
 typedef struct 
 {
   known_type_t type; 
+  char* type_name;
   char* ident_name;
   const char* source_pos;
+  const char* type_source_pos;
   bool is_constant;
 } typed_identifier_t;
 
 // ----------------- Dynamic arrays ------------------
-
-typedef struct {
-  known_type_t* items;
-  size_t count;
-  size_t capacity; 
-} known_type_array;
 
 typedef struct 
 {
@@ -141,13 +138,15 @@ struct declaration_t
 
   union {
     struct { 
-      typed_identifier_t ident; 
+      typed_identifier_t ident;
       expression_t* init; 
     } var_decl;
 
     struct { 
       char* name;  
-      known_type_t return_type; 
+      known_type_t return_type;
+      char* return_type_name;
+      const char* return_type_source_pos;
       typed_identifier_array params; 
       statement_block_t* body;
       bool is_internal;
@@ -166,6 +165,13 @@ struct declaration_t
       import_path_t path;
       char* alias;
     } import;
+
+    struct {
+      char* ref_type;
+      char* new_type;
+      const char* ref_source_pos;
+      const char* new_source_pos;
+    } type_decl;
   };
 };
 
