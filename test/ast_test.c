@@ -651,7 +651,6 @@ ct_test(ast, char_var_decl, "char a = 'a';") {
   ct_assert_eq(decl->var_decl.init->type, EXPRESSION_CHAR_LIT, "Init expression should be char literal");
   ct_assert_eq(decl->var_decl.init->char_lit.value, 'a', "Init char value should be 'a'");
 
-
   free_declaration(decl);
   da_free(&parser);
 }
@@ -693,32 +692,22 @@ ct_test(ast, len_expr_nested_call, "len(get_ptr());")
   da_free(&parser);
 }
 
-// === FREE STATEMENTS ===
+// === FREE CALL EXPRESSIONS ===
 
-ct_test(ast, free_stmt_var, "free(a);")
+ct_test(ast, free_call_expression, "free(a, 8);")
 {
   statement_t* s = parse_statement(&parser);
 
-  ct_assert_not_null(s, "free statement should not be NULL");
-  ct_assert_eq(s->type, STATEMENT_FREE, "statement type should be STATEMENT_FREE");
-  ct_assert_not_null(s->free_stmt.expr, "free expression should not be NULL");
-  ct_assert_eq(s->free_stmt.expr->type, EXPRESSION_VAR, "free expression should be VAR");
-  ct_assert_eq(s->free_stmt.expr->var.ident.ident_name, "a", "freed var name should be 'a'");
-
-  free_statement(s);
-  da_free(&parser);
-}
-
-ct_test(ast, free_stmt_call, "free(get_ptr());")
-{
-  statement_t* s = parse_statement(&parser);
-
-  ct_assert_not_null(s, "free statement should not be NULL");
-  ct_assert_eq(s->type, STATEMENT_FREE, "statement type should be STATEMENT_FREE");
-  ct_assert_not_null(s->free_stmt.expr, "free expression should not be NULL");
-  ct_assert_eq(s->free_stmt.expr->type, EXPRESSION_CALL, "free expression should be a CALL");
-  ct_assert_eq(s->free_stmt.expr->call.callee, "get_ptr", "callee should be 'get_ptr'");
-  ct_assert_eq((int)s->free_stmt.expr->call.arg_count, 0, "call should have 0 args");
+  ct_assert_not_null(s, "free call statement should not be NULL");
+  ct_assert_eq(s->type, STATEMENT_EXPR, "free should parse as an expression statement");
+  ct_assert_not_null(s->expr_stmt.expr, "free call expression should not be NULL");
+  ct_assert_eq(s->expr_stmt.expr->type, EXPRESSION_CALL, "free should be a call expression");
+  ct_assert_eq(s->expr_stmt.expr->call.callee, "free", "callee should be 'free'");
+  ct_assert_eq((int)s->expr_stmt.expr->call.arg_count, 2, "free should have two arguments");
+  ct_assert_eq(s->expr_stmt.expr->call.args[0]->type, EXPRESSION_VAR, "first argument should be a variable");
+  ct_assert_eq(s->expr_stmt.expr->call.args[0]->var.ident.ident_name, "a", "first argument should be 'a'");
+  ct_assert_eq(s->expr_stmt.expr->call.args[1]->type, EXPRESSION_INT_LIT, "second argument should be an integer");
+  ct_assert_eq(s->expr_stmt.expr->call.args[1]->int_lit.value, 8, "second argument should be 8");
 
   free_statement(s);
   da_free(&parser);

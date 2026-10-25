@@ -932,33 +932,9 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
     if (stmt->type == STATEMENT_EXPR)
       semantic_check_expression(
           analyzer, stmt->expr_stmt.expr, local_scope);
-
-    if (stmt->type == STATEMENT_FREE)
-      semantic_check_free_statement(analyzer, stmt, local_scope);
   }
 
   scope_exit(local_scope);
-}
-
-void semantic_check_free_statement(
-    semantic_analyzer_t* analyzer,
-    statement_t* stmt,
-    scope_t* scope)
-{
-  known_type_t t = 
-    semantic_check_expression(analyzer, stmt->free_stmt.expr, scope);
-
-  if (t.kind != TYPE_CUSTOM && t.array_len <= 0) {
-    semantic_error_register(
-        analyzer, stmt->free_stmt.expr->source_pos - 1,
-        "you are trying to free unallocated memory. Please not that only stuct typed variable and arrays are allocated in the heap");
-    return;
-  }
-
-  variable_symbol_t* sym = (variable_symbol_t*)
-    scope_resolve(scope, stmt->free_stmt.expr->var.ident.ident_name);
-  free(sym);
-  scope_remove(scope, stmt->free_stmt.expr->var.ident.ident_name);
 }
 
 void semantic_check_asm_statement(
@@ -1023,8 +999,6 @@ void semantic_load_compiler_functions(hashmap_t* func_sym)
       calloc(1, sizeof(function_symbol_t));
     CLEAF_ASSERT(value != NULL, "out of memory");
 
-    value->return_type.kind = TYPE_PTR;
-
     value->params_name =
       calloc(1, sizeof(char*));
     CLEAF_ASSERT(value->params_name != NULL, "out of memory");
@@ -1041,6 +1015,34 @@ void semantic_load_compiler_functions(hashmap_t* func_sym)
     value->return_type = (known_type_t){.kind = TYPE_PTR };
 
     hashmap_put(func_sym, "alloc", value);
+  }
+
+  // 'free' function
+  {
+    function_symbol_t* value = 
+      calloc(1, sizeof(function_symbol_t));
+    CLEAF_ASSERT(value != NULL, "out of memory");
+
+    value->return_type.kind = TYPE_INT;
+
+    value->params_name =
+      calloc(2, sizeof(char*));
+    CLEAF_ASSERT(value->params_name != NULL, "out of memory");
+
+    value->params_type =
+      calloc(2, sizeof(variable_symbol_t));
+    CLEAF_ASSERT(value->params_type != NULL, "out of memory");
+
+    value->params_count = 2;
+    value->params_name[0] = "addr";
+    value->params_type[0].type = (known_type_t){.kind = TYPE_PTR};
+    value->params_type[0].is_constant = false;
+
+    value->params_name[1] = "len";
+    value->params_type[1].type = (known_type_t){.kind = TYPE_INT};
+    value->params_type[1].is_constant = false;
+
+    hashmap_put(func_sym, "free", value);
   }
 }
 

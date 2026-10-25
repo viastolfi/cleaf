@@ -1,5 +1,4 @@
 fn main(): int {
-  u8 x = 5;
-  free(x);
+  free(0, 8, 1);
   return 0;
 }

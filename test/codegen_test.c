@@ -277,8 +277,8 @@ ct_test(codegen_test, char_var_declaration, "test/codegen_case/char_var_declarat
   ct_assert_eq(result, 0, "codegen gives right output for char var declaration");
 }
 
-ct_test(codegen_test, free_stmt, "test/codegen_case/free_stmt.clf", "test/codegen_case/free_stmt.asm") {
-  ct_assert_eq(result, 0, "codegen gives right output for free statement");
+ct_test(codegen_test, free_call_expression, "test/codegen_case/free_stmt.clf", "test/codegen_case/free_stmt.asm") {
+  ct_assert_eq(result, 0, "codegen emits free call and stores its return value");
 }
 
 ct_test(codegen_test, array_u8_init, "test/codegen_case/array_u8_init.clf", "test/codegen_case/array_u8_init.asm") {

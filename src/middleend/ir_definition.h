@@ -89,7 +89,7 @@ typedef struct
 
   union {
     int int_value;
-    size_t alloc_size;
+    size_t mem_size;
 
     IR_temp_id index;
 

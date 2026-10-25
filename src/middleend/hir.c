@@ -126,7 +126,7 @@ int IR_lower_declaration(
       CLEAF_ASSERT(alloc != NULL, "out of memory");
 
       alloc->kind = IR_ALLOC;
-      alloc->alloc_size = decl->var_decl.ident.type.element_size;
+      alloc->mem_size = decl->var_decl.ident.type.element_size;
 
       da_append(func->code, alloc);
       instr->var.is_init = 1;
@@ -202,7 +202,7 @@ int IR_lower_declaration(
     CLEAF_ASSERT(alloc != NULL, "out of memory");
 
     alloc->kind = IR_ALLOC;
-    alloc->alloc_size = decl->var_decl.ident.type.size;
+    alloc->mem_size = decl->var_decl.ident.type.size;
     da_append(func->code, alloc);
 
     instr->var.is_init = 1;
@@ -612,6 +612,44 @@ static int IR_lower_store_string_length(
   return 0;
 }
 
+int IR_lower_free_expression(
+    HIR_parser_t* hir, expression_t* expr, IR_function_t* func)
+{
+  if (expr->call.arg_count != 2) {
+    error_report_at_position(
+        hir->error_ctx, expr->source_pos,
+        ERROR_SEVERITY_ERROR, 
+        "alloc expects exactly two arguments");
+    return 1;
+  }
+
+  IR_instruction_t* dealloc = 
+    calloc(1, sizeof(IR_instruction_t));
+  CLEAF_ASSERT(dealloc != NULL, "out of memory");
+
+  dealloc->kind = IR_DEALLOC;
+
+  IR_lower_expression(hir, expr->call.args[0], func); 
+
+  dealloc->src.id = func->next_temp_id;
+  dealloc->mem_size = expr->call.args[1]->int_lit.value;  
+
+  da_append(func->code, dealloc);
+
+  // store the exit code
+  IR_instruction_t* mov =
+    calloc(1, sizeof(IR_instruction_t));
+  CLEAF_ASSERT(mov != NULL, "out of memory");
+
+  mov->kind = IR_MOV;
+  mov->src.id = -1;
+  mov->dest.id = func->next_temp_id;
+
+  da_append(func->code, mov);
+
+  return 0;
+}
+
 int IR_lower_alloc_expression(
     HIR_parser_t* hir, expression_t* expr, IR_function_t* func)
 {
@@ -628,7 +666,7 @@ int IR_lower_alloc_expression(
   CLEAF_ASSERT(alloc != NULL, "out of memory");
 
   alloc->kind = IR_ALLOC;
-  alloc->alloc_size = expr->call.args[0]->int_lit.value;
+  alloc->mem_size = expr->call.args[0]->int_lit.value;
 
   da_append(func->code, alloc);
 
@@ -981,6 +1019,10 @@ int IR_lower_expression(HIR_parser_t* hir,
       strcmp(expr->call.callee, "alloc") == 0)
     return IR_lower_alloc_expression(hir, expr, func);
 
+  if (expr->type == EXPRESSION_CALL &&
+      strcmp(expr->call.callee, "free") == 0)
+    return IR_lower_free_expression(hir, expr, func);
+
   if (expr->type == EXPRESSION_CALL)
     return IR_lower_call_expression(hir, expr, func);
 
@@ -992,28 +1034,6 @@ int IR_lower_expression(HIR_parser_t* hir,
       "unknown expression type");
 
   return 1;
-}
-
-int IR_lower_free_statement(
-    HIR_parser_t* hir,
-    statement_t* stmt,
-    IR_function_t* func)
-{
-  IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
-  CLEAF_ASSERT(instr != NULL, "out of memory");
-
-  instr->kind = IR_DEALLOC;
-  
-  IR_lower_expression(hir, stmt->free_stmt.expr, func); 
-
-  instr->src.id = func->next_temp_id;
-
-  // Since we are only freeing pointers, size is always 8 (in 64 bits archytecture)
-  // TODO: fix this if we want it to compile on 32 bits architecture one day
-  instr->src.size = 8;
-
-  da_append(func->code, instr);
-  return 0;
 }
 
 int IR_lower_asm_statement(
@@ -1383,9 +1403,6 @@ int IR_lower_statement(HIR_parser_t* hir,
   if (stmt->type == STATEMENT_ASM)
     return IR_lower_asm_statement(hir, stmt, func);
 
-  if (stmt->type == STATEMENT_FREE)
-    return IR_lower_free_statement(hir, stmt, func);
-
   error_report_general(ERROR_SEVERITY_NOT_IMPLEMENTED,
       "unknown statement instruction");
 
@@ -1669,12 +1686,12 @@ char* IR_generate_string_program(IR_function_t* function)
     }
 
     if (instr->kind == IR_ALLOC) {
-      sb_append_fmt(&sb, "ALLOC %zu\n", instr->alloc_size);
+      sb_append_fmt(&sb, "ALLOC %zu\n", instr->mem_size);
       continue;
     }
 
     if (instr->kind == IR_DEALLOC) {
-      sb_append_fmt(&sb, "DEALLOC %c%d, %zu\n", TEMP_STR(instr->src), instr->src.size); 
+      sb_append_fmt(&sb, "DEALLOC %c%d, %zu\n", TEMP_STR(instr->src), instr->mem_size); 
     }
 
     if (instr->kind == IR_ASM) {
