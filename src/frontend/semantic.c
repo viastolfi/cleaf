@@ -1010,10 +1010,37 @@ void semantic_load_compiler_functions(hashmap_t* func_sym)
 
     value->params_name[0] = "member";
     // this should also accept array but whatever for now
-    value->params_type[0].type = (known_type_t){.kind = TYPE_STRING};
+    value->params_type[0].type = 
+      (known_type_t){.kind = TYPE_STRING};
     value->params_type[0].is_constant = false;
 
     hashmap_put(func_sym, "len", value); 
+  }
+
+  // 'alloc' function
+  {
+    function_symbol_t* value = 
+      calloc(1, sizeof(function_symbol_t));
+    CLEAF_ASSERT(value != NULL, "out of memory");
+
+    value->return_type.kind = TYPE_PTR;
+
+    value->params_name =
+      calloc(1, sizeof(char*));
+    CLEAF_ASSERT(value->params_name != NULL, "out of memory");
+
+    value->params_type =
+      calloc(1, sizeof(variable_symbol_t));
+    CLEAF_ASSERT(value->params_type != NULL, "out of memory");
+
+    value->params_count = 1;
+    value->params_name[0] = "count";
+    value->params_type[0].type = (known_type_t){.kind = TYPE_INT};
+    value->params_type[0].is_constant = false;
+
+    value->return_type = (known_type_t){.kind = TYPE_PTR };
+
+    hashmap_put(func_sym, "alloc", value);
   }
 }
 

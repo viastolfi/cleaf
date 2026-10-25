@@ -15,6 +15,7 @@
 
 // WARNING: keep this sorted (this is a bit poor but whatever)
 static const char* reserved_keywords[] = {
+    "alloc",
     "break",
     "continue",
     "else",
@@ -23,6 +24,7 @@ static const char* reserved_keywords[] = {
     "for",
     "if",
     "int",
+    "len",
     "return",
     "string",
     "struct",

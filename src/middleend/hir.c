@@ -612,6 +612,39 @@ static int IR_lower_store_string_length(
   return 0;
 }
 
+int IR_lower_alloc_expression(
+    HIR_parser_t* hir, expression_t* expr, IR_function_t* func)
+{
+  if (expr->call.arg_count != 1) {
+    error_report_at_position(
+        hir->error_ctx, expr->source_pos,
+        ERROR_SEVERITY_ERROR, 
+        "alloc expects exactly one argument");
+    return 1;
+  }
+ 
+  IR_instruction_t* alloc = 
+    calloc(1, sizeof(IR_instruction_t));
+  CLEAF_ASSERT(alloc != NULL, "out of memory");
+
+  alloc->kind = IR_ALLOC;
+  alloc->alloc_size = expr->call.args[0]->int_lit.value;
+
+  da_append(func->code, alloc);
+
+  IR_instruction_t* mov =
+    calloc(1, sizeof(IR_instruction_t));
+  CLEAF_ASSERT(mov != NULL, "out of memory");
+
+  mov->kind = IR_MOV;
+  mov->src.id = -1;
+  mov->dest.id = func->next_temp_id;
+
+  da_append(func->code, mov);
+
+  return 0;
+}
+
 int IR_lower_len_expression(
     HIR_parser_t* hir, expression_t* expr, IR_function_t* func)
 {
@@ -943,6 +976,10 @@ int IR_lower_expression(HIR_parser_t* hir,
   if (expr->type == EXPRESSION_CALL &&
       strcmp(expr->call.callee, "len") == 0)
     return IR_lower_len_expression(hir, expr, func);
+
+  if (expr->type == EXPRESSION_CALL &&
+      strcmp(expr->call.callee, "alloc") == 0)
+    return IR_lower_alloc_expression(hir, expr, func);
 
   if (expr->type == EXPRESSION_CALL)
     return IR_lower_call_expression(hir, expr, func);
