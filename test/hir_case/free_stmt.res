@@ -1,7 +1,10 @@
 Function main
 0: ALLOC 8
-1: STR slot(a), q-1
-2: LOAD q1, slot(a)
-3: DEALLOC q1, 8
-4: t2 = INT_CONST 0
-5: EXIT t2
+1: MOV t0 t-1
+2: STR slot(a), d0
+3: LOAD d1, slot(a)
+4: DEALLOC t1, 8
+5: MOV t1 t-1
+6: STR slot(err), d1
+7: LOAD d2, slot(err)
+8: EXIT d2

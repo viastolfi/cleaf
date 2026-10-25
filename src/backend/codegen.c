@@ -188,11 +188,11 @@ int CODEGEN_write_function(
           sb, CODEGEN_get_reg(target, (*it)->dest, true));
       break;
     case IR_ALLOC:
-      target->alloc_memory(sb, (*it)->alloc_size);
+      target->alloc_memory(sb, (*it)->mem_size);
       break;
     case IR_DEALLOC:
       const char * src = CODEGEN_get_reg(target, (*it)->src, false);
-      target->dealloc_memory(sb, src, (*it)->src.size);
+      target->dealloc_memory(sb, src, (*it)->mem_size);
       break;
     case IR_DIRECT_MUL:
       target->emit_mul_direct(sb,

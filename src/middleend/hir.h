@@ -71,6 +71,12 @@ int IR_lower_expr_assign(
     HIR_parser_t* hir,
     expression_t* expr,
     IR_function_t* func);
+int IR_lower_len_expression(
+    HIR_parser_t* hir, expression_t* expr, IR_function_t* func);
+int IR_lower_alloc_expression(
+    HIR_parser_t* hir, expression_t* expr, IR_function_t* func);
+int IR_lower_free_expression(
+    HIR_parser_t* hir, expression_t* expr, IR_function_t* func);
 void IR_print_data_section(HIR_parser_t* hir);
 void IR_display_function(IR_function_t* function);
 void IR_free_function(IR_function_t* func);

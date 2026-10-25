@@ -726,30 +726,42 @@ ct_test(semantic_case, char_declaration, "test/semantic_case/char_declaration.cl
   free_analyzer(&analyzer);
 }
 
-// --- free statement tests ---
+// --- free call expression tests ---
 
-ct_test(semantic_case, free_struct_ok, "test/semantic_case/free_struct_ok.clf") {
-  ct_assert_eq(analyzer.error_count, 0, "Should have no errors when freeing a struct variable");
+ct_test(semantic_case, free_call_result, "test/semantic_case/free_call_ok.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "free should accept a pointer and size and return an int");
+  function_symbol_t* free_symbol = (function_symbol_t*)
+    hashmap_get(analyzer.function_symbols, "free");
+  ct_assert_not_null(free_symbol, "free should be registered as a compiler function");
+  ct_assert_eq((int)free_symbol->params_count, 2, "free should take two arguments");
+  ct_assert_eq(free_symbol->params_type[0].type.kind, TYPE_PTR, "free address parameter should be a pointer");
+  ct_assert_eq(free_symbol->params_type[1].type.kind, TYPE_INT, "free size parameter should be an int");
+  ct_assert_eq(free_symbol->return_type.kind, TYPE_INT, "free should return an int");
   free_analyzer(&analyzer);
 }
 
-ct_test(semantic_case, free_int_error, "test/semantic_case/free_int_error.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error when freeing a non-struct (int) variable");
+ct_test(semantic_case, free_custom_type, "test/semantic_case/free_custom_type_ok.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "free should accept a custom struct value");
   free_analyzer(&analyzer);
 }
 
-ct_test(semantic_case, free_u8_error, "test/semantic_case/free_u8_error.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error when freeing a non-struct (u8) variable");
+ct_test(semantic_case, free_wrong_pointer_type, "test/semantic_case/free_wrong_pointer_type_error.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "free should reject a wider integer as its address argument");
   free_analyzer(&analyzer);
 }
 
-ct_test(semantic_case, free_use_after_free, "test/semantic_case/free_use_after_free.clf") {
-  ct_assert_eq(analyzer.error_count, 1, "Should have 1 error when using a variable after it has been freed");
+ct_test(semantic_case, free_too_few_args, "test/semantic_case/free_too_few_args_error.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "free should reject a call with too few arguments");
   free_analyzer(&analyzer);
 }
 
-ct_test(semantic_case, free_undef_error, "test/semantic_case/free_undef_error.clf") {
-  ct_assert_eq(analyzer.error_count, 2, "Should have 2 errors when freeing an undefined variable (undefined var + free of unallocated)");
+ct_test(semantic_case, free_too_many_args, "test/semantic_case/free_too_many_args_error.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "free should reject a call with too many arguments");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, free_undefined_argument, "test/semantic_case/free_undefined_arg_error.clf") {
+  ct_assert_eq(analyzer.error_count, 2, "free should report an undefined variable and its incompatible type");
   free_analyzer(&analyzer);
 }
 

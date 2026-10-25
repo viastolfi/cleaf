@@ -15,6 +15,7 @@
 
 // WARNING: keep this sorted (this is a bit poor but whatever)
 static const char* reserved_keywords[] = {
+    "alloc",
     "break",
     "continue",
     "else",
@@ -23,6 +24,7 @@ static const char* reserved_keywords[] = {
     "for",
     "if",
     "int",
+    "len",
     "return",
     "string",
     "struct",
@@ -164,11 +166,6 @@ void semantic_check_scope(
     scope_t* scope);
 
 void semantic_check_asm_statement(
-    semantic_analyzer_t* analyzer,
-    statement_t* stmt,
-    scope_t* scope);
-
-void semantic_check_free_statement(
     semantic_analyzer_t* analyzer,
     statement_t* stmt,
     scope_t* scope);

@@ -1,10 +1,5 @@
-struct v2 {
-  int a;
-  int b;
-}
-
 fn main(): int {
-  v2 a;
-  free(a);
-  return 0;
+  var a = alloc(8);
+  var err = free(a, 8);
+  return err;
 }
