@@ -13,13 +13,16 @@ _start:
     mov r8, -1
     mov r9, 0
     syscall
-    mov [rbp - 8], rax
-    mov r11, [rbp - 8]
+    mov rbx, rax
+    mov [rbp - 8], ebx
+    mov r11d, [rbp - 8]
     mov rax, 11
     mov rdi, r11
     mov rsi, 8
     syscall
-    mov r12, 0
+    mov r11, rax
+    mov [rbp - 16], r11d
+    mov r12d, [rbp - 16]
     add rsp, 8
     pop rbp
     mov rax, 60

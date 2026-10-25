@@ -1,0 +1,5 @@
+fn main(): int {
+  var a = alloc(8);
+  int result = free(a, 8);
+  return result;
+}

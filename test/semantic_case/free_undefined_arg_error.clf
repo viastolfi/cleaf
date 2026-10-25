@@ -1,4 +1,4 @@
 fn main(): int {
-  free(undef_var);
+  free(undef_var, 8);
   return 0;
 }

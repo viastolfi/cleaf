@@ -151,9 +151,6 @@ void free_statement(statement_t* s)
     free(s->asm_stmt.args);
   }
 
-  if (s->type == STATEMENT_FREE) {
-    free_expression(s->free_stmt.expr); 
-  }
 
   free(s);
 }
@@ -700,12 +697,15 @@ expression_t* ast_parse_expr_call(parser_t* p)
 
   e->call.arg_count = (size_t) ceil((double) l / 2);
   if (e->call.arg_count > 0) {
-    e->call.args = (expression_t**) calloc(e->call.arg_count, sizeof(expression_t));
+    e->call.args = 
+      (expression_t**) 
+      calloc(e->call.arg_count, sizeof(expression_t));
 
     for (size_t i = 0; i < e->call.arg_count; ++i) {
       expression_t* arg = parse_expression(p);  
       if (!arg) {
-        error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+        error_report_at_token(
+            p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
             "unexpected NULL argument");
         free_expression(e);
         return NULL;
@@ -713,7 +713,8 @@ expression_t* ast_parse_expr_call(parser_t* p)
       e->call.args[i] = arg;
 
       if (!check(p, ')') && i == e->call.arg_count - 1) {
-        error_report_at_token(p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
+        error_report_at_token(
+            p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
             "expected ')' after argument declaration");
         free_expression(e);
         return NULL;
@@ -1958,30 +1959,6 @@ statement_t* ast_parse_asm_stmt(parser_t* p)
   return stmt;
 }
 
-statement_t* ast_parse_free_stmt(parser_t* p)
-{
-  statement_t* stmt = calloc(1, sizeof(statement_t));
-  CLEAF_ASSERT(stmt != NULL, "out of memory");
-  stmt->type = STATEMENT_FREE;
-
-  // consume 'free'
-  advance(p);
-
-  expect(p, '(', "expect '(' after 'free' token'");
-
-  stmt->free_stmt.expr = parse_expression(p);
-  if (!stmt->free_stmt.expr) {
-    // TODO: maybe make error stack 
-    free_statement(stmt);
-    return NULL;
-  }
-
-  expect(p, ')', "expect ')' after free statement definition");
-  expect(p, ';', "expect ';' at the and of statement");
-
-  return stmt;
-}
-
 statement_t* parse_statement(parser_t* p) 
 {
   if (check(p, LEXER_token_id) && 
@@ -2007,11 +1984,6 @@ statement_t* parse_statement(parser_t* p)
   if (check(p, LEXER_token_id) &&
       strcmp(peek(p)->string_value, "asm") == 0) {
     return ast_parse_asm_stmt(p); 
-  }
-
-  if (check(p, LEXER_token_id) &&
-      strcmp(peek(p)->string_value, "free") == 0) {
-    return ast_parse_free_stmt(p); 
   }
 
   // WARNING: this can be unsafe if string_value is NULL

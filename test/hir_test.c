@@ -282,8 +282,8 @@ ct_test(hir_test, char_var_declaration, "test/hir_case/char_var_declaration.clf"
   ct_assert_eq(result, 0, "hir gives right output for char var declaration");
 }
 
-ct_test(hir_test, free_stmt, "test/hir_case/free_stmt.clf", "test/hir_case/free_stmt.res") {
-  ct_assert_eq(result, 0, "hir gives right output for free statement");
+ct_test(hir_test, free_call_expression, "test/hir_case/free_stmt.clf", "test/hir_case/free_stmt.res") {
+  ct_assert_eq(result, 0, "hir lowers free call expression and preserves its return value");
 }
 
 ct_test(hir_test, array_u8_init, "test/hir_case/array_u8_init.clf", "test/hir_case/array_u8_init.res") {

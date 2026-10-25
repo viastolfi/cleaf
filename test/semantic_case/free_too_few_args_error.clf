@@ -1,5 +1,4 @@
 fn main(): int {
-  int x = 5;
-  free(x);
+  free();
   return 0;
 }
