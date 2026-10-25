@@ -610,8 +610,23 @@ known_type_t semantic_check_expr_call(
     if (arg_type.kind == TYPE_UNTYPE)
       continue;
 
-    if (arg_type.kind != fs->params_type[i].type.kind &&
-        fs->params_type[i].type.kind < arg_type.kind) {
+    if (
+        arg_type.kind != fs->params_type[i].type.kind &&
+        fs->params_type[i].type.kind < arg_type.kind) 
+    {
+
+      // in case this is the firs argument of the free function
+      // it accepts custom in addition to TYPE_PTR
+      // this is ugly as hell and making it so function params could accepts diffrents types or that a type could be both CUSTOM AND PTR would be better
+      // this is a problem for the future me
+      if (
+          strcmp(expr->call.callee, "free") == 0 &&
+          i == 0 &&
+          arg_type.kind == TYPE_CUSTOM)
+      {
+        continue;
+      }
+
       semantic_error_register(analyzer,
           expr->call.args[i]->source_pos - 1,
           "wrong type conversion");

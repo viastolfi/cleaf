@@ -740,6 +740,11 @@ ct_test(semantic_case, free_call_result, "test/semantic_case/free_call_ok.clf") 
   free_analyzer(&analyzer);
 }
 
+ct_test(semantic_case, free_custom_type, "test/semantic_case/free_custom_type_ok.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "free should accept a custom struct value");
+  free_analyzer(&analyzer);
+}
+
 ct_test(semantic_case, free_wrong_pointer_type, "test/semantic_case/free_wrong_pointer_type_error.clf") {
   ct_assert_eq(analyzer.error_count, 1, "free should reject a wider integer as its address argument");
   free_analyzer(&analyzer);

@@ -81,6 +81,39 @@ Function calls can appear as expressions (capturing the return value) or as stan
 
 ## Built-in functions
 
+### `alloc`
+
+`alloc` accepts a byte count and returns a `ptr` to heap memory:
+
+```cleaf
+var buffer = alloc(16);
+```
+
+The size is currently expected to be an integer literal.
+
+### `free`
+
+`free` accepts an address and its size in bytes, then returns an `int` result
+from the deallocation syscall. The address can be a `ptr` or a custom struct
+value; struct variables are heap-allocated and act as pointers. `free` works as
+an expression (to capture its result) or as a standalone statement:
+
+```cleaf
+struct Point {
+    int x;
+    int y;
+}
+
+fn main(): int {
+    Point point = { .x = 3, .y = 4 };
+    int status = free(point, 8);
+    return status;
+}
+```
+
+The size must currently be an integer literal and should match the allocation
+size in bytes.
+
 ### `len`
 
 `len` accepts exactly one `string` and returns its length as an `int`. The length

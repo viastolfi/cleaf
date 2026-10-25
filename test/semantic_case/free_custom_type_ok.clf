@@ -1,0 +1,10 @@
+struct pair {
+  int first;
+  int second;
+}
+
+fn main(): int {
+  pair value = { .first = 1, .second = 2 };
+  int result = free(value, 8);
+  return result;
+}
