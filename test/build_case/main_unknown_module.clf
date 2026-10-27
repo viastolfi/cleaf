@@ -1,5 +1,5 @@
 module main
 
-import unknown::add
+import unknown
 
-internal fn main(): int { return add(1, 2); }
+internal fn main(): int { return unknown::add(1, 2); }

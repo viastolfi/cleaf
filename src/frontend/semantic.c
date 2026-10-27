@@ -19,9 +19,53 @@ static void semantic_resolve_type_size(
     struct_symbol_t* sym =
       (struct_symbol_t*) hashmap_get(
           analyzer->struct_symbols, t->name);
-    if (sym)
+    if (sym) {
       t->element_size = sym->total_size;
+      t->size = sym->total_size;
+    }
   }
+}
+
+static known_type_t semantic_resolve_type(
+    semantic_analyzer_t* analyzer,
+    known_type_t type,
+    const char* type_name,
+    const char* type_module,
+    const char* source_pos)
+{
+  if (!type_name)
+    return type;
+
+  known_type_t* resolved = NULL;
+  char* qualified_name = NULL;
+  if (type_module) {
+    size_t len = strlen(type_module) + 2 + strlen(type_name) + 1;
+    qualified_name = malloc(len);
+    if (qualified_name)
+      snprintf(qualified_name, len, "%s::%s", type_module, type_name);
+    resolved = qualified_name
+      ? (known_type_t*) hashmap_get(
+          analyzer->imported_types, qualified_name)
+      : NULL;
+  } else {
+    resolved =
+      (known_type_t*) hashmap_get(analyzer->type_symbols, type_name);
+  }
+  free(qualified_name);
+
+  if (!resolved) {
+    semantic_error_register(
+        analyzer, source_pos - 1,
+        type_module ? "unknown imported type" : "unknown type");
+    return (known_type_t){.kind = TYPE_ERROR};
+  }
+
+  size_t array_len = type.array_len;
+  type = *resolved;
+  type.array_len = array_len;
+  if (array_len > 0)
+    type.size = type.element_size * array_len;
+  return type;
 }
 
 int string_array_contains(
@@ -56,6 +100,18 @@ void semantic_free_program_definition(semantic_analyzer_t* analyzer)
     analyzer->imported_functions = NULL;
   }
 
+  if (analyzer->imported_modules) {
+    hashmap_free(analyzer->imported_modules, 0);
+    free(analyzer->imported_modules);
+    analyzer->imported_modules = NULL;
+  }
+
+  if (analyzer->imported_types) {
+    hashmap_free(analyzer->imported_types, 0);
+    free(analyzer->imported_types);
+    analyzer->imported_types = NULL;
+  }
+
   da_foreach(imported_symbol_t*, it, &analyzer->imported_owned) {
     free((*it)->module_name);
     free((*it)->qualifier);
@@ -75,6 +131,18 @@ void semantic_free_program_definition(semantic_analyzer_t* analyzer)
     } 
     hashmap_free(analyzer->struct_symbols, 1);
     free(analyzer->struct_symbols);
+  }
+
+  if (analyzer->type_symbols) {
+    for (size_t i = 0; i < HASH_SIZE; ++i) {
+      hashmap_entry_t* entry = analyzer->type_symbols->buckets[i];
+      while (entry) {
+        free(entry->value);
+        entry = entry->next;
+      }
+    }
+    hashmap_free(analyzer->type_symbols, 0);
+    free(analyzer->type_symbols);
   }
 
   da_free(&analyzer->semantic_errors);
@@ -161,6 +229,12 @@ int analyze_declaration(semantic_analyzer_t* analyzer,
       hashmap_get(
           analyzer->struct_symbols, 
           decl->var_decl.ident.type.name);
+    if (!struc_sym) {
+      semantic_error_register(
+          analyzer, decl->var_decl.ident.type_source_pos,
+          "unknown custom type");
+      return 0;
+    }
     if (struc_sym->members_count != 
         decl->var_decl.init->composite_literal.count) {
       semantic_error_register(
@@ -532,46 +606,35 @@ known_type_t semantic_check_expr_call(
   function_symbol_t* fs = NULL;
 
   if (expr->call.qualifier) {
-    imported_symbol_t* isym = NULL;
-
-    if (analyzer->imported_functions) {
-      size_t key_len =
-        strlen(expr->call.qualifier) + 2 + 
-        strlen(expr->call.callee) + 1;
-
-      char* key = malloc(key_len);
-      if (key) {
-        snprintf(key, key_len, "%s::%s",
-            expr->call.qualifier, expr->call.callee);
-        isym = (imported_symbol_t*) hashmap_get(
+    size_t key_len =
+      strlen(expr->call.qualifier) + 2 +
+      strlen(expr->call.callee) + 1;
+    char* key = malloc(key_len);
+    if (key) {
+      snprintf(key, key_len, "%s::%s",
+          expr->call.qualifier, expr->call.callee);
+      imported_symbol_t* isym =
+        (imported_symbol_t*) hashmap_get(
             analyzer->imported_functions, key);
-        free(key);
-      }
-    }
-
-    if (!isym) {
-      semantic_error_register(analyzer,
-          expr->source_pos - 1,
-          "unknown qualified function call (module not imported or "
-          "qualifier does not match the source module)");
-      return (known_type_t){.kind = TYPE_ERROR};
-    }
-
-    fs = isym->fs;
-    expr->call.resolved_module = strdup(isym->module_name);
-  } else {
-    fs = (function_symbol_t*) hashmap_get(
-        analyzer->function_symbols,
-        expr->call.callee);
-
-    if (!fs && analyzer->imported_functions) {
-      imported_symbol_t* isym = (imported_symbol_t*) hashmap_get(
-          analyzer->imported_functions, expr->call.callee);
       if (isym) {
         fs = isym->fs;
         expr->call.resolved_module = strdup(isym->module_name);
       }
+      free(key);
     }
+
+    if (!fs) {
+      semantic_error_register(analyzer,
+          expr->source_pos - 1,
+          hashmap_get(analyzer->imported_modules, expr->call.qualifier)
+            ? "module does not export this function"
+            : "module qualifier is not imported");
+      return (known_type_t){.kind = TYPE_ERROR};
+    }
+  } else {
+    fs = (function_symbol_t*) hashmap_get(
+        analyzer->function_symbols,
+        expr->call.callee);
   }
 
   if (!fs) {
@@ -710,7 +773,7 @@ void semantic_check_return_statement(semantic_analyzer_t* analyzer,
       analyzer->current_analyzed_function);
 
   // some kind of guard, should be always false as parser is working
-  if (!e) return;
+  if (!e || !fs || fs->return_type.kind == TYPE_ERROR) return;
 
   known_type_t rt = semantic_check_expression(analyzer, e, scope);
 
@@ -744,34 +807,49 @@ void semantic_check_for_statement(semantic_analyzer_t* analyzer,
       stmt->for_stmt.decl_init) {
 
     declaration_t* decl = stmt->for_stmt.decl_init;
+    decl->var_decl.ident.type = semantic_resolve_type(
+        analyzer,
+        decl->var_decl.ident.type,
+        decl->var_decl.ident.type_name,
+        decl->var_decl.ident.type_module,
+        decl->var_decl.ident.type_source_pos);
 
     if (analyze_declaration(analyzer, decl, for_scope)) {
-      known_type_t inferred = 
-        semantic_check_expression(
-            analyzer, decl->var_decl.init, for_scope);
-
-      variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
-
-      if (vs) {
-        if (decl->var_decl.ident.type.kind == TYPE_VAR &&
-            inferred.kind != TYPE_STRING) {
-          vs->type = (known_type_t) {
-            .kind = TYPE_INT,
-            .name = types_description[TYPE_INT].name,
-            .element_size = types_description[TYPE_INT].size,
-          };
-        } else {
-          vs->type = inferred;
+      if (decl->var_decl.ident.type.kind == TYPE_ERROR) {
+        variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
+        if (vs) {
+          vs->type = decl->var_decl.ident.type;
+          hashmap_put(
+              for_scope->symbols,
+              decl->var_decl.ident.ident_name, vs);
         }
-        semantic_resolve_type_size(analyzer, &vs->type);
+      } else {
+        known_type_t inferred =
+          semantic_check_expression(
+              analyzer, decl->var_decl.init, for_scope);
+
+        variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
+
+        if (vs) {
+          if (decl->var_decl.ident.type.kind == TYPE_VAR &&
+              inferred.kind != TYPE_STRING) {
+            vs->type = (known_type_t) {
+              .kind = TYPE_INT,
+              .name = types_description[TYPE_INT].name,
+              .element_size = types_description[TYPE_INT].size,
+            };
+          } else {
+            vs->type = inferred;
+          }
+          semantic_resolve_type_size(analyzer, &vs->type);
+          vs->is_constant = false;
+          decl->var_decl.ident.type = vs->type;
+          hashmap_put(
+              for_scope->symbols, decl->var_decl.ident.ident_name, vs);
+        }
       }
-      vs->is_constant = false;
-      decl->var_decl.ident.type = vs->type;
-      hashmap_put(
-          for_scope->symbols, decl->var_decl.ident.ident_name, vs);
     }
   } 
-
   else if (stmt->for_stmt.init_kind == FOR_INIT_EXPR && 
       stmt->for_stmt.expr_init) {
     semantic_check_expression(
@@ -798,11 +876,29 @@ void semantic_check_var_declaration(
     declaration_t* decl,
     scope_t* scope)
 {
+  decl->var_decl.ident.type = semantic_resolve_type(
+      analyzer,
+      decl->var_decl.ident.type,
+      decl->var_decl.ident.type_name,
+      decl->var_decl.ident.type_module,
+      decl->var_decl.ident.type_source_pos);
+
   if (!analyze_declaration(analyzer, decl, scope))
     return;
 
   known_type_t expected_type = decl->var_decl.ident.type;
   known_type_t actual_type; 
+
+  if (expected_type.kind == TYPE_ERROR) {
+    if (decl->var_decl.init)
+      semantic_check_expression(analyzer, decl->var_decl.init, scope);
+    variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
+    if (!vs) return;
+    vs->type = expected_type;
+    vs->is_constant = decl->var_decl.ident.is_constant;
+    hashmap_put(scope->symbols, decl->var_decl.ident.ident_name, vs);
+    return;
+  }
 
   if (!decl->var_decl.init) {
     actual_type = decl->var_decl.ident.type;
@@ -1070,9 +1166,75 @@ void semantic_load_program_definition(semantic_analyzer_t* analyzer)
 
   hashmap_t* struct_sym = calloc(1, sizeof(hashmap_t));
   CLEAF_ASSERT(struct_sym != NULL, "out of memory");
+  hashmap_t* type_sym = calloc(1, sizeof(hashmap_t));
+  CLEAF_ASSERT(type_sym != NULL, "out of memory");
+  analyzer->struct_symbols = struct_sym;
+  analyzer->type_symbols = type_sym;
 
   // call to load compiler existing functions
   semantic_load_compiler_functions(func_sym);
+
+  for (size_t i = 0; i < TYPE_COUNT; ++i) {
+    known_type_t* type = calloc(1, sizeof(known_type_t));
+    CLEAF_ASSERT(type != NULL, "out of memory");
+    type->name = types_description[i].name;
+    type->size = types_description[i].size;
+    type->element_size = types_description[i].size;
+    type->kind = i;
+    hashmap_put(type_sym, type->name, type);
+  }
+
+  da_foreach(declaration_t*, it, analyzer->ast) {
+    if ((*it)->type != DECLARATION_STRUCT ||
+        hashmap_get(type_sym, (*it)->struc.name))
+      continue;
+
+    known_type_t* type = calloc(1, sizeof(known_type_t));
+    CLEAF_ASSERT(type != NULL, "out of memory");
+    type->name = (*it)->struc.name;
+    type->kind = TYPE_CUSTOM;
+    hashmap_put(type_sym, type->name, type);
+  }
+
+  da_foreach(declaration_t*, it, analyzer->ast) {
+    declaration_t* decl = *it;
+    if (decl->type != DECLARATION_TYPE)
+      continue;
+
+    if (semantic_check_name_not_reserved(decl->type_decl.new_type)) {
+      semantic_error_register(
+          analyzer, decl->type_decl.new_source_pos,
+          "type name is reserved");
+      continue;
+    }
+
+    if (hashmap_get(type_sym, decl->type_decl.new_type)) {
+      semantic_error_register(
+          analyzer, decl->type_decl.new_source_pos,
+          "type already defined");
+      continue;
+    }
+
+    known_type_t resolved_target = semantic_resolve_type(
+        analyzer, (known_type_t){0},
+        decl->type_decl.ref_type, decl->type_decl.ref_module,
+        decl->type_decl.ref_source_pos);
+    known_type_t* target = &resolved_target;
+    known_type_t* alias = calloc(1, sizeof(known_type_t));
+    CLEAF_ASSERT(alias != NULL, "out of memory");
+    if (target->kind != TYPE_ERROR && target->kind != TYPE_VAR &&
+        target->kind != TYPE_UNTYPE) {
+      *alias = *target;
+    } else {
+      alias->kind = TYPE_ERROR;
+      if (target->kind != TYPE_ERROR) {
+        semantic_error_register(
+            analyzer, decl->type_decl.ref_source_pos,
+            "invalid type alias target");
+      }
+    }
+    hashmap_put(type_sym, decl->type_decl.new_type, alias);
+  }
 
   da_foreach(declaration_t*, it, analyzer->ast) {
     if ((*it)->type == DECLARATION_FUNC) {
@@ -1095,7 +1257,12 @@ void semantic_load_program_definition(semantic_analyzer_t* analyzer)
       CLEAF_ASSERT(value != NULL, "out of memory");
       memset(value, 0, sizeof(function_symbol_t));
 
-      value->return_type.kind = (*it)->func.return_type.kind;
+      (*it)->func.return_type = semantic_resolve_type(
+          analyzer, (*it)->func.return_type,
+          (*it)->func.return_type_name,
+          (*it)->func.return_type_module,
+          (*it)->func.return_type_source_pos);
+      value->return_type = (*it)->func.return_type;
 
       if ((*it)->func.params.count <= 0) {
         goto hash_func_put; 
@@ -1123,6 +1290,12 @@ void semantic_load_program_definition(semantic_analyzer_t* analyzer)
 
         value->params_name[i] = 
           (*it)->func.params.items[i].ident_name;
+        (*it)->func.params.items[i].type = semantic_resolve_type(
+            analyzer,
+            (*it)->func.params.items[i].type,
+            (*it)->func.params.items[i].type_name,
+            (*it)->func.params.items[i].type_module,
+            (*it)->func.params.items[i].type_source_pos);
         value->params_type[i].type = 
           (*it)->func.params.items[i].type;
         value->params_type[i].is_constant =
@@ -1177,6 +1350,14 @@ hash_func_put:
 
         value->members_name[i] =
           (*it)->struc.members.items[i].ident_name;
+        (*it)->struc.members.items[i].type = semantic_resolve_type(
+            analyzer,
+            (*it)->struc.members.items[i].type,
+            (*it)->struc.members.items[i].type_name,
+            (*it)->struc.members.items[i].type_module,
+            (*it)->struc.members.items[i].type_source_pos);
+        semantic_resolve_type_size(
+            analyzer, &(*it)->struc.members.items[i].type);
         value->members_type[i].type =
           (*it)->struc.members.items[i].type;
         value->members_type[i].is_constant =
@@ -1188,11 +1369,18 @@ hash_func_put:
 
 hash_struct_put:
       hashmap_put(struct_sym, (*it)->struc.name, value);
+      known_type_t* struct_type = (known_type_t*) hashmap_get(
+          type_sym, (*it)->struc.name);
+      if (struct_type) {
+        struct_type->size = value->total_size;
+        struct_type->element_size = value->total_size;
+      }
     }
   }
 
   analyzer->function_symbols = func_sym;
   analyzer->struct_symbols = struct_sym;
+  analyzer->type_symbols = type_sym;
 }
 
 void semantic_error_display(semantic_analyzer_t* analyzer)

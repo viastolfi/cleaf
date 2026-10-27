@@ -47,6 +47,52 @@ var y = x + 10;   // inferred from expression result
 
 `var` requires an initializer — it cannot be used to declare an uninitialized variable.
 
+## Type aliases
+
+Use `type <existing-type> <new-name>;` to give an existing type another name:
+
+```cleaf
+type ptr Vector;
+
+fn make_buffer(): Vector {
+    Vector buffer = alloc(64);
+    return buffer;
+}
+```
+
+The alias has the same underlying type as its target. A type alias declared in
+another module can be named through that module's import qualifier:
+
+```cleaf
+module main
+
+import vector
+
+type vector::Vector LocalVector;
+
+fn make_vector(): vector::Vector {
+    LocalVector value = vector::create();
+    return value;
+}
+```
+
+For a nested module, import it with an alias and use that alias in the type name:
+
+```cleaf
+module main
+
+import std::geometry as geometry
+
+fn use_point(): int {
+    geometry::Point point;
+    return 0;
+}
+```
+
+Imported type names can be used in variable declarations, function parameters,
+function return types, and local type aliases. See
+[Modules and Imports](./modules) for module import and visibility rules.
+
 ## Type narrowing (promotion)
 
 When assigning a value of a wider type to a narrower variable, the compiler reports an error if the value exceeds the target type's range.

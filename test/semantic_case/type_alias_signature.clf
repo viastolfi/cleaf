@@ -1,0 +1,9 @@
+type int Number;
+
+fn identity(Number value): Number {
+  return value;
+}
+
+fn main(): int {
+  return identity(1);
+}

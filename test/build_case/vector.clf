@@ -1,0 +1,12 @@
+module vector
+
+type ptr vector;
+
+fn vector_init(): vector {
+  var a = alloc(100);
+  return a;
+}
+
+fn identity(vector value): vector {
+  return value;
+}

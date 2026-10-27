@@ -112,16 +112,19 @@ fn add(): int { return helper(); }
 // main.clf
 module main
 
-import math::add
+import math
 
 fn main(): int {
-    return add();
+    return math::add();
 }
 ```
 
 `cleaf build` scans every `.clf` file in the current directory, resolves the module
 dependency graph, and links everything into a single executable under `build/`.
-`internal` functions are only visible within their own module.
+Imports name modules, not individual functions. Use `module::function` to call an
+exported function; `internal` functions are only visible within their own module.
+See [Modules and Imports](docs/docs/language/modules.md) for aliases, nested module
+paths, and imported types.
 
 ## Current state
 

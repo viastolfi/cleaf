@@ -1,0 +1,7 @@
+module main
+
+import std::math
+
+internal fn main(): int {
+  return math::add(19, 23);
+}

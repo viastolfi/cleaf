@@ -28,9 +28,6 @@ before_each(parser_t, parser, char* source_code)
     da_append(&p, t);
   }
 
-  p.types = calloc(1, sizeof(known_type_array));
-  populate_parser_known_type(p.types);
-
   free(storage);
   parser = p;
 }
@@ -91,6 +88,35 @@ ct_test(ast, typed_int_var, "int i = 3;")
   ct_assert_not_null(decl->var_decl.init, "Variable init expression should not be NULL");
   ct_assert_eq(decl->var_decl.init->type, EXPRESSION_INT_LIT, "Init expression should be INT literal");
   ct_assert_eq(decl->var_decl.init->int_lit.value, 3, "Init int value should be 3");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, unknown_named_type_var, "mystery value = 3;")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "Unknown named types should parse");
+  ct_assert_eq(
+      decl->var_decl.ident.type.kind, TYPE_CUSTOM,
+      "Unknown named type should remain unresolved in the AST");
+  ct_assert_eq(
+      decl->var_decl.ident.type_name, "mystery",
+      "AST should retain the source type name");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, type_alias_declaration, "type int count;")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "Type alias declaration should parse");
+  ct_assert_eq(decl->type, DECLARATION_TYPE, "Declaration should be a type alias");
+  ct_assert_eq(decl->type_decl.ref_type, "int", "Alias target should be int");
+  ct_assert_eq(decl->type_decl.new_type, "count", "Alias name should be count");
 
   free_declaration(decl);
   da_free(&parser);
@@ -377,8 +403,12 @@ ct_test(ast, struct_declaration_var, "struct v1 { var a; int b }")
 ct_test(ast, struct_declaration_unknown_type, "struct v2 { dump a; int b; }") 
 {
   declaration_t* decl = parse_declaration(&parser);
-  ct_assert_null(decl, "decl should be NULL if defined with unkown type as one of its member");
+  ct_assert_not_null(decl, "Unknown struct member types should parse");
+  ct_assert_eq(
+      decl->struc.members.items[0].type_name, "dump",
+      "Struct member should retain its unresolved type name");
 
+  free_declaration(decl);
   da_free(&parser);
 }
 
@@ -939,7 +969,7 @@ ct_test(ast, import_simple, "import std::io")
   da_free(&parser);
 }
 
-ct_test(ast, import_nested, "import std::io::print")
+ct_test(ast, import_nested_module, "import std::io::fs")
 {
   declaration_t* decl = parse_declaration(&parser);
 
@@ -948,7 +978,7 @@ ct_test(ast, import_nested, "import std::io::print")
   ct_assert_eq(decl->import.path.count, 3, "path should have 3 segments");
   ct_assert_eq(decl->import.path.items[0], "std", "first segment should be 'std'");
   ct_assert_eq(decl->import.path.items[1], "io", "second segment should be 'io'");
-  ct_assert_eq(decl->import.path.items[2], "print", "third segment should be 'print'");
+  ct_assert_eq(decl->import.path.items[2], "fs", "third segment should be 'fs'");
 
   free_declaration(decl);
   da_free(&parser);
@@ -968,35 +998,34 @@ ct_test(ast, import_single_segment, "import mymod")
   da_free(&parser);
 }
 
-ct_test(ast, import_with_alias, "import std::io::print as p")
+ct_test(ast, import_with_alias, "import std::io as io")
 {
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_not_null(decl, "import decl should not be NULL");
   ct_assert_eq(decl->type, DECLARATION_IMPORT, "declaration type should be DECLARATION_IMPORT");
-  ct_assert_eq(decl->import.path.count, 3, "path should have 3 segments");
-  ct_assert_eq(decl->import.path.items[2], "print", "last segment should be 'print'");
+  ct_assert_eq(decl->import.path.count, 2, "path should have 2 segments");
+  ct_assert_eq(decl->import.path.items[1], "io", "last segment should be 'io'");
   ct_assert_not_null(decl->import.alias, "alias should not be NULL");
-  ct_assert_eq(decl->import.alias, "p", "alias should be 'p'");
+  ct_assert_eq(decl->import.alias, "io", "alias should be 'io'");
 
   free_declaration(decl);
   da_free(&parser);
 }
 
-ct_test(ast, import_alias_no_conflict, "import math::add as math_add")
+ct_test(ast, import_alias_no_conflict, "import math as m")
 {
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_not_null(decl, "import decl should not be NULL");
   ct_assert_eq(decl->import.path.items[0], "math", "module should be 'math'");
-  ct_assert_eq(decl->import.path.items[1], "add", "symbol should be 'add'");
-  ct_assert_eq(decl->import.alias, "math_add", "alias should be 'math_add'");
+  ct_assert_eq(decl->import.alias, "m", "alias should be 'm'");
 
   free_declaration(decl);
   da_free(&parser);
 }
 
-ct_test(ast, import_no_alias, "import std::io::print")
+ct_test(ast, import_no_alias, "import std::io")
 {
   declaration_t* decl = parse_declaration(&parser);
 

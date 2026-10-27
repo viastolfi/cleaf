@@ -122,4 +122,3 @@ inline static hashmap_t* hashmap_merge(hashmap_t* map1, hashmap_t* map2) {
 }
 
 #endif // HASHMAP_H
-

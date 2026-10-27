@@ -1,0 +1,9 @@
+struct Point {
+  int x;
+}
+
+type Point Position;
+
+fn main() {
+  Position point;
+}

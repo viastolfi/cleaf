@@ -2,7 +2,7 @@ x 2026-06-08 2026-06-08 Add multiple int related types for better register usage
 (B) Add MIR @middleend
 x 2026-06-09 2026-06-09 Add "asm" function for inline assembly in the code base @global
 (B) Add "sizeof" compiler function @global
-(C) Add "type" keyword to create types at compile time @global
+x 2026-10-27 2026-10-27 Add "type" keyword to create types at compile time @global
 x 2026-07-01 2026-07-01 Import workflow for multiple file and std compilation @global
 x 2026-06-11 2026-06-11 Add "char" type @global
 x 2026-06-18 2026-06-18 Add Array type @global

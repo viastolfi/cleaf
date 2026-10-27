@@ -1,0 +1,9 @@
+module vector
+
+type ptr vector;
+
+fn vector_init(): vector {
+  vector a = alloc(100);
+
+  return a;
+}

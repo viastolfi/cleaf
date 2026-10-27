@@ -1,5 +1,5 @@
 module main
 
-import math::add as madd
+import math as m
 
-internal fn main(): int { return madd(1, 2); }
+internal fn main(): int { return m::add(1, 2); }

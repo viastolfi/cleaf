@@ -50,9 +50,6 @@ static module_unit_t* load_module_unit(const char* path)
   }
   free(lex.string_storage);
 
-  unit->parser.types = calloc(1, sizeof(known_type_array));
-  populate_parser_known_type(unit->parser.types);
-
   while ((size_t) unit->parser.pos < unit->parser.count) {
     declaration_t* decl = parse_declaration(&unit->parser);
     if (!decl) break;
@@ -82,8 +79,14 @@ before_each(build_test_ctx_t, tctx, char* dep_path, char* main_path)
   if (!populate_module_registry(&t.ctx, t.dep_unit)) abort();
   if (!populate_module_registry(&t.ctx, t.main_unit)) abort();
 
-  if (!semantic_build_export_table(t.dep_unit)) abort();
-  if (!semantic_build_export_table(t.main_unit)) abort();
+  semantic_analyzer_t dep_analyzer = {0};
+  dep_analyzer.error_ctx = &t.dep_unit->error_ctx;
+  dep_analyzer.ast = &t.dep_unit->program;
+  semantic_analyze(&dep_analyzer);
+  if (!semantic_build_export_table(
+          t.dep_unit, dep_analyzer.type_symbols))
+    abort();
+  semantic_free_program_definition(&dep_analyzer);
 
   t.analyzer.error_ctx = &t.main_unit->error_ctx;
   t.analyzer.ast = &t.main_unit->program;
@@ -102,12 +105,12 @@ static void free_build_test_ctx(build_test_ctx_t* t)
   build_context_free(&t->ctx);
 }
 
-ct_test(build_import, bare_call_resolves,
+ct_test(build_import, imported_functions_require_qualifier,
     "test/build_case/math_ok.clf",
-    "test/build_case/main_bare_call_ok.clf")
+    "test/build_case/main_bare_call_error.clf")
 {
-  ct_assert_eq(tctx.analyzer.error_count, 0,
-      "importing and calling a plain function should not error");
+  ct_assert((tctx.analyzer.error_count > 0),
+      "module imports must not inject unqualified function names");
   free_build_test_ctx(&tctx);
 }
 
@@ -144,7 +147,7 @@ ct_test(build_import, missing_symbol_errors,
     "test/build_case/main_missing_symbol.clf")
 {
   ct_assert((tctx.analyzer.error_count > 0),
-      "importing an undefined symbol should error");
+      "calling an undefined module function should error");
   free_build_test_ctx(&tctx);
 }
 
@@ -153,7 +156,7 @@ ct_test(build_import, internal_violation_errors,
     "test/build_case/main_internal_violation.clf")
 {
   ct_assert((tctx.analyzer.error_count > 0),
-      "importing an internal function from another module should error");
+      "calling an internal function from another module should error");
   free_build_test_ctx(&tctx);
 }
 
@@ -164,5 +167,24 @@ ct_test(build_import, qualifier_mismatch_errors,
   ct_assert((tctx.analyzer.error_count > 0),
       "calling with a qualifier that doesn't match the imported "
       "module should error");
+  free_build_test_ctx(&tctx);
+}
+
+ct_test(build_import, imported_types_resolve,
+    "test/build_case/vector.clf",
+    "test/build_case/main_imported_type_ok.clf")
+{
+  ct_assert_eq(tctx.analyzer.error_count, 0,
+      "module-qualified types should resolve in aliases, variables, "
+      "and function signatures");
+  free_build_test_ctx(&tctx);
+}
+
+ct_test(build_import, nested_module_requires_alias,
+    "test/integration_case/nested_module_import/math.clf",
+    "test/build_case/main_nested_import_without_alias.clf")
+{
+  ct_assert((tctx.analyzer.error_count > 0),
+      "nested module imports should declare an explicit alias");
   free_build_test_ctx(&tctx);
 }

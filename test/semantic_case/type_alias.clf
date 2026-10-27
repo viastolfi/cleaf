@@ -1,0 +1,6 @@
+type int count;
+
+fn main(): int {
+  count value = 1;
+  return value;
+}
