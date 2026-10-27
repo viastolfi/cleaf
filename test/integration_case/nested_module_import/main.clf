@@ -1,0 +1,11 @@
+module main
+
+import std::math as math
+
+type math::number local_number;
+
+internal fn main(): int {
+  local_number value = math::make();
+  local_number copied = math::identity(value);
+  return math::add(copied, 35);
+}

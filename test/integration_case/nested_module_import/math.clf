@@ -1,0 +1,15 @@
+module std::math
+
+type int number;
+
+fn make(): number {
+  return 7;
+}
+
+fn identity(number value): number {
+  return value;
+}
+
+fn add(int left, int right): int {
+  return left + right;
+}

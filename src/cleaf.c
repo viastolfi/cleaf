@@ -228,7 +228,7 @@ int main(int argc, char** argv)
         unit->file_path, unit->module_name ? unit->module_name : "-");
     semantic_analyze(&analyzer);
 
-    if (!semantic_build_export_table(unit)) {
+    if (!semantic_build_export_table(unit, analyzer.type_symbols)) {
       semantic_free_program_definition(&analyzer);
       build_context_free(&build_ctx);
       compiler_resources_free(res);

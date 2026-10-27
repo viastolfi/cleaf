@@ -92,6 +92,7 @@ typedef struct {
 typedef struct 
 {
   known_type_t type; 
+  char* type_module;
   char* type_name;
   char* ident_name;
   const char* source_pos;
@@ -146,6 +147,8 @@ struct declaration_t
       char* name;  
       known_type_t return_type;
       char* return_type_name;
+      char* return_type_module;
+
       const char* return_type_source_pos;
       typed_identifier_array params; 
       statement_block_t* body;
@@ -167,6 +170,7 @@ struct declaration_t
     } import;
 
     struct {
+      char* ref_module;
       char* ref_type;
       char* new_type;
       const char* ref_source_pos;

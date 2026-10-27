@@ -1,7 +1,7 @@
 module a
 
-import main::helper
+import main
 
 fn ping(): int {
-    return helper();
+    return main::helper();
 }

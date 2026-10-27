@@ -33,6 +33,11 @@ void module_unit_free(module_unit_t* unit)
     free(unit->export_funcs);
   }
 
+  if (unit->export_types) {
+    hashmap_free(unit->export_types, 1);
+    free(unit->export_types);
+  }
+
   free(unit);
 }
 

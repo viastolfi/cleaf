@@ -1,0 +1,15 @@
+module main
+
+import vector
+
+type vector::vector local_vector;
+
+fn use_vector(vector::vector value): vector::vector {
+  return vector::identity(value);
+}
+
+fn main(): int {
+  local_vector value = vector::vector_init();
+  use_vector(value);
+  return 0;
+}

@@ -969,7 +969,7 @@ ct_test(ast, import_simple, "import std::io")
   da_free(&parser);
 }
 
-ct_test(ast, import_nested, "import std::io::print")
+ct_test(ast, import_nested_module, "import std::io::fs")
 {
   declaration_t* decl = parse_declaration(&parser);
 
@@ -978,7 +978,7 @@ ct_test(ast, import_nested, "import std::io::print")
   ct_assert_eq(decl->import.path.count, 3, "path should have 3 segments");
   ct_assert_eq(decl->import.path.items[0], "std", "first segment should be 'std'");
   ct_assert_eq(decl->import.path.items[1], "io", "second segment should be 'io'");
-  ct_assert_eq(decl->import.path.items[2], "print", "third segment should be 'print'");
+  ct_assert_eq(decl->import.path.items[2], "fs", "third segment should be 'fs'");
 
   free_declaration(decl);
   da_free(&parser);
@@ -998,35 +998,34 @@ ct_test(ast, import_single_segment, "import mymod")
   da_free(&parser);
 }
 
-ct_test(ast, import_with_alias, "import std::io::print as p")
+ct_test(ast, import_with_alias, "import std::io as io")
 {
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_not_null(decl, "import decl should not be NULL");
   ct_assert_eq(decl->type, DECLARATION_IMPORT, "declaration type should be DECLARATION_IMPORT");
-  ct_assert_eq(decl->import.path.count, 3, "path should have 3 segments");
-  ct_assert_eq(decl->import.path.items[2], "print", "last segment should be 'print'");
+  ct_assert_eq(decl->import.path.count, 2, "path should have 2 segments");
+  ct_assert_eq(decl->import.path.items[1], "io", "last segment should be 'io'");
   ct_assert_not_null(decl->import.alias, "alias should not be NULL");
-  ct_assert_eq(decl->import.alias, "p", "alias should be 'p'");
+  ct_assert_eq(decl->import.alias, "io", "alias should be 'io'");
 
   free_declaration(decl);
   da_free(&parser);
 }
 
-ct_test(ast, import_alias_no_conflict, "import math::add as math_add")
+ct_test(ast, import_alias_no_conflict, "import math as m")
 {
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_not_null(decl, "import decl should not be NULL");
   ct_assert_eq(decl->import.path.items[0], "math", "module should be 'math'");
-  ct_assert_eq(decl->import.path.items[1], "add", "symbol should be 'add'");
-  ct_assert_eq(decl->import.alias, "math_add", "alias should be 'math_add'");
+  ct_assert_eq(decl->import.alias, "m", "alias should be 'm'");
 
   free_declaration(decl);
   da_free(&parser);
 }
 
-ct_test(ast, import_no_alias, "import std::io::print")
+ct_test(ast, import_no_alias, "import std::io")
 {
   declaration_t* decl = parse_declaration(&parser);
 
