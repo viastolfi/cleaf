@@ -36,27 +36,90 @@ Exactly one module named `main` must exist in the project, and it must contain a
 `fn main(): int` — this is the program's entry point. `cleaf build` fails with an error
 if no `main` module is found.
 
-## Importing symbols
+## Importing modules
 
 ```cleaf
 // main.clf
 module main
 
-import math::add           // call as: add(3, 4)  or  math::add(3, 4)
-import math::add as madd   // call as: madd(3, 4)
+import math
 
 fn main(): int {
-    var x = add(3, 4);
-    var y = math::add(1, 2);
-    return x;
+    return math::add(3, 4);
 }
 ```
 
-- `import <module>::<symbol>` brings a single function into scope.
-- An optional `as <name>` renames it locally.
-- At the call site, a qualifier (`math::add(...)`) is allowed and must match the last
-  segment of the imported module's path — at most one level of qualification is
-  supported (`io::print()`, not `std::io::print()`).
+An import names a module, not an individual function. Exported functions and types
+remain qualified by the local module name:
+
+```cleaf
+import math
+
+fn example(): int {
+    return math::add(3, 4);
+}
+```
+
+For a nested module, provide an alias. The alias is the qualifier used for both
+functions and types:
+
+```cleaf
+module main
+
+import std::io as io
+
+fn main(): int {
+    io::print("Hello");
+    return 0;
+}
+```
+
+The full path (`std::io`) selects the module in the project; `io` is the local
+name used by this file. Nested module imports without `as` are rejected. An alias
+cannot be reused by another import in the same module.
+
+An import does not make functions available as bare names:
+
+```cleaf
+import math
+
+fn example(): int {
+    math::add(3, 4); // valid
+    add(3, 4);       // error: imported functions require the module qualifier
+    return 0;
+}
+```
+
+The same qualification applies to types. A type alias declared in another module
+can be used in a variable, parameter, return type, or local alias:
+
+```cleaf
+// vector.clf
+module vector
+
+type ptr Vector;
+
+fn create(): Vector {
+    return alloc(8);
+}
+```
+
+```cleaf
+// main.clf
+module main
+
+import vector
+
+type vector::Vector LocalVector;
+
+fn use_vector(value vector::Vector): vector::Vector {
+    return value;
+}
+```
+
+Here `vector::Vector` names the exported type, while `LocalVector` is a local
+alias for it. For nested modules, use the import alias in the type name too
+(for example, `io::Buffer` after `import std::io as io`).
 
 ## Restricting visibility with `internal`
 
@@ -78,10 +141,10 @@ fn add(): int {
 ```cleaf
 module main
 
-import math::helper // error: cannot import an internal function
+import math
 
 fn main(): int {
-    return helper();
+    return math::helper(); // error: helper is not exported
 }
 ```
 
@@ -96,8 +159,9 @@ the dependency graph between modules, and compiles them in dependency order (lea
 first). Compilation fails with an error if:
 
 - no `main` module is found,
-- an import refers to an unknown module or symbol,
-- an import targets an `internal` function from another module,
+- an import refers to an unknown module,
+- a qualified call or type refers to a name that the module does not export,
+- a nested module import has no alias or an alias is reused,
 - the dependency graph contains a cycle.
 
 Each module is compiled to its own object file under `build/` (e.g. `build/math.o`,
@@ -123,3 +187,9 @@ below the semantic pass.
 
 Single-file compilation (`cleaf <file.clf>`, no `module` declaration) is unaffected:
 function names are left untouched, exactly as before the module system was introduced.
+
+:::note
+Type aliases can be imported and used by name. Imported `struct` member layouts
+are not currently exported, so accessing fields of a struct declared in another
+module is not yet supported.
+:::
