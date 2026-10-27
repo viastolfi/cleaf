@@ -70,6 +70,8 @@ typedef struct
   hashmap_t* type_symbols;
 
   hashmap_t* imported_functions;
+  hashmap_t* imported_modules;
+  hashmap_t* imported_types;
   imported_symbol_array imported_owned;
 
   const char* current_analyzed_function;

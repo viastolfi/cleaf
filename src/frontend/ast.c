@@ -13,6 +13,8 @@ void free_expression(expression_t* e)
   if (e->type == EXPRESSION_VAR) {
     if (e->var.ident.ident_name)
       free(e->var.ident.ident_name);
+    if (e->var.ident.type_module)
+      free(e->var.ident.type_module);
     if (e->var.ident.type_name)
       free(e->var.ident.type_name);
     if (e->var.member)
@@ -165,12 +167,16 @@ void free_declaration(declaration_t* d)
   if (d->type == DECLARATION_FUNC) {
     if (d->func.name)
       free(d->func.name);
+    if (d->func.return_type_module)
+      free(d->func.return_type_module);
     if (d->func.return_type_name)
       free(d->func.return_type_name);
 
     da_foreach(typed_identifier_t, it, &(d->func.params)) {
       if (it->ident_name)
         free(it->ident_name);
+      if (it->type_module)
+        free(it->type_module);
       if (it->type_name)
         free(it->type_name);
     }
@@ -193,6 +199,8 @@ void free_declaration(declaration_t* d)
      da_foreach(typed_identifier_t, it, &(d->struc.members)) {
       if (it->ident_name)
         free(it->ident_name);
+      if (it->type_module)
+        free(it->type_module);
       if (it->type_name)
         free(it->type_name);
     }
@@ -203,6 +211,8 @@ void free_declaration(declaration_t* d)
   if (d->type == DECLARATION_VAR) {
     if (d->var_decl.ident.ident_name)
       free(d->var_decl.ident.ident_name);
+    if (d->var_decl.ident.type_module)
+      free(d->var_decl.ident.type_module);
     if (d->var_decl.ident.type_name)
       free(d->var_decl.ident.type_name);
 
@@ -211,6 +221,7 @@ void free_declaration(declaration_t* d)
   }
 
   if (d->type == DECLARATION_TYPE) {
+    free(d->type_decl.ref_module);
     free(d->type_decl.ref_type);
     free(d->type_decl.new_type);
   }
@@ -255,12 +266,77 @@ static known_type_t parse_type_name(const char* name)
   };
 }
 
+static bool parse_type_reference(
+    parser_t* p,
+    char** module_name,
+    char** type_name,
+    const char** source_pos,
+    known_type_t* type,
+    const char* error_message)
+{
+  if (!check(p, LEXER_token_id) || !peek(p)->string_value) {
+    if (p->error_ctx && peek(p)) {
+      error_report_at_token(
+          p->error_ctx, peek(p), ERROR_SEVERITY_ERROR, "%s",
+          error_message);
+    }
+    free(*module_name);
+    *module_name = NULL;
+    return false;
+  }
+
+  token_t* type_tok = advance(p);
+  if (check(p, LEXER_token_coloncolon)) {
+    if (!module_name) {
+      error_report_at_token(
+          p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
+          "qualified type is not valid here");
+      return false;
+    }
+
+    *module_name = strdup(type_tok->string_value);
+    CLEAF_ASSERT(*module_name != NULL, "out of memory");
+    advance(p);
+
+    if (!check(p, LEXER_token_id) || !peek(p)->string_value) {
+      if (p->error_ctx && peek(p)) {
+        error_report_at_token(
+            p->error_ctx, peek(p), ERROR_SEVERITY_ERROR, "%s",
+            error_message);
+      }
+      return false;
+    }
+    type_tok = advance(p);
+  }
+
+  *type_name = strdup(type_tok->string_value);
+  CLEAF_ASSERT(*type_name != NULL, "out of memory");
+  if (source_pos)
+    *source_pos = type_tok->source_pos;
+  if (type)
+    *type = parse_type_name(type_tok->string_value);
+  return true;
+}
+
+static void free_typed_identifier_type(typed_identifier_t* ident)
+{
+  free(ident->type_module);
+  free(ident->type_name);
+  ident->type_module = NULL;
+  ident->type_name = NULL;
+}
+
 static bool is_typed_decl_start(parser_t* p)
 {
   if (!check(p, LEXER_token_id))
     return false;
 
   int offset = 1;
+
+  if (check_next(p, LEXER_token_coloncolon, offset)) {
+    offset += 2;
+  }
+
   if (check_next(p, '[', offset)) {
     if (!check_next(p, LEXER_token_intlit, offset + 1) ||
         !check_next(p, ']', offset + 2))
@@ -914,7 +990,7 @@ expression_t* parse_expression(parser_t* p)
   return expr;
 }
 
-declaration_t* ast_parse_function(parser_t* p)
+declaration_t* ast_parse_function_decl(parser_t* p)
 {
   declaration_t* decl = 
     (declaration_t*) malloc(sizeof(declaration_t));
@@ -969,29 +1045,24 @@ declaration_t* ast_parse_function(parser_t* p)
       return NULL;
     }
 
-    token_t* type_tok = advance(p);
-
-    if (!type_tok->string_value) {
-      if (p->error_ctx) {
-        error_report_at_token(p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
-                             "parameter type has no value");
-      }
+    if (!parse_type_reference(
+            p, &param.type_module, &param.type_name,
+            &param.type_source_pos, &param.type,
+            "expected parameter type")) {
       free_declaration(decl);
       return NULL;
     }
 
-    if (strcmp(type_tok->string_value, "var") == 0) {
+    if (strcmp(param.type_name, "var") == 0) {
       if (p->error_ctx) {
         error_report_at_token(
-          p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
+          p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
           "`var` cannot be use for functions parameters. Use an explicit type instead");
       }
+      free_typed_identifier_type(&param);
       free_declaration(decl);
       return NULL;
     }
-
-    param.type = parse_type_name(type_tok->string_value);
-    param.type_source_pos = type_tok->source_pos;
 
     if (check(p, '!')) {
       // advance '!'
@@ -1005,6 +1076,7 @@ declaration_t* ast_parse_function(parser_t* p)
         error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR,
                              "expected parameter name after type");
       }
+      free_typed_identifier_type(&param);
       free_declaration(decl);
       return NULL;
     }
@@ -1015,15 +1087,13 @@ declaration_t* ast_parse_function(parser_t* p)
         error_report_at_token(p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
                              "parameter name has no value");
       }
+      free_typed_identifier_type(&param);
       free_declaration(decl);
       return NULL;
     }
 
     param.ident_name = strdup(name_tok->string_value);
     CLEAF_ASSERT(param.ident_name != NULL, "out of memory");
-    param.type_name = strdup(type_tok->string_value);
-    CLEAF_ASSERT(param.type_name != NULL, "out of memory");
-
     param.source_pos = name_tok->source_pos;
 
     da_append(&(decl->func.params), param);
@@ -1039,31 +1109,15 @@ declaration_t* ast_parse_function(parser_t* p)
   if (check(p, ':')) {
     advance(p);
 
-    if (!check(p, LEXER_token_id)) {
-      token_t* tok = peek(p);
-      if (p->error_ctx && tok) {
-        error_report_at_token(p->error_ctx, tok, ERROR_SEVERITY_ERROR,
-                             "expected return type after ':'");
-      }
+    if (!parse_type_reference(
+            p, &decl->func.return_type_module,
+            &decl->func.return_type_name,
+            &decl->func.return_type_source_pos,
+            &decl->func.return_type,
+            "expected return type after ':'")) {
       free_declaration(decl);
       return NULL;
     }
-
-    token_t* ret_tok = advance(p); 
-    if (!ret_tok->string_value) {
-      if (p->error_ctx) {
-        error_report_at_token(p->error_ctx, ret_tok, ERROR_SEVERITY_ERROR,
-                             "return type has no value");
-      }
-      free_declaration(decl);
-      return NULL;
-    }
-
-    decl->func.return_type = parse_type_name(ret_tok->string_value);
-    decl->func.return_type_name = strdup(ret_tok->string_value);
-    CLEAF_ASSERT(
-        decl->func.return_type_name != NULL, "out of memory");
-    decl->func.return_type_source_pos = ret_tok->source_pos;
   }
 
   if (!expect(p, '{', "expected '{' to start function body")) {
@@ -1098,19 +1152,13 @@ declaration_t* ast_parse_type_decl(parser_t* p)
 
   advance(p);
 
-  if (!check(p, LEXER_token_id) || !peek(p)->string_value) {
-    if (p->error_ctx && peek(p))
-      error_report_at_token(
-          p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
-          "expected existing type name");
+  if (!parse_type_reference(
+          p, &d->type_decl.ref_module, &d->type_decl.ref_type,
+          &d->type_decl.ref_source_pos, NULL,
+          "expected existing type name")) {
     free_declaration(d);
     return NULL;
   }
-
-  token_t* ref_tok = advance(p);
-  d->type_decl.ref_type = strdup(ref_tok->string_value);
-  CLEAF_ASSERT(d->type_decl.ref_type != NULL, "out of memory");
-  d->type_decl.ref_source_pos = ref_tok->source_pos;
 
   if (!check(p, LEXER_token_id) || !peek(p)->string_value) {
     if (p->error_ctx && peek(p))
@@ -1144,22 +1192,17 @@ declaration_t* ast_parse_var_decl(parser_t* p)
   d->type = DECLARATION_VAR;
   d->source_pos = peek(p)->source_pos;
 
-  token_t* type_tok = advance(p);
-
-  if (!type_tok->string_value) {
-    error_report_at_token(
-        p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
-       "expected type"); 
+  if (!parse_type_reference(
+          p, &d->var_decl.ident.type_module,
+          &d->var_decl.ident.type_name,
+          &d->var_decl.ident.type_source_pos,
+          &d->var_decl.ident.type,
+          "expected type")) {
     free_declaration(d);
     return NULL;
   }
 
   d->var_decl.ident.is_constant = false;
-  d->var_decl.ident.type = parse_type_name(type_tok->string_value);
-  d->var_decl.ident.type_name = strdup(type_tok->string_value);
-  CLEAF_ASSERT(
-      d->var_decl.ident.type_name != NULL, "out of memory");
-  d->var_decl.ident.type_source_pos = type_tok->source_pos;
 
   if (check(p, '[')) {
     // consume '['
@@ -1458,23 +1501,21 @@ declaration_t* ast_parse_struct_decl(parser_t* p)
       return NULL;
     }
 
-    token_t* type_tok = advance(p);
-
-    if (!type_tok->string_value) {
-      if (p->error_ctx) {
-        error_report_at_token(p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
-                             "parameter type has no value");
-      }
+    if (!parse_type_reference(
+            p, &member.type_module, &member.type_name,
+            &member.type_source_pos, &member.type,
+            "expected member type")) {
       free_declaration(decl);
       return NULL;
     }
 
-    if (strcmp(type_tok->string_value, "var") == 0) {
+    if (strcmp(member.type_name, "var") == 0) {
       if (p->error_ctx) {
         error_report_at_token(
-          p->error_ctx, type_tok, ERROR_SEVERITY_ERROR,
+          p->error_ctx, peek(p), ERROR_SEVERITY_ERROR,
           "`var` cannot be use for struct members. Use an explicit type instead");
       }
+      free_typed_identifier_type(&member);
       free_declaration(decl);
       return NULL;
     }
@@ -1485,9 +1526,6 @@ declaration_t* ast_parse_struct_decl(parser_t* p)
       member.is_constant = true;     
     }
 
-    member.type = parse_type_name(type_tok->string_value);
-    member.type_source_pos = type_tok->source_pos;
-  
     if (!check(p, LEXER_token_id)) {
       token_t* tok = peek(p);
       if (p->error_ctx && tok) {
@@ -1495,6 +1533,7 @@ declaration_t* ast_parse_struct_decl(parser_t* p)
             ERROR_SEVERITY_ERROR,
             "expected member name after type");
       }
+      free_typed_identifier_type(&member);
       free_declaration(decl);
       return NULL;
     }
@@ -1506,14 +1545,13 @@ declaration_t* ast_parse_struct_decl(parser_t* p)
             p->error_ctx, name_tok, ERROR_SEVERITY_ERROR,
             "member name has no value");
       }
+      free_typed_identifier_type(&member);
       free_declaration(decl);
       return NULL;
     }
 
     member.ident_name= strdup(name_tok->string_value);
     CLEAF_ASSERT(member.ident_name != NULL, "out of memory");
-    member.type_name = strdup(type_tok->string_value);
-    CLEAF_ASSERT(member.type_name != NULL, "out of memory");
 
     member.source_pos = name_tok->source_pos;
 
@@ -1540,7 +1578,7 @@ declaration_t* parse_declaration(parser_t* p)
   if (check(p, LEXER_token_id) && 
       (strcmp(peek(p)->string_value, "fn") == 0 ||
        strcmp(peek(p)->string_value, "internal") == 0)) {
-    return ast_parse_function(p);
+    return ast_parse_function_decl(p);
   }
 
   if (check(p, LEXER_token_id) && 

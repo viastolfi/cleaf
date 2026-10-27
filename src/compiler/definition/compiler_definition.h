@@ -27,6 +27,7 @@ typedef struct {
   parser_t          parser;
   declaration_array program;
   hashmap_t*        export_funcs;
+  hashmap_t*        export_types;
 } module_unit_t;
 
 typedef struct {
@@ -54,4 +55,3 @@ void module_unit_free(module_unit_t* unit);
 void compiler_resources_free(compiler_resources_t* res);
 
 #endif // COMPILER_DEFINITION_H
-

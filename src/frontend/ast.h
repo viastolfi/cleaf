@@ -35,7 +35,7 @@ bool check_next(parser_t* p, long kind, int range);
 
 bool expect(parser_t* p, long kind, char* err);
 
-declaration_t* ast_parse_function(parser_t* p);
+declaration_t* ast_parse_function_decl(parser_t* p);
 declaration_t* ast_parse_var_decl(parser_t* p);
 declaration_t* ast_parse_untype_var_decl(parser_t* p);
 declaration_t* ast_parse_struct_decl(parser_t* p);

@@ -1,5 +1,5 @@
 module main
 
-import math::secret
+import math
 
-internal fn main(): int { return secret(); }
+internal fn main(): int { return math::secret(); }

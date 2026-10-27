@@ -1,5 +1,27 @@
 #include "compiler/build/dep_graph.h"
 #include "thirdparty/assertion.h"
+#include <stdlib.h>
+#include <string.h>
+
+static char* import_module_name(import_path_t* path)
+{
+  if (path->count == 0) return NULL;
+
+  size_t len = 1;
+  for (size_t i = 0; i < path->count; ++i)
+    len += strlen(path->items[i]) + (i > 0 ? 2 : 0);
+
+  char* name = malloc(len);
+  if (!name) return NULL;
+
+  name[0] = '\0';
+  for (size_t i = 0; i < path->count; ++i) {
+    if (i > 0) strcat(name, "::");
+    strcat(name, path->items[i]);
+  }
+
+  return name;
+}
 
 static void dep_graph_free(dep_graph_t* graph)
 {
@@ -80,16 +102,10 @@ bool build_dep_graph(build_context_t* ctx)
           if (decl->type != DECLARATION_IMPORT)
             continue;
 
-          char* import_name = calloc(255, sizeof(char));
-          if (!import_name) { dep_graph_free(&graph); return false; }
-
-          for (size_t j = 0; j < decl->import.path.count - 1; ++j) {
-            if (import_name[0] == '\0') {
-              strcpy(import_name, decl->import.path.items[j]);
-            }
-            else {
-              strcat(strcat(import_name, "::"), decl->import.path.items[j]);
-            }
+          char* import_name = import_module_name(&decl->import.path);
+          if (!import_name) {
+            dep_graph_free(&graph);
+            return false;
           }
 
           dep_node_t* src_node =
@@ -99,7 +115,13 @@ bool build_dep_graph(build_context_t* ctx)
 
           if (!dst_node) {
             error_report_general(ERROR_SEVERITY_ERROR, 
-               "unkown imported module %s\n", import_name); 
+               "unknown imported module '%s'", import_name);
+            free(import_name);
+            dep_graph_free(&graph);
+            return false;
+          }
+
+          if (!src_node) {
             free(import_name);
             dep_graph_free(&graph);
             return false;
