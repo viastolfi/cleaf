@@ -1,0 +1,5 @@
+fn main(): int {
+  int[2] values = { 1, 2 };
+  free(values, 4);
+  return 0;
+}

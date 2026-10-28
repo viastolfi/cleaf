@@ -782,6 +782,21 @@ ct_test(semantic_case, free_custom_type, "test/semantic_case/free_custom_type_ok
   free_analyzer(&analyzer);
 }
 
+ct_test(semantic_case, free_custom_type_wrong_size, "test/semantic_case/free_custom_type_wrong_size_error.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "free should reject a struct size that does not match its layout");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, free_array_type, "test/semantic_case/free_array_type_ok.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "free should accept an array with its exact size");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, free_array_type_wrong_size, "test/semantic_case/free_array_type_wrong_size_error.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "free should reject an array size that does not match its layout");
+  free_analyzer(&analyzer);
+}
+
 ct_test(semantic_case, free_wrong_pointer_type, "test/semantic_case/free_wrong_pointer_type_error.clf") {
   ct_assert_eq(analyzer.error_count, 1, "free should reject a wider integer as its address argument");
   free_analyzer(&analyzer);

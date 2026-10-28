@@ -673,12 +673,29 @@ known_type_t semantic_check_expr_call(
     if (arg_type.kind == TYPE_UNTYPE)
       continue;
 
+    if (strcmp(expr->call.callee, "free") == 0 && i == 1) {
+      known_type_t t = semantic_check_expression(
+          analyzer, expr->call.args[0], scope);
+
+      // TODO: register the amount of allocated bytes so we can add unalloc amount check here
+      if (t.kind == TYPE_PTR)
+        continue;
+
+      if (t.kind == TYPE_CUSTOM || t.array_len > 0) {
+        if (t.size != (size_t)expr->call.args[i]->int_lit.value) {
+          semantic_error_register(
+              analyzer, expr->call.args[i]->source_pos - 1, 
+              "when trying to free a struct, please provide the exact struct size");
+        }
+      }
+    }
+
     if (
         arg_type.kind != fs->params_type[i].type.kind &&
         fs->params_type[i].type.kind < arg_type.kind) 
     {
 
-      // in case this is the firs argument of the free function
+      // in case this is the first argument of the free function
       // it accepts custom in addition to TYPE_PTR
       // this is ugly as hell and making it so function params could accepts diffrents types or that a type could be both CUSTOM AND PTR would be better
       // this is a problem for the future me
