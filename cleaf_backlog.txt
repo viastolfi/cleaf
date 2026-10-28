@@ -22,4 +22,5 @@ x 2026-10-20 2026-10-20 Add len() compiler function to get string and array len 
 (B) add boolean type
 (B) add float type
 (A) Make it so struct_symbols store all different types and not only one
-(B) make it so semantic step raise error if free second param doesn't not match the actual length of the first one
+x 2026-10-28 2026-10-28 make it so semantic step raise error if free second param doesn't not match the actual length of the first one
+(B) add free boundary check on ptr free
