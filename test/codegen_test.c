@@ -268,6 +268,10 @@ ct_test(codegen_test, asm_output_args, "test/codegen_case/asm_output_args.clf", 
   ct_assert_eq(result, 0, "codegen stores output and inout asm operands");
 }
 
+ct_test(codegen_test, asm_pointer_args, "test/codegen_case/asm_pointer_args.clf", "test/codegen_case/asm_pointer_args.asm") {
+  ct_assert_eq(result, 0, "codegen handles pointer output and inout asm operands");
+}
+
 ct_test(codegen_test, string_literals, "test/codegen_case/string_literals.clf", "test/codegen_case/string_literals.asm") {
   ct_assert_eq(result, 0, "codegen emits string data before text and global setup");
 }

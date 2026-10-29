@@ -52,7 +52,18 @@ fn main(): int {
 
 `out(...)` does not load the variable before the assembly. `inout(...)` loads its
 current value and stores the updated value afterward. Output operands must be
-mutable numeric scalar variables.
+mutable numeric or pointer scalar variables.
+
+Pointer variables can be passed like other operands:
+
+```cleaf
+fn main(): int {
+    ptr destination;
+    ptr source = alloc(100);
+    asm("mov %, %", out(destination), source);
+    return 0;
+}
+```
 
 ## Examples
 
@@ -103,4 +114,5 @@ fn main(): int {
 
 - Each `%` placeholder requires exactly one matching variable argument.
 - The referenced variable must be defined in the current scope.
+- Output and inout operands must be mutable numeric or pointer scalar variables.
 - The number of `%` placeholders across all instructions must match the number of variable arguments.
