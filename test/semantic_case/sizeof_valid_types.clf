@@ -1,0 +1,13 @@
+struct Pair {
+  u8 first;
+  int second;
+}
+
+type int Integer;
+
+fn main(): int {
+  int primitive_size = sizeof(int);
+  int alias_size = sizeof(Integer);
+  int struct_size = sizeof(Pair);
+  return primitive_size + alias_size + struct_size;
+}

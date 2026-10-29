@@ -341,6 +341,11 @@ ct_test(semantic_case, len_too_many_arguments, "test/semantic_case/len_too_many_
   free_analyzer(&analyzer);
 }
 
+ct_test(semantic_case, sizeof_valid_types, "test/semantic_case/sizeof_valid_types.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Should accept primitive, alias, and struct types in sizeof");
+  free_analyzer(&analyzer);
+}
+
 ct_test(semantic_case, function_declaration_reserved_keywords, "test/semantic_case/function_declaration_reserved_keywords.clf") {
   ct_assert_eq(analyzer.error_count, 6, "Should have 6 errors for different test case on function declaration with reserve keywords");
   free_analyzer(&analyzer);

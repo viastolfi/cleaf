@@ -26,6 +26,7 @@ static const char* reserved_keywords[] = {
     "int",
     "len",
     "return",
+    "sizeof",
     "string",
     "struct",
     "true",

@@ -82,13 +82,15 @@ void semantic_free_program_definition(semantic_analyzer_t* analyzer)
 {
   if (analyzer->function_symbols) {
     for (size_t i = 0; i < 211; ++i) {
-      if (analyzer->function_symbols->buckets[i]) {
+      for (hashmap_entry_t* entry =
+               analyzer->function_symbols->buckets[i];
+           entry;
+           entry = entry->next) {
         function_symbol_t* v = 
-          (function_symbol_t*) 
-          analyzer->function_symbols->buckets[i]->value;
+          (function_symbol_t*)entry->value;
         free(v->params_name);
         free(v->params_type);
-      } 
+      }
     }
     hashmap_free(analyzer->function_symbols, 1);
     free(analyzer->function_symbols);
@@ -667,6 +669,24 @@ known_type_t semantic_check_expr_call(
   }
 
   for (size_t i = 0; i < fs->params_count; ++i) {
+    if (strcmp(expr->call.callee, "sizeof") == 0) {
+      known_type_t* resolve =
+        hashmap_get(analyzer->type_symbols, 
+            expr->call.args[0]->var.ident.ident_name);
+
+      if (!resolve) {
+        semantic_error_register(analyzer,
+            expr->call.args[0]->source_pos - 1,
+            "you can only call sizeof() function with a type");
+      }
+
+      expr->call.args[0]->var.ident.type.kind = TYPE_TYPE;
+      expr->call.args[0]->var.ident.type.name = 
+        types_description[TYPE_TYPE].name;
+      expr->call.args[0]->var.ident.type.size = resolve->size;
+      continue;
+    }
+
     known_type_t arg_type = semantic_check_expression(analyzer,
           expr->call.args[i],
           scope);
@@ -1207,6 +1227,28 @@ void semantic_load_compiler_functions(hashmap_t* func_sym)
     value->params_type[1].is_constant = false;
 
     hashmap_put(func_sym, "free", value);
+  }
+
+  // 'sizeof' function
+  {
+    function_symbol_t* value =
+      calloc(1, sizeof(function_symbol_t));
+    CLEAF_ASSERT(value != NULL, "out of memory");
+
+    value->return_type.kind = TYPE_INT;
+
+    value->params_name = calloc(1, sizeof(char*));
+    CLEAF_ASSERT(value->params_name != NULL, "out of memory");
+
+    value->params_type = calloc(1, sizeof(variable_symbol_t));
+    CLEAF_ASSERT(value->params_type != NULL, "out of memory");
+
+    value->params_count = 1;
+    value->params_name[0] = "type";
+    value->params_type[0].type = (known_type_t){.kind = TYPE_TYPE};
+    value->params_type[0].is_constant = false;
+
+    hashmap_put(func_sym, "sizeof", value);
   }
 }
 

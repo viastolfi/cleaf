@@ -144,7 +144,7 @@ $(BUILD_TEST_BIN): $(BUILD_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/err
 asan-test:
 	CFLAGS="-fsanitize=address,undefined -g -O1" make test
 
-valgrind-test:
+valgrind-test: $(BUILD)/cleaf
 	@echo "Testing memory safety with valgrind..."
 	@echo "=== Testing normal execution ==="
 	$(VALGRIND) ./build/cleaf test/valgrind_case/full.clf

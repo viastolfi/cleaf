@@ -134,6 +134,31 @@ fn main(): int {
 }
 ```
 
+### `sizeof`
+
+`sizeof` accepts the name of a type and returns its size in **bytes** as an
+`int`. The result is computed at compile time. Primitive types, structs, and
+type aliases are supported:
+
+```cleaf
+struct Point {
+    int x;
+    int y;
+}
+
+type int Integer;
+
+fn main(): int {
+    int int_size = sizeof(int);       // 4 bytes
+    int point_size = sizeof(Point);   // 8 bytes
+    int alias_size = sizeof(Integer); // 4 bytes
+    return 0;
+}
+```
+
+Struct sizes are currently the sum of their field sizes; no alignment padding
+is added. `sizeof` expects a type name, not a variable or a value.
+
 ## Restrictions
 
 - Recursive calls are syntactically valid, but full stack safety is not yet guaranteed.

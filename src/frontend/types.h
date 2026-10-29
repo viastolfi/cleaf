@@ -12,6 +12,7 @@ typedef enum {
   TYPE_U64,
   TYPE_VAR,
   TYPE_UNTYPE,
+  TYPE_TYPE,
   TYPE_COUNT,
 
   TYPE_CUSTOM,
@@ -35,6 +36,7 @@ static const types_ident types_description[TYPE_COUNT] = {
   {"u64",     8},
   {"var",    -1},
   {"untype", -1},
+  {"type",   -1},
 };
 
 static inline int types_is_numeric(types_t kind)

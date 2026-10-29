@@ -1,10 +1,5 @@
 module main 
 
 fn main(): int {
-  ptr a;
-  ptr b = alloc(100);
-
-  asm("mov %, %", out(a), b);
-
-  return 0; 
+  return sizeof(int); 
 }
