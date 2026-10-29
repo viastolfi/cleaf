@@ -1086,8 +1086,42 @@ void semantic_check_asm_statement(
   }
 
   for (size_t i = 0; i < stmt->asm_stmt.arg_count; ++i) {
-    semantic_check_expression(
-        analyzer, stmt->asm_stmt.args[i], scope);
+    expression_t* expression = stmt->asm_stmt.args[i].expression;
+    asm_arg_mode_t mode = stmt->asm_stmt.args[i].mode;
+
+    if (!expression) {
+      semantic_error_register(
+          analyzer, stmt->source_pos - 1,
+          "asm argument must be an expression");
+      continue;
+    }
+
+    if (mode != ASM_ARG_INPUT &&
+        (expression->type != EXPRESSION_VAR 
+         || expression->var.member)) {
+      semantic_error_register(
+          analyzer, expression->source_pos - 1,
+          "asm output operands must be scalar variables");
+      continue;
+    }
+
+    known_type_t type =
+      semantic_check_expression(analyzer, expression, scope);
+    if (mode == ASM_ARG_INPUT || type.kind == TYPE_ERROR)
+      continue;
+
+    variable_symbol_t* symbol = (variable_symbol_t*) scope_resolve(
+        scope, expression->var.ident.ident_name);
+    if (symbol && symbol->is_constant) {
+      semantic_error_register(
+          analyzer, expression->source_pos - 1,
+          "asm output operands cannot be constant variables");
+    }
+    if (type.array_len > 0 || !types_is_numeric(type.kind)) {
+      semantic_error_register(
+          analyzer, expression->source_pos - 1,
+          "asm output operands must have a numeric type");
+    }
   }
 }
 

@@ -264,6 +264,10 @@ ct_test(codegen_test, asm_with_arg, "test/codegen_case/asm_with_arg.clf", "test/
   ct_assert_eq(result, 0, "codegen gives right output for asm with variable interpolation");
 }
 
+ct_test(codegen_test, asm_output_args, "test/codegen_case/asm_output_args.clf", "test/codegen_case/asm_output_args.asm") {
+  ct_assert_eq(result, 0, "codegen stores output and inout asm operands");
+}
+
 ct_test(codegen_test, string_literals, "test/codegen_case/string_literals.clf", "test/codegen_case/string_literals.asm") {
   ct_assert_eq(result, 0, "codegen emits string data before text and global setup");
 }

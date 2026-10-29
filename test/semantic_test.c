@@ -712,6 +712,16 @@ ct_test(semantic_case, asm_unknown_var, "test/semantic_case/asm_unknown_var.clf"
   free_analyzer(&analyzer);
 }
 
+ct_test(semantic_case, asm_output_args, "test/semantic_case/asm_output_args.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Output and inout variables should be valid");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_case, asm_invalid_output_arg, "test/semantic_case/asm_invalid_output_arg.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Output operands must be variables");
+  free_analyzer(&analyzer);
+}
+
 // --- Constant variable tests ---
 
 ct_test(semantic_case, const_var_declaration_ok, "test/semantic_case/const_var_declaration_ok.clf") {

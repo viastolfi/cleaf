@@ -4,7 +4,7 @@ global _start
 _start:
     push rbp
     mov rbp, rsp
-    sub rsp, 4
+    sub rsp, 8
     mov r11, 0
     mov [rbp - 8], r11d
     mov r12d, [rbp - 8]
@@ -12,14 +12,14 @@ _start:
     cmp r12, r13
     jne .c0
     mov r14, 0
-    add rsp, 4
+    add rsp, 8
     pop rbp
     mov rax, 60
     mov rdi, r14
     syscall
 .c0:
     mov r15, 1
-    add rsp, 4
+    add rsp, 8
     pop rbp
     mov rax, 60
     mov rdi, r15

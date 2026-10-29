@@ -4,7 +4,7 @@ global _start
 _start:
     push rbp
     mov rbp, rsp
-    sub rsp, 4
+    sub rsp, 8
     mov r11, 0
     mov [rbp - 8], r11d
 .c0:
@@ -19,7 +19,7 @@ _start:
     jmp .c0
 .c1:
     mov ebx, [rbp - 8]
-    add rsp, 4
+    add rsp, 8
     pop rbp
     mov rax, 60
     mov rdi, rbx

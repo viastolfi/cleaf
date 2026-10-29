@@ -4,7 +4,7 @@ global _start
 _start:
     push rbp
     mov rbp, rsp
-    sub rsp, 4
+    sub rsp, 8
     mov r11, 1
     mov rax, r11
     mov r12, 2
@@ -13,7 +13,7 @@ _start:
     mov r13, rax
     mov [rbp - 8], r13d
     mov r14d, [rbp - 8]
-    add rsp, 4
+    add rsp, 8
     pop rbp
     mov rax, 60
     mov rdi, r14

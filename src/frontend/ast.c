@@ -151,7 +151,7 @@ void free_statement(statement_t* s)
     free(s->asm_stmt.instr);
 
     for (size_t i = 0; i < s->asm_stmt.arg_count; ++i) 
-      free_expression(s->asm_stmt.args[i]);
+      free_expression(s->asm_stmt.args[i].expression);
     free(s->asm_stmt.args);
   }
 
@@ -1979,7 +1979,7 @@ statement_t* ast_parse_asm_stmt(parser_t* p)
   stmt->asm_stmt.instr_count = 0;
 
   stmt->asm_stmt.args =
-    calloc(stmt->asm_stmt.arg_count, sizeof(expression_t*));
+    calloc(stmt->asm_stmt.arg_count, sizeof(*stmt->asm_stmt.args));
   stmt->asm_stmt.arg_count = 0;
 
   while (!check(p, ')')) {
@@ -1992,8 +1992,29 @@ statement_t* ast_parse_asm_stmt(parser_t* p)
 
       advance(p);
     } else {
-      stmt->asm_stmt.args[stmt->asm_stmt.arg_count++] =
-       parse_expression(p); 
+      expression_t* arg = parse_expression(p);
+      asm_arg_mode_t mode = ASM_ARG_INPUT;
+
+      if (arg && arg->type == EXPRESSION_CALL &&
+          !arg->call.qualifier &&
+          arg->call.callee &&
+          (strcmp(arg->call.callee, "out") == 0 ||
+           strcmp(arg->call.callee, "inout") == 0)) {
+        mode = strcmp(arg->call.callee, "out") == 0
+          ? ASM_ARG_OUTPUT
+          : ASM_ARG_INOUT;
+        if (arg->call.arg_count == 1) {
+          expression_t* expression = arg->call.args[0];
+          arg->call.args[0] = NULL;
+          free_expression(arg);
+          arg = expression;
+        }
+      }
+
+      stmt->asm_stmt.args[stmt->asm_stmt.arg_count++] = (asm_arg_t) {
+        .expression = arg,
+        .mode = mode,
+      };
     }
 
     // Awfull double check but whatever
