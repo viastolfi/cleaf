@@ -82,13 +82,15 @@ void semantic_free_program_definition(semantic_analyzer_t* analyzer)
 {
   if (analyzer->function_symbols) {
     for (size_t i = 0; i < 211; ++i) {
-      if (analyzer->function_symbols->buckets[i]) {
+      for (hashmap_entry_t* entry =
+               analyzer->function_symbols->buckets[i];
+           entry;
+           entry = entry->next) {
         function_symbol_t* v = 
-          (function_symbol_t*) 
-          analyzer->function_symbols->buckets[i]->value;
+          (function_symbol_t*)entry->value;
         free(v->params_name);
         free(v->params_type);
-      } 
+      }
     }
     hashmap_free(analyzer->function_symbols, 1);
     free(analyzer->function_symbols);
