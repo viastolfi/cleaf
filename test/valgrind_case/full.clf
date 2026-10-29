@@ -22,6 +22,8 @@ fn main(): int {
 
   int! constant = 56;
 
+  var size = sizeof(int);
+
   asm(
     "mov rax, 60",
     "mov rdi, %", z.x

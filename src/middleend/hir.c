@@ -650,6 +650,23 @@ int IR_lower_free_expression(
   return 0;
 }
 
+int IR_lower_sizeof_expression(
+    HIR_parser_t* hir, expression_t* expr, IR_function_t* func)
+{
+  (void)hir;
+  IR_instruction_t* mov =
+    calloc(1, sizeof(IR_instruction_t));
+  CLEAF_ASSERT(mov != NULL, "out of memory");
+
+  mov->kind = IR_INT_CONST;
+  mov->dest.id = func->next_temp_id;
+  mov->int_value = expr->call.args[0]->var.ident.type.size;
+
+  da_append(func->code, mov);
+
+  return 0;
+}
+
 int IR_lower_alloc_expression(
     HIR_parser_t* hir, expression_t* expr, IR_function_t* func)
 {
@@ -1022,6 +1039,10 @@ int IR_lower_expression(HIR_parser_t* hir,
   if (expr->type == EXPRESSION_CALL &&
       strcmp(expr->call.callee, "free") == 0)
     return IR_lower_free_expression(hir, expr, func);
+
+  if (expr->type == EXPRESSION_CALL &&
+      strcmp(expr->call.callee, "sizeof") == 0)
+    return IR_lower_sizeof_expression(hir, expr, func);
 
   if (expr->type == EXPRESSION_CALL)
     return IR_lower_call_expression(hir, expr, func);
