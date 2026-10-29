@@ -1117,10 +1117,12 @@ void semantic_check_asm_statement(
           analyzer, expression->source_pos - 1,
           "asm output operands cannot be constant variables");
     }
-    if (type.array_len > 0 || !types_is_numeric(type.kind)) {
+    if (type.array_len > 0 || (
+          !types_is_numeric(type.kind) &&
+          type.kind != TYPE_PTR)) {
       semantic_error_register(
           analyzer, expression->source_pos - 1,
-          "asm output operands must have a numeric type");
+          "asm output operands must have be a numeric or ptr type");
     }
   }
 }

@@ -1,9 +1,10 @@
 module main 
 
 fn main(): int {
-  var a;
+  ptr a;
+  ptr b = alloc(100);
 
-  asm("mov %, 12", inout(a), "mov rax, %", a);
+  asm("mov %, %", out(a), b);
 
-  return a; 
+  return 0; 
 }

@@ -1,0 +1,7 @@
+fn main(): int {
+  ptr a;
+  ptr b = alloc(100);
+  asm("mov %, %", out(a), b);
+  asm("mov %, %", inout(a), b);
+  return 0;
+}
