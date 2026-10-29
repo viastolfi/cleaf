@@ -4,7 +4,7 @@ global _start
 _start:
     push rbp
     mov rbp, rsp
-    sub rsp, 2
+    sub rsp, 16
     mov r11, 97
     mov [rbp - 8], r11
     mov r12, 12

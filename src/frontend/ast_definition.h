@@ -49,6 +49,13 @@ typedef enum
   FOR_INIT_EXPR
 } for_init_kind;
 
+typedef enum
+{
+  ASM_ARG_INPUT,
+  ASM_ARG_OUTPUT,
+  ASM_ARG_INOUT
+} asm_arg_mode_t;
+
 typedef enum 
 {
   UNARY_NEGATE,
@@ -78,6 +85,12 @@ typedef enum
 typedef struct declaration_t declaration_t;
 typedef struct statement_t statement_t;
 typedef struct expression_t expression_t;
+
+typedef struct
+{
+  expression_t* expression;
+  asm_arg_mode_t mode;
+} asm_arg_t;
 
 // ----------------- Types and Identifiers ------------------
 
@@ -192,7 +205,7 @@ struct statement_t
     struct { declaration_t* decl; } decl_stmt;
     struct {
       char** instr; 
-      expression_t** args;
+      asm_arg_t* args;
       size_t instr_count;
       size_t arg_count;
     } asm_stmt;

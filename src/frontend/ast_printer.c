@@ -298,8 +298,16 @@ static void print_statement(statement_t* s, const char* prefix, bool is_last)
                s->asm_stmt.instr[i] ? s->asm_stmt.instr[i] : "");
       }
 
-      for (size_t i = 0; i < s->asm_stmt.arg_count; i++)
-        print_expression(s->asm_stmt.args[i], cp, i == s->asm_stmt.arg_count - 1);
+      for (size_t i = 0; i < s->asm_stmt.arg_count; i++) {
+        if (s->asm_stmt.args[i].mode == ASM_ARG_OUTPUT)
+          printf(CLR_STMT "out " CLR_RESET);
+        else if (s->asm_stmt.args[i].mode == ASM_ARG_INOUT)
+          printf(CLR_STMT "inout " CLR_RESET);
+        print_expression(
+            s->asm_stmt.args[i].expression,
+            cp,
+            i == s->asm_stmt.arg_count - 1);
+      }
       break;
     }
   }

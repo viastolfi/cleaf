@@ -4,4 +4,4 @@ global _start
 _start:
     push rbp
     mov rbp, rsp
-    sub rsp, 12
+    sub rsp, 24

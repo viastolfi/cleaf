@@ -1,0 +1,3 @@
+fn main() {
+  asm("mov %, 12", out(1));
+}

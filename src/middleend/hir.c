@@ -234,7 +234,7 @@ int IR_lower_declaration(
       }
     } 
     da_append(func->code, instr);
-    func->stack_reserve_size += decl->var_decl.ident.type.element_size;
+    func->stack_reserve_size += 8;
 
     if (decl->var_decl.ident.type.kind == TYPE_STRING) {
       if (decl->var_decl.init &&
@@ -1047,14 +1047,19 @@ int IR_lower_asm_statement(
     CLEAF_ASSERT(temps!= NULL, "out of memory");
 
     for (size_t i = 0; i < stmt->asm_stmt.arg_count; i++) {
-      if (IR_lower_expression(
-            hir, stmt->asm_stmt.args[i], func) != 0) {
-        free(temps);
-        return 1;
+      expression_t* expression = stmt->asm_stmt.args[i].expression;
+      if (stmt->asm_stmt.args[i].mode == ASM_ARG_OUTPUT) {
+        temps[i].id = ++func->next_temp_id;
+        temps[i].size = expression->var.ident.type.element_size;
+      } else {
+        if (IR_lower_expression(hir, expression, func) != 0) {
+          free(temps);
+          return 1;
+        }
+        temps[i].id = func->next_temp_id;
+        temps[i].size =
+          func->code->items[func->code->count - 1]->dest.size;
       }
-      temps[i].id = func->next_temp_id;
-      temps[i].size = 
-        func->code->items[func->code->count - 1]->dest.size;
     }
   }
 
@@ -1077,6 +1082,22 @@ int IR_lower_asm_statement(
   }
 
   da_append(func->code, instr);
+
+  for (size_t i = 0; i < stmt->asm_stmt.arg_count; i++) {
+    if (stmt->asm_stmt.args[i].mode == ASM_ARG_INPUT)
+      continue;
+
+    IR_instruction_t* store = calloc(1, sizeof(IR_instruction_t));
+    CLEAF_ASSERT(store != NULL, "out of memory");
+    store->kind = IR_STORE_VAR;
+    store->src = temps[i];
+    store->var.name =
+      strdup(stmt->asm_stmt.args[i].expression->var.ident.ident_name);
+    CLEAF_ASSERT(store->var.name != NULL, "out of memory");
+    store->var.is_init = 1;
+    da_append(func->code, store);
+  }
+
   return 0;
 }
 

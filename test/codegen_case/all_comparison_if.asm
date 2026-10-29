@@ -4,7 +4,7 @@ global _start
 _start:
     push rbp
     mov rbp, rsp
-    sub rsp, 4
+    sub rsp, 8
     mov r11, 0
     mov [rbp - 8], r11d
     mov r12d, [rbp - 8]
@@ -12,7 +12,7 @@ _start:
     cmp r12, r13
     jne .c0
     mov r14d, [rbp - 8]
-    add rsp, 4
+    add rsp, 8
     pop rbp
     mov rax, 60
     mov rdi, r14
@@ -23,7 +23,7 @@ _start:
     cmp r15, rbx
     je .c1
     mov r11d, [rbp - 8]
-    add rsp, 4
+    add rsp, 8
     pop rbp
     mov rax, 60
     mov rdi, r11
@@ -34,7 +34,7 @@ _start:
     cmp r12, r13
     jge .c2
     mov r14d, [rbp - 8]
-    add rsp, 4
+    add rsp, 8
     pop rbp
     mov rax, 60
     mov rdi, r14
@@ -45,7 +45,7 @@ _start:
     cmp r15, rbx
     jg .c3
     mov r11d, [rbp - 8]
-    add rsp, 4
+    add rsp, 8
     pop rbp
     mov rax, 60
     mov rdi, r11
@@ -56,7 +56,7 @@ _start:
     cmp r12, r13
     jle .c4
     mov r14d, [rbp - 8]
-    add rsp, 4
+    add rsp, 8
     pop rbp
     mov rax, 60
     mov rdi, r14
@@ -67,14 +67,14 @@ _start:
     cmp r15, rbx
     jl .c5
     mov r11d, [rbp - 8]
-    add rsp, 4
+    add rsp, 8
     pop rbp
     mov rax, 60
     mov rdi, r11
     syscall
 .c5:
     mov r12d, [rbp - 8]
-    add rsp, 4
+    add rsp, 8
     pop rbp
     mov rax, 60
     mov rdi, r12

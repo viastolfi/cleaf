@@ -38,6 +38,22 @@ asm(
 
 The `%` is replaced by the register or memory location holding the variable's value.
 
+Arguments are inputs by default. Wrap a variable in `out(...)` when the assembly
+produces its value, or in `inout(...)` when it reads and updates the value:
+
+```cleaf
+fn main(): int {
+    var value;
+    asm("mov %, 12", out(value));
+    asm("add %, 1", inout(value));
+    return value;
+}
+```
+
+`out(...)` does not load the variable before the assembly. `inout(...)` loads its
+current value and stores the updated value afterward. Output operands must be
+mutable numeric scalar variables.
+
 ## Examples
 
 ### Exit syscall

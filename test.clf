@@ -1,5 +1,9 @@
-fn main() {
-  var a = 1;
-  var b = 2;
-  int c = 3;
+module main 
+
+fn main(): int {
+  var a;
+
+  asm("mov %, 12", inout(a), "mov rax, %", a);
+
+  return a; 
 }

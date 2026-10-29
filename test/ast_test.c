@@ -513,9 +513,24 @@ ct_test(ast, asm_with_args, "asm(\"mov rdi,\", a);")
   ct_assert_eq((int)s->asm_stmt.instr_count, 1, "asm statement should have 1 instruction");
   ct_assert_eq((int)s->asm_stmt.arg_count, 1, "asm statement should have 1 arg");
   ct_assert_eq(s->asm_stmt.instr[0], "mov rdi,", "instruction string should match");
-  ct_assert_not_null(s->asm_stmt.args[0], "arg expression should not be NULL");
-  ct_assert_eq(s->asm_stmt.args[0]->type, EXPRESSION_VAR, "arg expression should be a variable");
-  ct_assert_eq(s->asm_stmt.args[0]->var.ident.ident_name, "a", "arg variable name should be 'a'");
+  ct_assert_not_null(s->asm_stmt.args[0].expression, "arg expression should not be NULL");
+  ct_assert_eq(s->asm_stmt.args[0].expression->type, EXPRESSION_VAR, "arg expression should be a variable");
+  ct_assert_eq(s->asm_stmt.args[0].expression->var.ident.ident_name, "a", "arg variable name should be 'a'");
+  ct_assert_eq(s->asm_stmt.args[0].mode, ASM_ARG_INPUT, "bare asm arguments should be inputs");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
+ct_test(ast, asm_with_output_arg, "asm(\"mov %, 12\", out(a));")
+{
+  statement_t* s = parse_statement(&parser);
+
+  ct_assert_not_null(s, "asm statement should not be NULL");
+  ct_assert_eq((int)s->asm_stmt.arg_count, 1, "asm statement should have 1 arg");
+  ct_assert_eq(s->asm_stmt.args[0].mode, ASM_ARG_OUTPUT, "arg should be an output");
+  ct_assert_eq(s->asm_stmt.args[0].expression->type, EXPRESSION_VAR, "output should be a variable");
+  ct_assert_eq(s->asm_stmt.args[0].expression->var.ident.ident_name, "a", "output variable name should be 'a'");
 
   free_statement(s);
   da_free(&parser);
@@ -528,10 +543,10 @@ ct_test(ast, asm_with_call_arg, "asm(\"mov rdi,\", len(a));")
   ct_assert_not_null(s, "asm statement should not be NULL");
   ct_assert_eq(s->type, STATEMENT_ASM, "statement type should be STATEMENT_ASM");
   ct_assert_eq((int)s->asm_stmt.arg_count, 1, "asm statement should have 1 arg");
-  ct_assert_eq(s->asm_stmt.args[0]->type, EXPRESSION_CALL, "asm arg should be a call expression");
-  ct_assert_eq(s->asm_stmt.args[0]->call.callee, "len", "asm arg callee should be 'len'");
-  ct_assert_eq((int)s->asm_stmt.args[0]->call.arg_count, 1, "len should have 1 arg");
-  ct_assert_eq(s->asm_stmt.args[0]->call.args[0]->type, EXPRESSION_VAR, "len arg should be a variable");
+  ct_assert_eq(s->asm_stmt.args[0].expression->type, EXPRESSION_CALL, "asm arg should be a call expression");
+  ct_assert_eq(s->asm_stmt.args[0].expression->call.callee, "len", "asm arg callee should be 'len'");
+  ct_assert_eq((int)s->asm_stmt.args[0].expression->call.arg_count, 1, "len should have 1 arg");
+  ct_assert_eq(s->asm_stmt.args[0].expression->call.args[0]->type, EXPRESSION_VAR, "len arg should be a variable");
 
   free_statement(s);
   da_free(&parser);
@@ -545,10 +560,10 @@ ct_test(ast, asm_only_args, "asm(a, 42);")
   ct_assert_eq(s->type, STATEMENT_ASM, "statement type should be STATEMENT_ASM");
   ct_assert_eq((int)s->asm_stmt.instr_count, 0, "asm statement should have 0 instructions");
   ct_assert_eq((int)s->asm_stmt.arg_count, 2, "asm statement should have 2 args");
-  ct_assert_eq(s->asm_stmt.args[0]->type, EXPRESSION_VAR, "first arg should be a variable");
-  ct_assert_eq(s->asm_stmt.args[0]->var.ident.ident_name, "a", "first arg name should be 'a'");
-  ct_assert_eq(s->asm_stmt.args[1]->type, EXPRESSION_INT_LIT, "second arg should be INT literal");
-  ct_assert_eq(s->asm_stmt.args[1]->int_lit.value, 42, "second arg value should be 42");
+  ct_assert_eq(s->asm_stmt.args[0].expression->type, EXPRESSION_VAR, "first arg should be a variable");
+  ct_assert_eq(s->asm_stmt.args[0].expression->var.ident.ident_name, "a", "first arg name should be 'a'");
+  ct_assert_eq(s->asm_stmt.args[1].expression->type, EXPRESSION_INT_LIT, "second arg should be INT literal");
+  ct_assert_eq(s->asm_stmt.args[1].expression->int_lit.value, 42, "second arg value should be 42");
 
   free_statement(s);
   da_free(&parser);

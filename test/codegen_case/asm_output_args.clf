@@ -1,0 +1,6 @@
+fn main(): int {
+  var a;
+  asm("mov %, 12", out(a));
+  asm("add %, 1", inout(a));
+  return a;
+}
