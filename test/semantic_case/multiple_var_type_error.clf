@@ -1,0 +1,8 @@
+fn pair(): (u8, string) {
+  return 1, "wrong";
+}
+
+fn main(): int {
+  u8 a, b = pair();
+  return 0;
+}

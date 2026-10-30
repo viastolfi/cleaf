@@ -1,0 +1,12 @@
+fn pair(int value): (int, string) {
+  return value + 1, "ok";
+}
+
+fn forward(): (int, string) {
+  return pair(4);
+}
+
+fn main(): int {
+  pair(1);
+  return 0;
+}

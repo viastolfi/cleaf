@@ -53,6 +53,17 @@ typedef struct
 
 typedef struct
 {
+  bool valid;
+  size_t count;
+  union {
+    known_type_t single;
+    // Borrowed from the function symbol; valid while the symbol is alive.
+    const known_type_t* multiple;
+  } values;
+} semantic_values_t;
+
+typedef struct
+{
   imported_symbol_t** items;
   size_t count;
   size_t capacity;
@@ -85,12 +96,18 @@ void semantic_load_compiler_functions(hashmap_t* func_sym);
 
 int analyze_declaration(
     semantic_analyzer_t* analyzer, 
-    declaration_t* decl, 
+    typed_identifier_t* ident,
+    expression_t* init,
     scope_t* scope);
 
 known_type_t semantic_check_expression(
     semantic_analyzer_t* analyzer,
     expression_t* expr, 
+    scope_t* scope);
+
+semantic_values_t semantic_check_expression_values(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
     scope_t* scope);
 
 known_type_t semantic_check_expr_int_lit(
@@ -128,7 +145,7 @@ known_type_t semantic_check_expr_unary(
     expression_t* expr,
     scope_t* scope);
 
-known_type_t semantic_check_expr_call(
+semantic_values_t semantic_check_expr_call(
     semantic_analyzer_t* analyzer,
     expression_t* expr,
     scope_t* scope);

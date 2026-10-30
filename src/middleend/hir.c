@@ -11,6 +11,26 @@ static int IR_lower_store_string_length(
     const char* name,
     IR_function_t* func);
 
+static int IR_lower_call_values(
+    HIR_parser_t* hir, expression_t* expr, IR_function_t* func,
+    IR_value_array* values);
+
+static void IR_store_value(
+    IR_function_t* func, const char* name,
+    IR_temp_id value, bool string_length)
+{
+  IR_instruction_t* store = calloc(1, sizeof(IR_instruction_t));
+  CLEAF_ASSERT(store != NULL, "out of memory");
+  store->kind = IR_STORE_VAR;
+  store->src = value;
+  store->var.name = strdup(name);
+  CLEAF_ASSERT(store->var.name != NULL, "out of memory");
+  store->var.is_init = 1;
+  store->var.is_string_len = string_length;
+  da_append(func->code, store);
+  func->stack_reserve_size += 8;
+}
+
 char* IR_mangle_function_name(
     const char* module_path, const char* func_name)
 {
@@ -112,21 +132,56 @@ int IR_lower_declaration(
     return -1;
   }
 
-  IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
-  CLEAF_ASSERT(instr != NULL, "out of memory");
+  bool call_returns_string = decl->var_decl.init &&
+    decl->var_decl.init->type == EXPRESSION_CALL &&
+    decl->var_decl.init->call.return_count == 1 &&
+    decl->var_decl.init->call.return_types[0].kind == TYPE_STRING;
+  if (decl->var_decl.init &&
+      (decl->var_decl.identifiers.count > 1 || call_returns_string)) {
+    IR_value_array values = {0};
+    if (IR_lower_expression_values(
+          hir, decl->var_decl.init, func, &values) != 0) {
+      da_free(&values);
+      return 1;
+    }
+    if (values.count != decl->var_decl.identifiers.count) {
+      error_report_at_position(
+          hir->error_ctx, decl->source_pos, ERROR_SEVERITY_ERROR,
+          "initializer value count does not match variable count");
+      da_free(&values);
+      return 1;
+    }
+    for (size_t i = 0; i < values.count; ++i) {
+      typed_identifier_t* ident = &decl->var_decl.identifiers.items[i];
+      IR_temp_id value = values.items[i].temp;
+      value.size = ident->type.array_len > 0 || ident->type.kind == TYPE_CUSTOM
+        ? 8 : ident->type.element_size;
+      IR_store_value(func, ident->ident_name, value, false);
+      if (values.items[i].string_length.size)
+        IR_store_value(
+            func, ident->ident_name, values.items[i].string_length, true);
+    }
+    da_free(&values);
+    return 0;
+  }
 
-  instr->kind = IR_STORE_VAR;
-  instr->var.name = strdup(decl->var_decl.ident.ident_name);
-  instr->src.size = decl->var_decl.ident.type.element_size;
-  CLEAF_ASSERT(instr->var.name != NULL, "out of memory");
+  for (size_t i = 0; i < decl->var_decl.identifiers.count; ++i) {
+    typed_identifier_t* ident =
+      &decl->var_decl.identifiers.items[i];
+    IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
+    CLEAF_ASSERT(instr != NULL, "out of memory");
+    instr->kind = IR_STORE_VAR;
+    instr->var.name = strdup(ident->ident_name);
+    instr->src.size = ident->type.element_size;
+    CLEAF_ASSERT(instr->var.name != NULL, "out of memory");
 
-  if (decl->var_decl.ident.type.kind == TYPE_CUSTOM) {
+    if (ident->type.kind == TYPE_CUSTOM) {
       IR_instruction_t* alloc = 
         calloc(1, sizeof(IR_instruction_t));   
       CLEAF_ASSERT(alloc != NULL, "out of memory");
 
       alloc->kind = IR_ALLOC;
-      alloc->mem_size = decl->var_decl.ident.type.element_size;
+      alloc->mem_size = ident->type.element_size;
 
       da_append(func->code, alloc);
       instr->var.is_init = 1;
@@ -145,7 +200,7 @@ int IR_lower_declaration(
       // The condition statement is a bit of a guess,
       // Could cause bug later on
       else if (decl->var_decl.init &&
-               decl->var_decl.init->type == EXPRESSION_VAR) {
+          decl->var_decl.init->type == EXPRESSION_VAR) {
         IR_instruction_t* load_base =
           calloc(1, sizeof(IR_instruction_t));
         CLEAF_ASSERT(alloc != NULL, "out of memory");
@@ -195,66 +250,70 @@ int IR_lower_declaration(
         }
       }
       func->stack_reserve_size += 8;
-  } 
-  else if (decl->var_decl.ident.type.array_len > 0) {
-    IR_instruction_t* alloc = 
-      calloc(1, sizeof(IR_instruction_t));
-    CLEAF_ASSERT(alloc != NULL, "out of memory");
-
-    alloc->kind = IR_ALLOC;
-    alloc->mem_size = decl->var_decl.ident.type.size;
-    da_append(func->code, alloc);
-
-    instr->var.is_init = 1;
-    instr->src.id = -1;
-
-    da_append(func->code, instr);
-    if (decl->var_decl.init && 
-        decl->var_decl.init->type == EXPRESSION_COMPOSITE_LITERAL &&
-        decl->var_decl.init->composite_literal.is_initializer) {
-      int err = 
-        IR_lower_composite_literal_expression(hir, decl, func);
-      if (err)
-        return 1;
     }
-    func->stack_reserve_size += 8;
-  }
-  else {
-    if (decl->var_decl.init) {
-      instr->var.is_init = 1;
-      if (IR_lower_expression(hir, decl->var_decl.init, func) != 0) {
-        free(instr->var.name);
-        free(instr);
-        return 1;
-      }
-      instr->src.id = func->next_temp_id;
-    } else {
-      if (decl->var_decl.ident.type.kind == TYPE_INT) {
-        instr->var.is_init = 0; 
-      }
-    } 
-    da_append(func->code, instr);
-    func->stack_reserve_size += 8;
+    else if (ident->type.array_len > 0) {
+      IR_instruction_t* alloc =
+        calloc(1, sizeof(IR_instruction_t));
+      CLEAF_ASSERT(alloc != NULL, "out of memory");
 
-    if (decl->var_decl.ident.type.kind == TYPE_STRING) {
+      alloc->kind = IR_ALLOC;
+      alloc->mem_size = ident->type.size;
+      da_append(func->code, alloc);
+
+      instr->var.is_init = 1;
+      instr->src.id = -1;
+
+      da_append(func->code, instr);
       if (decl->var_decl.init &&
-          IR_lower_store_string_length(
-            hir, decl->var_decl.init,
-            decl->var_decl.ident.ident_name, func) != 0)
-        return 1;
-      if (!decl->var_decl.init) {
-        IR_instruction_t* length_slot =
-          calloc(1, sizeof(IR_instruction_t));
-        CLEAF_ASSERT(length_slot != NULL, "out of memory");
-        length_slot->kind = IR_STORE_VAR;
-        length_slot->var.name =
-          strdup(decl->var_decl.ident.ident_name);
-        CLEAF_ASSERT(length_slot->var.name != NULL, "out of memory");
-        length_slot->var.is_string_len = 1;
-        da_append(func->code, length_slot);
+          decl->var_decl.init->type == EXPRESSION_COMPOSITE_LITERAL &&
+          decl->var_decl.init->composite_literal.is_initializer) {
+        int err =
+          IR_lower_composite_literal_expression(hir, decl, func);
+        if (err)
+          return 1;
       }
       func->stack_reserve_size += 8;
     }
+    else {
+      if (decl->var_decl.init) {
+        instr->var.is_init = 1;
+        if (IR_lower_expression(
+              hir, decl->var_decl.init, func) != 0) {
+          free(instr->var.name);
+          free(instr);
+          return 1;
+        }
+        instr->src.id = func->next_temp_id;
+      } else {
+        if (ident->type.kind == TYPE_INT) {
+          instr->var.is_init = 0;
+        }
+      }
+      da_append(func->code, instr);
+      func->stack_reserve_size += 8;
+
+      if (ident->type.kind == TYPE_STRING) {
+        if (decl->var_decl.init &&
+            IR_lower_store_string_length(
+              hir, decl->var_decl.init,
+              ident->ident_name, func) != 0)
+          return 1;
+        if (!decl->var_decl.init) {
+          IR_instruction_t* length_slot =
+            calloc(1, sizeof(IR_instruction_t));
+          CLEAF_ASSERT(length_slot != NULL, "out of memory");
+          length_slot->kind = IR_STORE_VAR;
+          length_slot->var.name =
+            strdup(ident->ident_name);
+          CLEAF_ASSERT(
+              length_slot->var.name != NULL, "out of memory");
+          length_slot->var.is_string_len = 1;
+          da_append(func->code, length_slot);
+        }
+        func->stack_reserve_size += 8;
+      }
+    }
+
   }
 
   return 0;
@@ -265,6 +324,7 @@ int IR_lower_composite_literal_expression(
     declaration_t* decl, 
     IR_function_t* func)
 {
+  typed_identifier_t* ident = &decl->var_decl.identifiers.items[0];
   IR_instruction_t* load = calloc(1, sizeof(IR_instruction_t));
   CLEAF_ASSERT(load != NULL, "out of memory");
 
@@ -273,13 +333,13 @@ int IR_lower_composite_literal_expression(
   // we store a pointer (64bits) so we can hardcode the size here
   load->dest.size = 8;
   load->var.is_init = 1;
-  load->var.name = strdup(decl->var_decl.ident.ident_name);
+  load->var.name = strdup(ident->ident_name);
   CLEAF_ASSERT(load->var.name != NULL, "out of memory");
 
   da_append(func->code, load);
 
   struct_symbol_t* sym = hashmap_get(hir->struct_symbols,
-      decl->var_decl.ident.type.name);
+      ident->type.name);
   expression_t* e = decl->var_decl.init;
 
   int save = func->next_temp_id;
@@ -327,9 +387,9 @@ int IR_lower_composite_literal_expression(
     }
     else {
       mov_offset->src.size = 
-        decl->var_decl.ident.type.element_size; 
+        ident->type.element_size;
       mov_offset->offset.size = 
-        decl->var_decl.ident.type.element_size * i;
+        ident->type.element_size * i;
       da_append(func->code, mov_offset);
     }
   }
@@ -713,9 +773,27 @@ int IR_lower_len_expression(
   return IR_lower_string_length(hir, expr->call.args[0], func);
 }
 
-int IR_lower_call_expression(
-    HIR_parser_t* hir, expression_t* expr, IR_function_t* func)
+static int IR_lower_call_values(
+    HIR_parser_t* hir, expression_t* expr, IR_function_t* func,
+    IR_value_array* values)
 {
+  if (!expr->call.return_types || !expr->call.return_count) {
+    error_report_at_position(
+        hir->error_ctx, expr->source_pos, ERROR_SEVERITY_ERROR,
+        "function call is missing its resolved return signature");
+    return 1;
+  }
+  size_t result_registers = expr->call.return_count;
+  for (size_t i = 0; i < expr->call.return_count; ++i)
+    if (expr->call.return_types[i].kind == TYPE_STRING)
+      result_registers++;
+  if (result_registers > IR_RETURN_REGISTER_COUNT) {
+    error_report_at_position(
+        hir->error_ctx, expr->source_pos, ERROR_SEVERITY_NOT_IMPLEMENTED,
+        "function results exceed the return register limit");
+    return 1;
+  }
+
   // String arguments occupy consecutive pointer and length registers.
   size_t arg_register = 0;
   for (int i = 0; i < (int) expr->call.arg_count; ++i) {
@@ -725,11 +803,12 @@ int IR_lower_call_expression(
     set_arg->kind = IR_MOV;
     set_arg->dest.id = -(int)arg_register++ - 1;
 
-    if (IR_lower_expression(hir, expr->call.args[i], func) != 0)
+    if (IR_lower_expression(hir, expr->call.args[i], func) != 0) {
+      free(set_arg);
       return 1;
+    }
 
     set_arg->src.id = func->next_temp_id;
-    
     da_append(func->code, set_arg);
 
     expression_t* arg = expr->call.args[i];
@@ -764,14 +843,73 @@ int IR_lower_call_expression(
 
   da_append(func->code, call);
 
-  IR_instruction_t* result = calloc(1, sizeof(IR_instruction_t));
-  CLEAF_ASSERT(result != NULL, "out of memory");
+  size_t result_register = 0;
+  for (size_t i = 0; i < expr->call.return_count; ++i) {
+    known_type_t type = expr->call.return_types[i];
+    IR_value_t value = {0};
+    int register_id = -(int)result_register++ - 1;
+    if (type.kind == TYPE_STRING) {
+      IR_instruction_t* length = calloc(1, sizeof(IR_instruction_t));
+      CLEAF_ASSERT(length != NULL, "out of memory");
+      length->kind = IR_MOV;
+      length->dest = (IR_temp_id){.id = ++func->next_temp_id, .size = 8};
+      length->src = (IR_temp_id){.id = -(int)result_register++ - 1, .size = 8};
+      da_append(func->code, length);
+      value.string_length = length->dest;
+    }
 
-  result->kind = IR_MOV;
-  result->dest.id = ++(func->next_temp_id);
-  result->src.id = -1;
-  da_append(func->code, result);
+    IR_instruction_t* result = calloc(1, sizeof(IR_instruction_t));
+    CLEAF_ASSERT(result != NULL, "out of memory");
+    result->kind = IR_MOV;
+    result->dest.id = ++func->next_temp_id;
+    result->src.id = register_id;
+    da_append(func->code, result);
+    value.temp = result->dest;
+    da_append(values, value);
+  }
 
+  return 0;
+}
+
+int IR_lower_call_expression(
+    HIR_parser_t* hir, expression_t* expr, IR_function_t* func)
+{
+  IR_value_array values = {0};
+  int result = IR_lower_call_values(hir, expr, func, &values);
+  da_free(&values);
+  return result;
+}
+
+int IR_lower_expression_values(
+    HIR_parser_t* hir, expression_t* expr, IR_function_t* func,
+    IR_value_array* values)
+{
+  if (expr->type == EXPRESSION_CALL &&
+      strcmp(expr->call.callee, "len") != 0 &&
+      strcmp(expr->call.callee, "alloc") != 0 &&
+      strcmp(expr->call.callee, "free") != 0 &&
+      strcmp(expr->call.callee, "sizeof") != 0)
+    return IR_lower_call_values(hir, expr, func, values);
+
+  if (IR_lower_expression(hir, expr, func) != 0)
+    return 1;
+
+  IR_value_t value = {
+    .temp = {
+      .id = func->next_temp_id,
+      .size = func->code->items[func->code->count - 1]->dest.size,
+    },
+  };
+  if (expr->type == EXPRESSION_UNARY)
+    value.temp.size = expr->unary.operand->var.ident.type.element_size;
+  bool is_string = expr->type == EXPRESSION_STRING ||
+    (expr->type == EXPRESSION_VAR && expr->var.ident.type.kind == TYPE_STRING);
+  if (is_string) {
+    if (IR_lower_string_length(hir, expr, func) != 0)
+      return 1;
+    value.string_length = func->code->items[func->code->count - 1]->dest;
+  }
+  da_append(values, value);
   return 0;
 }
 
@@ -1381,42 +1519,95 @@ int IR_lower_return_statement(HIR_parser_t* hir,
     statement_t* stmt,
     IR_function_t* func)
 {
-  int err = IR_lower_expression(hir, stmt->ret.value, func);
-  if (err)
-    return -1;
+  IR_value_array values = {0};
+  size_t snapshot_id = func->code->count;
+  for (size_t i = 0; i < stmt->ret.count; ++i) {
+    size_t before = values.count;
+    if (IR_lower_expression_values(
+          hir, stmt->ret.value[i], func, &values) != 0) {
+      da_free(&values);
+      return 1;
+    }
+    // Later expressions may call functions and overwrite temporary registers.
+    if (stmt->ret.count > 1) {
+      for (size_t j = before; j < values.count; ++j) {
+        char name[80];
+        snprintf(name, sizeof(name), "$return%zu_%zu", snapshot_id, j);
+        IR_store_value(func, name, values.items[j].temp, false);
+        if (values.items[j].string_length.size)
+          IR_store_value(func, name, values.items[j].string_length, true);
+      }
+    }
+  }
+
+  size_t result_registers = values.count;
+  for (size_t i = 0; i < values.count; ++i)
+    if (values.items[i].string_length.size)
+      result_registers++;
+  bool is_entry = strcmp(func->name, "main") == 0 ||
+    strcmp(func->name, "start") == 0;
+  if (result_registers > IR_RETURN_REGISTER_COUNT ||
+      (is_entry && result_registers != 1)) {
+    error_report_at_position(
+        hir->error_ctx, stmt->source_pos, ERROR_SEVERITY_NOT_IMPLEMENTED,
+        "function results exceed the return register limit");
+    da_free(&values);
+    return 1;
+  }
+
+  if (stmt->ret.count > 1) {
+    for (size_t i = 0; i < values.count; ++i) {
+      for (int component = 0; component < 2; ++component) {
+        IR_temp_id* temp = component == 0
+          ? &values.items[i].temp : &values.items[i].string_length;
+        if (component == 1 && !temp->size) continue;
+
+        char name[80];
+        snprintf(name, sizeof(name), "$return%zu_%zu", snapshot_id, i);
+        IR_instruction_t* load = calloc(1, sizeof(IR_instruction_t));
+        CLEAF_ASSERT(load != NULL, "out of memory");
+        load->kind = IR_LOAD_VAR;
+        load->dest = *temp;
+        load->dest.id = ++func->next_temp_id;
+        load->var.name = strdup(name);
+        CLEAF_ASSERT(load->var.name != NULL, "out of memory");
+        load->var.is_string_len = component == 1;
+        da_append(func->code, load);
+        *temp = load->dest;
+      }
+    }
+  }
 
   IR_instruction_t* instr = calloc(1, sizeof(IR_instruction_t));
   CLEAF_ASSERT(instr != NULL, "out of memory");
 
-  if (strcmp(func->name, "main") == 0 || 
-      strcmp(func->name, "start") == 0) {
+  if (is_entry) {
     instr->kind = IR_EXIT;
-    instr->dest.id = func->next_temp_id;
-    instr->dest.size = 
-      func->code->items[func->code->count - 1]->dest.size;
+    instr->dest = values.items[0].temp;
   }
   else {
-    // TODO: what append if we return void ?
-    IR_instruction_t* return_var = 
-      calloc(1, sizeof(IR_instruction_t));
-    CLEAF_ASSERT(return_var != NULL, "out of memory");
+    size_t result_register = 0;
+    for (size_t i = 0; i < values.count; ++i) {
+      for (int component = 0; component < 2; ++component) {
+        IR_temp_id temp = component == 0
+          ? values.items[i].temp : values.items[i].string_length;
+        if (component == 1 && !temp.size) continue;
 
-    return_var->kind = IR_MOV;
-    return_var->dest.id = -1;
-    return_var->src.id = func->next_temp_id;
-    return_var->src.size = func->code->items[func->code->count - 1]->dest.size;
-
-    if (return_var->src.size != return_var->dest.size) {
-      size_t s = min(return_var->src.size, return_var->dest.size);
-      return_var->src.size = s;
-      return_var->dest.size = s;
+        IR_instruction_t* move = calloc(1, sizeof(IR_instruction_t));
+        CLEAF_ASSERT(move != NULL, "out of memory");
+        move->kind = IR_MOV;
+        move->dest.id = -(int)result_register++ - 1;
+        move->src = temp;
+        // Register components cross the call boundary at full register width.
+        move->src.size = 0;
+        da_append(func->code, move);
+      }
     }
-
-    da_append(func->code, return_var);
     instr->kind = IR_RETURN;
   }
 
   da_append(func->code, instr);
+  da_free(&values);
   return 0;
 }
 
@@ -1529,6 +1720,17 @@ int IR_lower_function(HIR_parser_t* hir,
   if (function->type != DECLARATION_FUNC)
     return 0;
 
+  size_t result_registers = function->func.return_count;
+  for (size_t i = 0; i < function->func.return_count; ++i)
+    if (function->func.return_type[i].kind == TYPE_STRING)
+      result_registers++;
+  if (result_registers > IR_RETURN_REGISTER_COUNT) {
+    error_report_at_position(
+        hir->error_ctx, function->source_pos, ERROR_SEVERITY_NOT_IMPLEMENTED,
+        "function results exceed the return register limit");
+    return 1;
+  }
+
   IR_function_t* func = calloc(1, sizeof(IR_function_t));
   CLEAF_ASSERT(func != NULL, "out of memory");
 
@@ -1550,7 +1752,7 @@ int IR_lower_function(HIR_parser_t* hir,
   da_foreach(statement_t*, it, function->func.body) {
     int lowering_result = IR_lower_statement(hir, *it, func);
     if (lowering_result != 0) {
-      // TODO: see if we have to propage error here or not
+      IR_free_function(func);
       return -1;
     }
   }

@@ -217,8 +217,8 @@ static void print_statement(statement_t* s, const char* prefix, bool is_last)
   switch (s->type) {
     case STATEMENT_RETURN:
       printf(CLR_STMT "ReturnStmt\n" CLR_RESET);
-      if (s->ret.value)
-        print_expression(s->ret.value, cp, true);
+      for (size_t i = 0; i < s->ret.count; ++i)
+        print_expression(s->ret.value[i], cp, i == s->ret.count - 1);
       break;
 
     case STATEMENT_DECL:
@@ -340,11 +340,16 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
       }
       printf(")");
 
-      if (d->func.return_type_name) {
+      if (d->func.return_count && d->func.return_type_name[0]) {
         printf(" -> ");
-        print_type_name(
-            &d->func.return_type,
-            d->func.return_type_name, d->func.return_type_module);
+        if (d->func.return_count > 1) printf("(");
+        for (size_t i = 0; i < d->func.return_count; ++i) {
+          if (i > 0) printf(", ");
+          print_type_name(
+              &d->func.return_type[i],
+              d->func.return_type_name[i], d->func.return_type_module[i]);
+        }
+        if (d->func.return_count > 1) printf(")");
       }
 
       printf("\n");
@@ -355,15 +360,14 @@ static void print_declaration(declaration_t* d, const char* prefix, bool is_last
     }
 
     case DECLARATION_VAR:
-      printf(CLR_DECL "VarDecl" CLR_RESET " '%s': ",
-             d->var_decl.ident.ident_name ? 
-              d->var_decl.ident.ident_name : "");
-      print_type_name(
-          &d->var_decl.ident.type,
-          d->var_decl.ident.type_name,
-          d->var_decl.ident.type_module);
-      if (d->var_decl.ident.is_constant) {
-        printf(" : " CLR_CONST "const" CLR_RESET);
+      printf(CLR_DECL "VarDecl" CLR_RESET " ");
+      for (size_t i = 0; i < d->var_decl.identifiers.count; ++i) {
+        typed_identifier_t* ident = &d->var_decl.identifiers.items[i];
+        if (i > 0) printf(", ");
+        printf("'%s': ", ident->ident_name ? ident->ident_name : "");
+        print_type_name(&ident->type, ident->type_name, ident->type_module);
+        if (ident->is_constant)
+          printf(" : " CLR_CONST "const" CLR_RESET);
       }
       printf("\n");
       if (d->var_decl.init)

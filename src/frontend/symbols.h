@@ -11,7 +11,8 @@ typedef struct {
 
 typedef struct 
 {
-  known_type_t return_type;
+  known_type_t* return_type;
+  size_t return_count;
 
   char** params_name;
   variable_symbol_t* params_type;

@@ -1,0 +1,7 @@
+fn pair(): (int, u8) {
+  return 1, "wrong";
+}
+
+fn unresolved(): (int, string) {
+  return missing, "ok";
+}

@@ -160,6 +160,14 @@ ct_test(hir_test, return_stmt, "test/hir_case/return_stmt.clf", "test/hir_case/r
   ct_assert_eq(result, 0, "hir parsing give right output");
 }
 
+ct_test(hir_test, multiple_returns, "test/hir_case/multiple_returns.clf", "test/hir_case/multiple_returns.res") {
+  ct_assert_eq(result, 0, "Calls should capture and distribute multiple results once, including forwarded expressions");
+}
+
+ct_test(hir_test, multiple_string_returns, "test/hir_case/multiple_string_returns.clf", "test/hir_case/multiple_string_returns.res") {
+  ct_assert_eq(result, 0, "String results should preserve pointer and length alongside other results");
+}
+
 ct_test(hir_test, simple_binary, "test/hir_case/simple_binary.clf", "test/hir_case/simple_binary.res") {
   ct_assert_eq(result, 0, "hir parsing give right output");
 }

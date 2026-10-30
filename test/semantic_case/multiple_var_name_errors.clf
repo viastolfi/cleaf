@@ -1,0 +1,7 @@
+fn main(): int {
+  int existing;
+  int existing, other;
+  int repeated, repeated;
+  int good, while;
+  return 0;
+}

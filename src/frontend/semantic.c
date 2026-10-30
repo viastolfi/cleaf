@@ -90,6 +90,7 @@ void semantic_free_program_definition(semantic_analyzer_t* analyzer)
           (function_symbol_t*)entry->value;
         free(v->params_name);
         free(v->params_type);
+        free(v->return_type);
       }
     }
     hashmap_free(analyzer->function_symbols, 1);
@@ -206,46 +207,47 @@ int semantic_check_name_not_reserved(const char* name)
 }
 
 int analyze_declaration(semantic_analyzer_t* analyzer,
-                        declaration_t* decl,
+                        typed_identifier_t* ident,
+                        expression_t* init,
                         scope_t* scope)
 {
-  if (scope_resolve(scope, decl->var_decl.ident.ident_name)) {
+  if (scope_resolve(scope, ident->ident_name)) {
     semantic_error_register(analyzer,
-        decl->var_decl.ident.source_pos - 1,
+        ident->source_pos - 1,
         "already defined variable redifinition");
     return 0;
   } else if (semantic_check_name_not_reserved(
-        decl->var_decl.ident.ident_name)) {
+        ident->ident_name)) {
     semantic_error_register(analyzer,
-        decl->var_decl.ident.source_pos - 1,
+        ident->source_pos - 1,
         "can't named a variable using a reserved keyword");
     return 0;
   }
 
-  if (decl->var_decl.ident.type.kind == TYPE_CUSTOM &&
-      decl->var_decl.init) {
-    if (!decl->var_decl.init->composite_literal.is_initializer)
+  if (ident->type.kind == TYPE_CUSTOM && init &&
+      init->type == EXPRESSION_COMPOSITE_LITERAL) {
+    if (!init->composite_literal.is_initializer)
       return 1;
 
     struct_symbol_t* struc_sym = (struct_symbol_t*)
       hashmap_get(
           analyzer->struct_symbols, 
-          decl->var_decl.ident.type.name);
+          ident->type.name);
     if (!struc_sym) {
       semantic_error_register(
-          analyzer, decl->var_decl.ident.type_source_pos,
+          analyzer, ident->type_source_pos,
           "unknown custom type");
       return 0;
     }
     if (struc_sym->members_count != 
-        decl->var_decl.init->composite_literal.count) {
+        init->composite_literal.count) {
       semantic_error_register(
-          analyzer, decl->var_decl.init->source_pos - 1,
+          analyzer, init->source_pos - 1,
           "must declare the exact number of members on custom var declaration");
       return 0;
     }
 
-    expression_t* e = decl->var_decl.init;
+    expression_t* e = init;
     size_t total_found = 0;
     char** founds = 
       calloc(struc_sym->members_count, sizeof(char*));
@@ -277,7 +279,8 @@ int analyze_declaration(semantic_analyzer_t* analyzer,
             semantic_check_expression(
                 analyzer, assign->assign.rhs, scope);
           
-          if (struc_sym->members_type[i].type.kind != actual.kind &&
+          if (struc_sym->members_type[i].type.kind !=
+              actual.kind &&
               struc_sym->members_type[i].type.kind < actual.kind) {
             semantic_error_register(
                 analyzer, assign->assign.rhs->source_pos - 1,
@@ -600,7 +603,7 @@ known_type_t semantic_check_expr_unary(
   return (known_type_t){.kind = TYPE_ERROR};
 }
 
-known_type_t semantic_check_expr_call(
+semantic_values_t semantic_check_expr_call(
     semantic_analyzer_t* analyzer,
     expression_t* expr,
     scope_t* scope)
@@ -620,6 +623,7 @@ known_type_t semantic_check_expr_call(
             analyzer->imported_functions, key);
       if (isym) {
         fs = isym->fs;
+        free(expr->call.resolved_module);
         expr->call.resolved_module = strdup(isym->module_name);
       }
       free(key);
@@ -631,7 +635,7 @@ known_type_t semantic_check_expr_call(
           hashmap_get(analyzer->imported_modules, expr->call.qualifier)
             ? "module does not export this function"
             : "module qualifier is not imported");
-      return (known_type_t){.kind = TYPE_ERROR};
+      return (semantic_values_t){0};
     }
   } else {
     fs = (function_symbol_t*) hashmap_get(
@@ -643,14 +647,14 @@ known_type_t semantic_check_expr_call(
     semantic_error_register(analyzer,
         expr->source_pos - 1,
         "undefined function call");
-    return (known_type_t){.kind = TYPE_ERROR};
+    return (semantic_values_t){0};
   }
 
   if (fs->params_count < expr->call.arg_count) {
     semantic_error_register(analyzer,
         expr->call.args[expr->call.arg_count - 1]->source_pos - 1,
         "too many arguments to function call");
-      return (known_type_t){.kind = TYPE_ERROR};
+      return (semantic_values_t){0};
   }
 
   if (fs->params_count > expr->call.arg_count) {
@@ -665,7 +669,7 @@ known_type_t semantic_check_expr_call(
         "too few arguments to function call");
     
     }
-    return (known_type_t){.kind = TYPE_ERROR};
+    return (semantic_values_t){0};
   }
 
   for (size_t i = 0; i < fs->params_count; ++i) {
@@ -730,11 +734,26 @@ known_type_t semantic_check_expr_call(
       semantic_error_register(analyzer,
           expr->call.args[i]->source_pos - 1,
           "wrong type conversion");
-      return (known_type_t){.kind = TYPE_ERROR};
+      return (semantic_values_t){0};
     }
   }
 
-  return fs->return_type;
+  free(expr->call.return_types);
+  expr->call.return_count = fs->return_count;
+  expr->call.return_types = calloc(fs->return_count, sizeof(known_type_t));
+  CLEAF_ASSERT(expr->call.return_types != NULL, "out of memory");
+  memcpy(expr->call.return_types, fs->return_type,
+      fs->return_count * sizeof(known_type_t));
+
+  semantic_values_t result = {
+    .valid = true,
+    .count = fs->return_count,
+  };
+  if (result.count == 1)
+    result.values.single = fs->return_type[0];
+  else
+    result.values.multiple = fs->return_type;
+  return result;
 }
 
 known_type_t semantic_check_expr_composite_literal(
@@ -759,6 +778,22 @@ known_type_t semantic_check_expr_index(
   semantic_check_expression(analyzer, expr->index.index, scope);
 
   return base;
+}
+
+semantic_values_t semantic_check_expression_values(
+    semantic_analyzer_t* analyzer,
+    expression_t* expr,
+    scope_t* scope)
+{
+  if (expr->type == EXPRESSION_CALL)
+    return semantic_check_expr_call(analyzer, expr, scope);
+
+  known_type_t type = semantic_check_expression(analyzer, expr, scope);
+  return (semantic_values_t){
+    .valid = type.kind != TYPE_ERROR,
+    .count = 1,
+    .values.single = type,
+  };
 }
 
 known_type_t semantic_check_expression(
@@ -787,8 +822,19 @@ known_type_t semantic_check_expression(
   if (expr->type == EXPRESSION_UNARY)
     return semantic_check_expr_unary(analyzer, expr, scope);
 
-  if (expr->type == EXPRESSION_CALL)
-    return semantic_check_expr_call(analyzer, expr, scope);
+  if (expr->type == EXPRESSION_CALL) {
+    semantic_values_t result =
+      semantic_check_expression_values(analyzer, expr, scope);
+    if (!result.valid)
+      return (known_type_t){.kind = TYPE_ERROR};
+    if (result.count != 1) {
+      semantic_error_register(
+          analyzer, expr->source_pos - 1,
+          "expected exactly one value from expression");
+      return (known_type_t){.kind = TYPE_ERROR};
+    }
+    return result.values.single;
+  }
 
   if (expr->type == EXPRESSION_COMPOSITE_LITERAL)
     return semantic_check_expr_composite_literal(
@@ -804,33 +850,60 @@ void semantic_check_return_statement(semantic_analyzer_t* analyzer,
                                      statement_t* stmt,
                                      scope_t* scope)
 {
-  expression_t* e = stmt->ret.value;
   function_symbol_t* fs = (function_symbol_t*) hashmap_get(
       analyzer->function_symbols, 
       analyzer->current_analyzed_function);
 
-  // some kind of guard, should be always false as parser is working
-  if (!e || !fs || fs->return_type.kind == TYPE_ERROR) return;
+  if (!fs) return;
 
-  known_type_t rt = semantic_check_expression(analyzer, e, scope);
+  size_t returned_count = stmt->ret.count;
+  bool valid = true;
 
-  if (rt.kind == TYPE_ERROR) return;
+  for (size_t i = 0; i < stmt->ret.count; ++i) {
+    expression_t* e = stmt->ret.value[i];
+    semantic_values_t result;
 
-  if (rt.kind < fs->return_type.kind) return;
+    if (stmt->ret.count == 1) {
+      result =
+        semantic_check_expression_values(analyzer, e, scope);
+    } else {
+      known_type_t type =
+        semantic_check_expression(analyzer, e, scope);
 
-  if (rt.kind > fs->return_type.kind) {
-    semantic_error_register(
-       analyzer, e->source_pos - 1,
-       "returned value exceed expected value");
-    return;
+      result = (semantic_values_t){
+        .valid = type.kind != TYPE_ERROR,
+        .count = 1,
+        .values.single = type,
+      };
+    }
+
+    if (!result.valid) {
+      valid = false;
+      continue;
+    }
+    if (stmt->ret.count == 1)
+      returned_count = result.count;
+
+    for (size_t j = 0; j < result.count; ++j) {
+      size_t index = i + j;
+      if (index >= fs->return_count) continue;
+
+      known_type_t actual = result.count == 1
+        ? result.values.single : result.values.multiple[j];
+      known_type_t expected = fs->return_type[index];
+      if (actual.kind == TYPE_ERROR || expected.kind == TYPE_ERROR)
+        continue;
+      if (actual.kind > expected.kind) {
+        semantic_error_register(
+            analyzer, e->source_pos - 1,
+            "returned value exceed expected value");
+      }
+    }
   }
-
-  if (rt.kind != fs->return_type.kind && 
-      fs->return_type.kind != TYPE_UNTYPE) {
-    semantic_error_register(analyzer,
-       e->source_pos - 1,
-       "wrong type conversion"); 
-    return;
+  if (valid && returned_count != fs->return_count) {
+    semantic_error_register(
+        analyzer, stmt->source_pos - 1,
+        "return value count does not match function signature");
   }
 }
 
@@ -844,45 +917,45 @@ void semantic_check_for_statement(semantic_analyzer_t* analyzer,
       stmt->for_stmt.decl_init) {
 
     declaration_t* decl = stmt->for_stmt.decl_init;
-    decl->var_decl.ident.type = semantic_resolve_type(
-        analyzer,
-        decl->var_decl.ident.type,
-        decl->var_decl.ident.type_name,
-        decl->var_decl.ident.type_module,
-        decl->var_decl.ident.type_source_pos);
+    if (decl->var_decl.identifiers.count > 1) {
+      semantic_check_var_declaration(analyzer, decl, for_scope);
+    } else {
+      typed_identifier_t* ident = &decl->var_decl.identifiers.items[0];
+      ident->type = semantic_resolve_type(
+          analyzer, ident->type, ident->type_name,
+          ident->type_module, ident->type_source_pos);
 
-    if (analyze_declaration(analyzer, decl, for_scope)) {
-      if (decl->var_decl.ident.type.kind == TYPE_ERROR) {
-        variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
-        if (vs) {
-          vs->type = decl->var_decl.ident.type;
-          hashmap_put(
-              for_scope->symbols,
-              decl->var_decl.ident.ident_name, vs);
-        }
-      } else {
-        known_type_t inferred =
-          semantic_check_expression(
-              analyzer, decl->var_decl.init, for_scope);
-
-        variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
-
-        if (vs) {
-          if (decl->var_decl.ident.type.kind == TYPE_VAR &&
-              inferred.kind != TYPE_STRING) {
-            vs->type = (known_type_t) {
-              .kind = TYPE_INT,
-              .name = types_description[TYPE_INT].name,
-              .element_size = types_description[TYPE_INT].size,
-            };
-          } else {
-            vs->type = inferred;
+      if (analyze_declaration(
+            analyzer, ident, decl->var_decl.init, for_scope)) {
+        if (ident->type.kind == TYPE_ERROR) {
+          variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
+          if (vs) {
+            vs->type = ident->type;
+            hashmap_put(for_scope->symbols, ident->ident_name, vs);
           }
-          semantic_resolve_type_size(analyzer, &vs->type);
-          vs->is_constant = false;
-          decl->var_decl.ident.type = vs->type;
-          hashmap_put(
-              for_scope->symbols, decl->var_decl.ident.ident_name, vs);
+        } else {
+          known_type_t inferred =
+            semantic_check_expression(
+                analyzer, decl->var_decl.init, for_scope);
+
+          variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
+
+          if (vs) {
+            if (ident->type.kind == TYPE_VAR &&
+                inferred.kind != TYPE_STRING) {
+              vs->type = (known_type_t) {
+                .kind = TYPE_INT,
+                .name = types_description[TYPE_INT].name,
+                .element_size = types_description[TYPE_INT].size,
+              };
+            } else {
+              vs->type = inferred;
+            }
+            semantic_resolve_type_size(analyzer, &vs->type);
+            vs->is_constant = false;
+            ident->type = vs->type;
+            hashmap_put(for_scope->symbols, ident->ident_name, vs);
+          }
         }
       }
     }
@@ -908,22 +981,118 @@ void semantic_check_for_statement(semantic_analyzer_t* analyzer,
   scope_exit(for_scope);
 }
 
+static void semantic_define_variable(
+    semantic_analyzer_t* analyzer,
+    typed_identifier_t* ident,
+    known_type_t actual_type,
+    scope_t* scope)
+{
+  variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
+  CLEAF_ASSERT(vs != NULL, "out of memory");
+  vs->type = ident->type;
+  if (ident->type.kind == TYPE_VAR) {
+    if (actual_type.kind != TYPE_STRING) {
+      vs->type = (known_type_t){
+        .kind = TYPE_INT,
+        .name = types_description[TYPE_INT].name,
+        .element_size = types_description[TYPE_INT].size,
+      };
+    } else {
+      vs->type = actual_type;
+    }
+  }
+  semantic_resolve_type_size(analyzer, &vs->type);
+  vs->is_constant = ident->is_constant;
+  ident->type = vs->type;
+  hashmap_put(scope->symbols, ident->ident_name, vs);
+}
+
+static void semantic_check_variable_conversion(
+    semantic_analyzer_t* analyzer,
+    known_type_t expected,
+    known_type_t actual,
+    const char* source_pos)
+{
+  if (expected.kind == actual.kind || expected.kind == TYPE_UNTYPE ||
+      expected.kind == TYPE_VAR)
+    return;
+
+  if (expected.kind < actual.kind) {
+    semantic_error_register(
+        analyzer, source_pos - 1,
+        "can't store value. Exceeding max type accetping value");
+  }
+  if (expected.kind >= actual.kind && actual.kind != TYPE_CHAR)
+    return;
+
+  if (actual.kind != TYPE_ERROR)
+    semantic_error_register(analyzer, source_pos - 1, "type mismatch");
+}
+
+static void semantic_check_multiple_var_declaration(
+    semantic_analyzer_t* analyzer,
+    declaration_t* decl,
+    scope_t* scope)
+{
+  semantic_values_t result = {0};
+  if (decl->var_decl.init) {
+    result = semantic_check_expression_values(
+        analyzer, decl->var_decl.init, scope);
+    if (result.valid && result.count != decl->var_decl.identifiers.count) {
+      semantic_error_register(
+          analyzer, decl->source_pos - 1,
+          "initializer value count does not match variable count");
+      result.valid = false;
+    }
+  }
+
+  da_foreach(typed_identifier_t, ident, &decl->var_decl.identifiers) {
+    ident->type = semantic_resolve_type(
+        analyzer, ident->type, ident->type_name,
+        ident->type_module, ident->type_source_pos);
+    if (!analyze_declaration(analyzer, ident, NULL, scope))
+      continue;
+
+    known_type_t actual = ident->type;
+    if (decl->var_decl.init) {
+      size_t i = ident - decl->var_decl.identifiers.items;
+      actual = result.valid ? result.values.multiple[i]
+        : (known_type_t){.kind = TYPE_ERROR};
+      if (ident->type.kind != TYPE_ERROR && actual.kind != TYPE_ERROR)
+        semantic_check_variable_conversion(
+            analyzer, ident->type, actual, ident->source_pos);
+    }
+    if (ident->type.kind == TYPE_VAR && !types_is_numeric(actual.kind) &&
+        actual.kind != TYPE_VAR)
+      ident->type = actual;
+    semantic_define_variable(analyzer, ident, actual, scope);
+  }
+}
+
 void semantic_check_var_declaration(
     semantic_analyzer_t* analyzer,
     declaration_t* decl,
     scope_t* scope)
 {
-  decl->var_decl.ident.type = semantic_resolve_type(
-      analyzer,
-      decl->var_decl.ident.type,
-      decl->var_decl.ident.type_name,
-      decl->var_decl.ident.type_module,
-      decl->var_decl.ident.type_source_pos);
+  if (decl->var_decl.identifiers.count > 1) {
+    semantic_check_multiple_var_declaration(analyzer, decl, scope);
+    return;
+  }
 
-  if (!analyze_declaration(analyzer, decl, scope))
+  typed_identifier_t* ident = &decl->var_decl.identifiers.items[0];
+  ident->type = semantic_resolve_type(
+      analyzer,
+      ident->type,
+      ident->type_name,
+      ident->type_module,
+      ident->type_source_pos);
+
+  if (!analyze_declaration(
+        analyzer, ident,
+        decl->var_decl.init, scope))
     return;
 
-  known_type_t expected_type = decl->var_decl.ident.type;
+  known_type_t expected_type = ident->type;
   known_type_t actual_type; 
 
   if (expected_type.kind == TYPE_ERROR) {
@@ -932,18 +1101,18 @@ void semantic_check_var_declaration(
     variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
     if (!vs) return;
     vs->type = expected_type;
-    vs->is_constant = decl->var_decl.ident.is_constant;
-    hashmap_put(scope->symbols, decl->var_decl.ident.ident_name, vs);
+    vs->is_constant = ident->is_constant;
+    hashmap_put(scope->symbols, ident->ident_name, vs);
     return;
   }
 
   if (!decl->var_decl.init) {
-    actual_type = decl->var_decl.ident.type;
+    actual_type = ident->type;
     goto var_def_put;
   }
 
-  if (decl->var_decl.ident.type.array_len > 0) {
-    size_t len = decl->var_decl.ident.type.array_len;
+  if (ident->type.array_len > 0) {
+    size_t len = ident->type.array_len;
     for (size_t i = 0; i < len; ++i) {
       expression_t* e = 
         decl->var_decl.init->composite_literal.values[i];
@@ -975,49 +1144,12 @@ void semantic_check_var_declaration(
         decl->var_decl.init,
         scope); 
   
-  if (expected_type.kind != actual_type.kind && 
-      expected_type.kind != TYPE_UNTYPE &&
-      expected_type.kind != TYPE_VAR) {
-
-    if (expected_type.kind < actual_type.kind) {
-      semantic_error_register(
-          analyzer, decl->source_pos -1,
-          "can't store value. Exceeding max type accetping value");
-    }
-    if (expected_type.kind >= actual_type.kind &&
-        actual_type.kind != TYPE_CHAR)
-      goto var_def_put;
-
-    if (actual_type.kind != TYPE_ERROR) {
-      semantic_error_register(
-          analyzer, decl->source_pos - 1, 
-          "type mismatch");
-      actual_type.kind = TYPE_ERROR;
-    }
-  }
+  semantic_check_variable_conversion(
+      analyzer, expected_type, actual_type, decl->source_pos);
 
 var_def_put:
-  variable_symbol_t* vs = calloc(1, sizeof(variable_symbol_t));
-  if (expected_type.kind == TYPE_VAR) {
-    if (actual_type.kind == TYPE_STRING) {
-      vs->type = actual_type;
-    } else {
-      vs->type = (known_type_t) {
-        .kind = TYPE_INT,
-        .name = types_description[TYPE_INT].name,
-        .element_size = types_description[TYPE_INT].size,
-      };
-    }
-  } 
-  else {
-    vs->type = expected_type;
-  }
-  semantic_resolve_type_size(analyzer, &vs->type);
-  vs->is_constant = decl->var_decl.ident.is_constant;
-  decl->var_decl.ident.type = vs->type;
-  hashmap_put(
-      scope->symbols, 
-      decl->var_decl.ident.ident_name, vs);
+  semantic_define_variable(
+      analyzer, ident, actual_type, scope);
 }
 
 void semantic_check_if_statement(semantic_analyzer_t* analyzer,
@@ -1078,7 +1210,7 @@ void semantic_check_scope(semantic_analyzer_t* analyzer,
       semantic_check_asm_statement(analyzer, stmt, local_scope);
 
     if (stmt->type == STATEMENT_EXPR)
-      semantic_check_expression(
+      semantic_check_expression_values(
           analyzer, stmt->expr_stmt.expr, local_scope);
   }
 
@@ -1156,7 +1288,10 @@ void semantic_load_compiler_functions(hashmap_t* func_sym)
     CLEAF_ASSERT(value != NULL, "out of memory");
     memset(value, 0, sizeof(function_symbol_t));
 
-    value->return_type.kind = TYPE_INT;
+    value->return_count = 1;
+    value->return_type = calloc(1, sizeof(known_type_t));
+    CLEAF_ASSERT(value->return_type != NULL, "out of memory");
+    value->return_type[0].kind = TYPE_INT;
 
     value->params_name = 
       calloc(1, sizeof(char*));
@@ -1196,7 +1331,10 @@ void semantic_load_compiler_functions(hashmap_t* func_sym)
     value->params_type[0].type = (known_type_t){.kind = TYPE_INT};
     value->params_type[0].is_constant = false;
 
-    value->return_type = (known_type_t){.kind = TYPE_PTR };
+    value->return_count = 1;
+    value->return_type = calloc(1, sizeof(known_type_t));
+    CLEAF_ASSERT(value->return_type != NULL, "out of memory");
+    value->return_type[0].kind = TYPE_PTR;
 
     hashmap_put(func_sym, "alloc", value);
   }
@@ -1207,7 +1345,10 @@ void semantic_load_compiler_functions(hashmap_t* func_sym)
       calloc(1, sizeof(function_symbol_t));
     CLEAF_ASSERT(value != NULL, "out of memory");
 
-    value->return_type.kind = TYPE_INT;
+    value->return_count = 1;
+    value->return_type = calloc(1, sizeof(known_type_t));
+    CLEAF_ASSERT(value->return_type != NULL, "out of memory");
+    value->return_type[0].kind = TYPE_INT;
 
     value->params_name =
       calloc(2, sizeof(char*));
@@ -1235,7 +1376,10 @@ void semantic_load_compiler_functions(hashmap_t* func_sym)
       calloc(1, sizeof(function_symbol_t));
     CLEAF_ASSERT(value != NULL, "out of memory");
 
-    value->return_type.kind = TYPE_INT;
+    value->return_count = 1;
+    value->return_type = calloc(1, sizeof(known_type_t));
+    CLEAF_ASSERT(value->return_type != NULL, "out of memory");
+    value->return_type[0].kind = TYPE_INT;
 
     value->params_name = calloc(1, sizeof(char*));
     CLEAF_ASSERT(value->params_name != NULL, "out of memory");
@@ -1352,12 +1496,19 @@ void semantic_load_program_definition(semantic_analyzer_t* analyzer)
       CLEAF_ASSERT(value != NULL, "out of memory");
       memset(value, 0, sizeof(function_symbol_t));
 
-      (*it)->func.return_type = semantic_resolve_type(
-          analyzer, (*it)->func.return_type,
-          (*it)->func.return_type_name,
-          (*it)->func.return_type_module,
-          (*it)->func.return_type_source_pos);
-      value->return_type = (*it)->func.return_type;
+      value->return_count = (*it)->func.return_count;
+      value->return_type =
+        calloc(value->return_count, sizeof(known_type_t));
+      CLEAF_ASSERT(value->return_type != NULL, "out of memory");
+
+      for (size_t i = 0; i < value->return_count; ++i) {
+        (*it)->func.return_type[i] = semantic_resolve_type(
+            analyzer, (*it)->func.return_type[i],
+            (*it)->func.return_type_name[i],
+            (*it)->func.return_type_module[i],
+            (*it)->func.return_type_source_pos[i]);
+        value->return_type[i] = (*it)->func.return_type[i];
+      }
 
       if ((*it)->func.params.count <= 0) {
         goto hash_func_put; 

@@ -15,6 +15,13 @@ fn <name>(<params>): <return_type> {
 ```
 
 A function without a return type can omit the `: <return_type>` part.
+For multiple results, use a parenthesized, comma-separated list:
+
+```cleaf
+fn <name>(<params>): (<return_type>, <return_type>) {
+    <body>
+}
+```
 
 ## Examples
 
@@ -67,6 +74,64 @@ fn double(int n): int {
 
 The compiler checks that the returned type matches the declared return type.
 Returning a narrower type into a wider return type is allowed (promotion).
+
+## Multiple return values
+
+A function can return several values with different types. Return expressions
+are evaluated from left to right, and their count and types are checked against
+the signature in order:
+
+```cleaf
+fn describe(): (int, string) {
+    return 3 + 4, "ready";
+}
+
+fn main(): int {
+    var code, message = describe();
+    return code + len(message); // 12
+}
+```
+
+The call runs **once**. Its first result initializes `code`, and its second
+initializes `message`. See [Multiple declarations](./variables#multiple-declarations)
+for explicit types and constant bindings.
+
+A function can forward all the results of another call:
+
+```cleaf
+fn forward(): (int, string) {
+    return describe();
+}
+```
+
+The forwarded result count and types must match the enclosing signature.
+Qualified calls such as `return producer::describe();` work the same way
+after importing the module.
+
+Multiple results are not a general-purpose tuple type. An arithmetic operand,
+condition, ordinary argument, or single-variable initializer requires one value.
+In a comma-separated `return`, each expression must also produce one value:
+
+```cleaf
+// Invalid uses of describe(), which returns two values:
+// int value = describe();
+// return describe() + 1;
+// return describe(), 1;
+```
+
+To ignore every result, call the function as a statement: `describe();`.
+There is no syntax for selecting or discarding just one result.
+
+### Current return limit
+
+The current calling convention supports **six register-sized result components**.
+An integer or pointer result uses one component; a `string` uses two components,
+its address and byte length. For example, six integers, three strings, or four
+integers plus one string fit the limit.
+
+Larger signatures are rejected during HIR lowering with
+`function results exceed the return register limit`; stack-based return values
+are not implemented.
 
 ## Function calls
 

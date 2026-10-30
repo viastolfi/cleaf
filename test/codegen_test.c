@@ -228,6 +228,10 @@ ct_test(codegen_test, call, "test/codegen_case/call.clf", "test/codegen_case/cal
   ct_assert_eq(result, 0, "codegen gives right output");
 }
 
+ct_test(codegen_test, multiple_returns, "test/codegen_case/multiple_returns.clf", "test/codegen_case/multiple_returns.asm") {
+  ct_assert_eq(result, 0, "codegen captures and stores each returned value");
+}
+
 ct_test(codegen_test, sizeof_types, "test/codegen_case/sizeof_types.clf", "test/codegen_case/sizeof_types.asm") {
   ct_assert_eq(result, 0, "sizeof lowers primitive, alias, and struct sizes in bytes");
 }

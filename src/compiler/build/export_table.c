@@ -20,6 +20,7 @@ bool semantic_build_export_table(
       CLEAF_ASSERT(fs != NULL, "out of memory");
 
       fs->return_type = decl->func.return_type;
+      fs->return_count = decl->func.return_count;
       fs->params_count = decl->func.params.count;
 
       if (fs->params_count > 0) {

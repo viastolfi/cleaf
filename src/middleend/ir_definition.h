@@ -81,6 +81,20 @@ typedef struct {
   size_t size;
 } IR_temp_id;
 
+// Current calling convention supports six register-sized result components.
+enum { IR_RETURN_REGISTER_COUNT = 6 };
+
+typedef struct {
+  IR_temp_id temp;
+  IR_temp_id string_length;
+} IR_value_t;
+
+typedef struct {
+  IR_value_t* items;
+  size_t count;
+  size_t capacity;
+} IR_value_array;
+
 typedef struct 
 {
   IR_instruction_kind kind;

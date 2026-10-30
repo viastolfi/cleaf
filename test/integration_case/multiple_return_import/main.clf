@@ -1,0 +1,14 @@
+module main
+
+import producer
+
+internal fn main(): int {
+  var a, b = producer::forward();
+  var number, text = producer::forward_text();
+  string single = producer::only_text();
+  int length = producer::text_length(single);
+  if (len(single) != length) {
+    return 99;
+  }
+  return a + b + number + len(text) + length;
+}

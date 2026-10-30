@@ -1,0 +1,15 @@
+fn too_few(): (int, string) {
+  return 1;
+}
+
+fn too_many(): int {
+  return 1, 2;
+}
+
+fn pair(): (int, string) {
+  return 1, "ok";
+}
+
+fn scalar(): int {
+  return pair();
+}

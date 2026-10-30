@@ -1,0 +1,8 @@
+fn pair(): (int, int) {
+  return 7, 9;
+}
+
+fn main(): int {
+  var first, second = pair();
+  return first + second;
+}
