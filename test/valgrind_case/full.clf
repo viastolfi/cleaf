@@ -17,6 +17,8 @@ fn main(): int {
   a = array[1];
   array[1] = 12;
 
+  var m1, m2 = multiple();
+
   v2 vec_test = z;
   vec_test.x = 12;
 
@@ -49,6 +51,10 @@ fn main(): int {
 
   free(array, 8);
   return 0;
+}
+
+fn multiple(): (int, int) {
+  return 1, 2;
 }
 
 internal fn foo(): int {
