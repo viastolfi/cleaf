@@ -152,17 +152,19 @@ struct declaration_t
 
   union {
     struct { 
-      typed_identifier_t ident;
+      typed_identifier_array identifiers;
       expression_t* init; 
     } var_decl;
 
     struct { 
       char* name;  
-      known_type_t return_type;
-      char* return_type_name;
-      char* return_type_module;
 
-      const char* return_type_source_pos;
+      known_type_t* return_type;
+      char** return_type_name;
+      char** return_type_module;
+      const char** return_type_source_pos;
+      size_t return_count;
+
       typed_identifier_array params; 
       statement_block_t* body;
       bool is_internal;
@@ -200,7 +202,7 @@ struct statement_t
   const char* source_pos;
 
   union {
-    struct { expression_t* value; } ret;
+    struct { expression_t** value; size_t count; } ret;
     struct { expression_t* expr; } expr_stmt;
     struct { declaration_t* decl; } decl_stmt;
     struct {
@@ -261,6 +263,8 @@ struct expression_t
       expression_t** args; 
       size_t arg_count; 
       char* resolved_module;
+      known_type_t* return_types;
+      size_t return_count;
     } call;
     struct {
       unary_op_kind op;

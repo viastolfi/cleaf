@@ -1,0 +1,10 @@
+module main
+
+fn too_many(): (string, string, string, int) {
+  return "a", "b", "c", 1;
+}
+
+internal fn main(): int {
+  var first, second, third, fourth = too_many();
+  return 0;
+}

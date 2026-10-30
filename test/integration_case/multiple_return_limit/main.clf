@@ -1,0 +1,10 @@
+module main
+
+fn too_many(): (int, int, int, int, int, int, int) {
+  return 1, 2, 3, 4, 5, 6, 7;
+}
+
+internal fn main(): int {
+  var a, b, c, d, e, f, g = too_many();
+  return a;
+}

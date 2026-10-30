@@ -1,0 +1,33 @@
+module producer
+
+fn first(): int {
+  return 1 + 2;
+}
+
+fn second(): int {
+  return 3 * 4;
+}
+
+fn pair(): (int, int) {
+  return first(), second();
+}
+
+fn forward(): (int, int) {
+  return pair();
+}
+
+fn text(): (int, string) {
+  return 7, "ok";
+}
+
+fn forward_text(): (int, string) {
+  return text();
+}
+
+fn only_text(): string {
+  return "word";
+}
+
+fn text_length(string value): int {
+  return len(value);
+}

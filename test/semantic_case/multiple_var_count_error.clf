@@ -1,0 +1,9 @@
+fn pair(): (int, int) {
+  return 1, 2;
+}
+
+fn main(): int {
+  var a, b, c = pair();
+  var d, e = 1;
+  return 0;
+}

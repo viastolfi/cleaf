@@ -1,0 +1,12 @@
+fn pair(): (int, string) {
+  return 7, "ok";
+}
+
+fn forward(): (int, string) {
+  return pair();
+}
+
+fn main(): int {
+  var a, text = forward();
+  return a + len(text);
+}

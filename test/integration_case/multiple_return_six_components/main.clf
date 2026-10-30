@@ -1,0 +1,10 @@
+module main
+
+fn boundary(): (string, string, int, int) {
+  return "a", "bc", 3, 4;
+}
+
+internal fn main(): int {
+  var first, second, third, fourth = boundary();
+  return len(first) + len(second) + third + fourth;
+}

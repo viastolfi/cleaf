@@ -1,0 +1,14 @@
+fn pair(): (int, string) {
+  return 7, "ok";
+}
+
+fn main(): int {
+  var a, b = pair();
+  int x, y;
+  x = a;
+  y = len(b);
+  for (var i, text = pair(); i < 10; i++) {
+    y = len(text);
+  }
+  return x + y;
+}

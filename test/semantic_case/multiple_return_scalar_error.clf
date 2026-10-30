@@ -1,0 +1,7 @@
+fn pair(): (int, int) {
+  return 1, 2;
+}
+
+fn main(): int {
+  return pair() + 1;
+}

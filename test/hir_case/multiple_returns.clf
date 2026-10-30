@@ -1,0 +1,12 @@
+fn pair(): (int, int) {
+  return 1 + 2, 3 * 4;
+}
+
+fn forward(): (int, int) {
+  return pair();
+}
+
+fn main(): int {
+  var a, b = forward();
+  return a + b;
+}

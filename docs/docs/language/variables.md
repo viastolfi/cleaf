@@ -20,6 +20,65 @@ var greeting = "Hello"; // inferred as string
 
 String variables can be initialized from string literals. The variable holds
 the address of the literal's generated data in the program's `.data` section.
+String-returning functions also preserve the byte length used by `len`.
+
+## Multiple declarations
+
+Separate names with commas to declare several variables in one statement:
+
+```cleaf
+fn coordinates(): (int, int) {
+    return 10, 20;
+}
+
+fn main(): int {
+    var x, y = coordinates();
+    return x + y;
+}
+```
+
+There is one shared initializer, evaluated **once**, not once per variable.
+Results are associated with names from left to right. The initializer must
+produce exactly as many values as there are names; a single value is not
+broadcast to every variable.
+
+With `var`, each binding is inferred separately using the usual inference rules.
+The results can have different types:
+
+```cleaf
+fn describe(): (int, string) {
+    return 7, "ready";
+}
+
+fn main(): int {
+    var code, message = describe();
+    return code + len(message);
+}
+```
+
+An explicit type and the optional `!` modifier apply to every name:
+
+```cleaf
+int x, y = coordinates();   // both bindings have type int
+var! a, b = coordinates();  // both bindings are constant
+int first, second;         // two declarations without an initializer
+```
+
+Every name must be valid and distinct; duplicate names and redefinitions are
+errors. The same count and type checks apply when initializing several variables
+in a `for` loop.
+
+These are declarations, not general multiple assignment or tuple unpacking:
+
+```cleaf
+// var x, y = 1;       // error: one value for two variables
+// var x = coordinates(); // error: two values for one variable
+// var x, y = 1, 2;    // unsupported: use a multiple-result call
+// x, y = coordinates(); // unsupported: reassignment needs separate statements
+```
+
+See [Multiple return values](./functions#multiple-return-values) for forwarding
+results and the current register limit.
 
 ## Constant variables
 

@@ -52,9 +52,32 @@ ct_test(ast, fn_ret_type, "fn main(): int {}")
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_not_null(decl, "Declaration should not be NULL");
-  ct_assert_eq(decl->func.return_type.kind, TYPE_INT, "Return type kind should be TYPE_INT");
+  ct_assert_eq(decl->func.return_type[0].kind, TYPE_INT, "Return type kind should be TYPE_INT");
 
   free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, fn_multiple_return_types, "fn f(): (int, other::Item, string) {}")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "Function with multiple return types should parse");
+  ct_assert_eq((int)decl->func.return_count, 3, "Function should have three return types");
+  ct_assert_eq(decl->func.return_type[0].kind, TYPE_INT, "First return type should be int");
+  ct_assert_eq(decl->func.return_type_module[1], "other", "Qualified return type should retain its module");
+  ct_assert_eq(decl->func.return_type_name[1], "Item", "Qualified return type should retain its name");
+  ct_assert_eq(decl->func.return_type[2].kind, TYPE_STRING, "Last return type should be string");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, fn_invalid_return_type_list, "fn f(): (int, string {}")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_null(decl, "Return type list should require a closing parenthesis");
   da_free(&parser);
 }
 
@@ -83,8 +106,8 @@ ct_test(ast, typed_int_var, "int i = 3;")
 {
   declaration_t* decl = parse_declaration(&parser);
 
-  ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_INT, "Variable type should be TYPE_INT");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].ident_name, "i", "Variable name should be 'i'");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].type.kind, TYPE_INT, "Variable type should be TYPE_INT");
   ct_assert_not_null(decl->var_decl.init, "Variable init expression should not be NULL");
   ct_assert_eq(decl->var_decl.init->type, EXPRESSION_INT_LIT, "Init expression should be INT literal");
   ct_assert_eq(decl->var_decl.init->int_lit.value, 3, "Init int value should be 3");
@@ -99,10 +122,10 @@ ct_test(ast, unknown_named_type_var, "mystery value = 3;")
 
   ct_assert_not_null(decl, "Unknown named types should parse");
   ct_assert_eq(
-      decl->var_decl.ident.type.kind, TYPE_CUSTOM,
+      decl->var_decl.identifiers.items[0].type.kind, TYPE_CUSTOM,
       "Unknown named type should remain unresolved in the AST");
   ct_assert_eq(
-      decl->var_decl.ident.type_name, "mystery",
+      decl->var_decl.identifiers.items[0].type_name, "mystery",
       "AST should retain the source type name");
 
   free_declaration(decl);
@@ -127,8 +150,8 @@ ct_test(ast, untyped_var_decl, "var i = 3;")
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_eq(decl->type, DECLARATION_VAR, "Declaration type should be VAR");
-  ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_VAR, "Variable type should be VAR");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].ident_name, "i", "Variable name should be 'i'");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].type.kind, TYPE_VAR, "Variable type should be VAR");
   ct_assert_eq(decl->var_decl.init->type, EXPRESSION_INT_LIT, "Init expression should be INT literal");
   ct_assert_eq(decl->var_decl.init->int_lit.value, 3, "Init int literal value should be 3");
 
@@ -141,11 +164,61 @@ ct_test(ast, uninitialized_var_decl, "var i;")
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_eq(decl->type, DECLARATION_VAR, "Declaration type should be VAR");
-  ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_VAR, "Variable type should be VAR");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].ident_name, "i", "Variable name should be 'i'");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].type.kind, TYPE_VAR, "Variable type should be VAR");
   ct_assert(!decl->var_decl.init, "Init expression should be NULL for uninitialized var");
 
   free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, multiple_var_decl, "var a, b, c = foo(1, 2);")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "Multiple names should produce one declaration");
+  ct_assert_eq((int)decl->var_decl.identifiers.count, 3, "Declaration should retain all three names");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].ident_name, "a", "First name should be a");
+  ct_assert_eq(decl->var_decl.identifiers.items[1].ident_name, "b", "Second name should be b");
+  ct_assert_eq(decl->var_decl.identifiers.items[2].ident_name, "c", "Third name should be c");
+  ct_assert_eq(decl->var_decl.init->type, EXPRESSION_CALL, "Declaration should retain one call initializer");
+  ct_assert_eq((int)decl->var_decl.init->call.arg_count, 2, "Argument commas should remain inside the initializer");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, multiple_qualified_var_decl, "other::Item! a, b;")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_not_null(decl, "Qualified type and const modifier should apply to all names");
+  ct_assert_eq((int)decl->var_decl.identifiers.count, 2, "Declaration should have two names");
+  for (size_t i = 0; i < decl->var_decl.identifiers.count; ++i) {
+    typed_identifier_t* ident = &decl->var_decl.identifiers.items[i];
+    ct_assert_eq(ident->type_module, "other", "Each name should retain the type module");
+    ct_assert_eq(ident->type_name, "Item", "Each name should retain the type name");
+    ct_assert(ident->is_constant, "Each name should be constant");
+  }
+  ct_assert_null(decl->var_decl.init, "Uninitialized declaration should have no initializer");
+
+  free_declaration(decl);
+  da_free(&parser);
+}
+
+ct_test(ast, multiple_var_missing_name, "var a, = foo();")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_null(decl, "Comma should require another identifier");
+  da_free(&parser);
+}
+
+ct_test(ast, multiple_var_trailing_comma, "int a,;")
+{
+  declaration_t* decl = parse_declaration(&parser);
+
+  ct_assert_null(decl, "Trailing comma should not be accepted");
   da_free(&parser);
 }
 
@@ -156,8 +229,8 @@ ct_test(ast, return_int, "return 1;")
   statement_t* s = parse_statement(&parser);
 
   ct_assert_eq(s->type, STATEMENT_RETURN, "Statement should be RETURN");
-  ct_assert_eq(s->ret.value->type, EXPRESSION_INT_LIT, "Return expression should be INT literal");
-  ct_assert_eq(s->ret.value->int_lit.value, 1, "Return int value should be 1");
+  ct_assert_eq(s->ret.value[0]->type, EXPRESSION_INT_LIT, "Return expression should be INT literal");
+  ct_assert_eq(s->ret.value[0]->int_lit.value, 1, "Return int value should be 1");
 
   free_statement(s);
   da_free(&parser);
@@ -168,8 +241,23 @@ ct_test(ast, return_var, "return a;")
   statement_t* s = parse_statement(&parser);
 
   ct_assert_eq(s->type, STATEMENT_RETURN, "Statement should be RETURN");
-  ct_assert_eq(s->ret.value->type, EXPRESSION_VAR, "Return expression should be VAR");
-  ct_assert_eq(s->ret.value->var.ident.ident_name, "a", "Returned var name should be 'a'");
+  ct_assert_eq(s->ret.value[0]->type, EXPRESSION_VAR, "Return expression should be VAR");
+  ct_assert_eq(s->ret.value[0]->var.ident.ident_name, "a", "Returned var name should be 'a'");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
+ct_test(ast, return_multiple_expressions, "return 1 + 2, foo(3, 4), 5;")
+{
+  statement_t* s = parse_statement(&parser);
+
+  ct_assert_not_null(s, "Multiple return expressions should parse");
+  ct_assert_eq((int)s->ret.count, 3, "Return should contain three expressions");
+  ct_assert_eq(s->ret.value[0]->type, EXPRESSION_BINARY, "First value should be a complete binary expression");
+  ct_assert_eq(s->ret.value[1]->type, EXPRESSION_CALL, "Second value should be a complete call");
+  ct_assert_eq((int)s->ret.value[1]->call.arg_count, 2, "Call argument comma should not split return values");
+  ct_assert_eq(s->ret.value[2]->int_lit.value, 5, "Last value should be parsed after the call");
 
   free_statement(s);
   da_free(&parser);
@@ -420,7 +508,7 @@ ct_test(ast, struct_var_zero_init, "struct v2 { int a; int b; } v2 a = { 0 };")
   declaration_t* decl = parse_declaration(&parser);
   ct_assert_not_null(decl, "var decl should not be NULL");
   ct_assert_eq(decl->type, DECLARATION_VAR, "declaration type should be VAR");
-  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_CUSTOM, "var type should be TYPE_CUSTOM");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].type.kind, TYPE_CUSTOM, "var type should be TYPE_CUSTOM");
   ct_assert_not_null(decl->var_decl.init, "init expression should not be NULL");
   ct_assert_eq(decl->var_decl.init->type, EXPRESSION_COMPOSITE_LITERAL, "init expression should be COMPOSITE_LITERAL");
   ct_assert_eq((int)decl->var_decl.init->composite_literal.is_initializer, 0, "is_initializer should be false for zero init");
@@ -575,9 +663,9 @@ ct_test(ast, typed_u8_var, "u8 i = 5;")
 {
   declaration_t* decl = parse_declaration(&parser);
 
-  ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_U8, "Variable type should be TYPE_U8");
-  ct_assert_eq((int)decl->var_decl.ident.type.element_size, 1, "Variable size should be 1 byte");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].ident_name, "i", "Variable name should be 'i'");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].type.kind, TYPE_U8, "Variable type should be TYPE_U8");
+  ct_assert_eq((int)decl->var_decl.identifiers.items[0].type.element_size, 1, "Variable size should be 1 byte");
   ct_assert_not_null(decl->var_decl.init, "Variable init should not be NULL");
   ct_assert_eq(decl->var_decl.init->int_lit.value, 5, "Init value should be 5");
 
@@ -589,9 +677,9 @@ ct_test(ast, typed_u16_var, "u16 i = 300;")
 {
   declaration_t* decl = parse_declaration(&parser);
 
-  ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_U16, "Variable type should be TYPE_U16");
-  ct_assert_eq((int)decl->var_decl.ident.type.element_size, 2, "Variable size should be 2 bytes");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].ident_name, "i", "Variable name should be 'i'");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].type.kind, TYPE_U16, "Variable type should be TYPE_U16");
+  ct_assert_eq((int)decl->var_decl.identifiers.items[0].type.element_size, 2, "Variable size should be 2 bytes");
   ct_assert_eq(decl->var_decl.init->int_lit.value, 300, "Init value should be 300");
 
   free_declaration(decl);
@@ -602,9 +690,9 @@ ct_test(ast, typed_u32_var, "u32 i = 5;")
 {
   declaration_t* decl = parse_declaration(&parser);
 
-  ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_U32, "Variable type should be TYPE_U32");
-  ct_assert_eq((int)decl->var_decl.ident.type.element_size, 4, "Variable size should be 4 bytes");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].ident_name, "i", "Variable name should be 'i'");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].type.kind, TYPE_U32, "Variable type should be TYPE_U32");
+  ct_assert_eq((int)decl->var_decl.identifiers.items[0].type.element_size, 4, "Variable size should be 4 bytes");
 
   free_declaration(decl);
   da_free(&parser);
@@ -614,9 +702,9 @@ ct_test(ast, typed_u64_var, "u64 i = 5;")
 {
   declaration_t* decl = parse_declaration(&parser);
 
-  ct_assert_eq(decl->var_decl.ident.ident_name, "i", "Variable name should be 'i'");
-  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_U64, "Variable type should be TYPE_U64");
-  ct_assert_eq((int)decl->var_decl.ident.type.element_size, 8, "Variable size should be 8 bytes");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].ident_name, "i", "Variable name should be 'i'");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].type.kind, TYPE_U64, "Variable type should be TYPE_U64");
+  ct_assert_eq((int)decl->var_decl.identifiers.items[0].type.element_size, 8, "Variable size should be 8 bytes");
 
   free_declaration(decl);
   da_free(&parser);
@@ -627,8 +715,8 @@ ct_test(ast, fn_ret_type_u8, "fn f(): u8 {}")
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_not_null(decl, "Declaration should not be NULL");
-  ct_assert_eq(decl->func.return_type.kind, TYPE_U8, "Return type kind should be TYPE_U8");
-  ct_assert_eq((int)decl->func.return_type.element_size, 1, "Return type size should be 1 byte");
+  ct_assert_eq(decl->func.return_type[0].kind, TYPE_U8, "Return type kind should be TYPE_U8");
+  ct_assert_eq((int)decl->func.return_type[0].element_size, 1, "Return type size should be 1 byte");
 
   free_declaration(decl);
   da_free(&parser);
@@ -689,9 +777,9 @@ ct_test(ast, const_in_func_parameter, "fn main(int! a) { }") {
 ct_test(ast, char_var_decl, "char a = 'a';") {
   declaration_t* decl = parse_declaration(&parser);
   ct_assert_not_null(decl, "char var declaration should not be null");
-  ct_assert_eq(decl->var_decl.ident.type.name, "char", "var type should be char");
-  ct_assert_eq(decl->var_decl.ident.ident_name, "a", "Variable name should be 'a'");
-  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_CHAR, "Variable type should be TYPE_CHAR");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].type.name, "char", "var type should be char");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].ident_name, "a", "Variable name should be 'a'");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].type.kind, TYPE_CHAR, "Variable type should be TYPE_CHAR");
   ct_assert_not_null(decl->var_decl.init, "Variable init expression should not be NULL");
   ct_assert_eq(decl->var_decl.init->type, EXPRESSION_CHAR_LIT, "Init expression should be char literal");
   ct_assert_eq(decl->var_decl.init->char_lit.value, 'a', "Init char value should be 'a'");
@@ -766,9 +854,9 @@ ct_test(ast, array_int_decl, "int[2] a = { 1, 2 };")
 
   ct_assert_not_null(decl, "declaration should not be NULL");
   ct_assert_eq(decl->type, DECLARATION_VAR, "should be a var declaration");
-  ct_assert_eq(decl->var_decl.ident.ident_name, "a", "variable name should be 'a'");
-  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_INT, "type should be TYPE_INT");
-  ct_assert_eq((int)decl->var_decl.ident.type.array_len, 2, "array_len should be 2");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].ident_name, "a", "variable name should be 'a'");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].type.kind, TYPE_INT, "type should be TYPE_INT");
+  ct_assert_eq((int)decl->var_decl.identifiers.items[0].type.array_len, 2, "array_len should be 2");
   ct_assert_not_null(decl->var_decl.init, "init should not be NULL");
   ct_assert_eq(decl->var_decl.init->type, EXPRESSION_COMPOSITE_LITERAL,
                "init should be a composite literal");
@@ -802,8 +890,8 @@ ct_test(ast, array_zero_init, "int[4] b = { 0 };")
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_not_null(decl, "declaration should not be NULL");
-  ct_assert_eq(decl->var_decl.ident.ident_name, "b", "variable name should be 'b'");
-  ct_assert_eq((int)decl->var_decl.ident.type.array_len, 4, "array_len should be 4");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].ident_name, "b", "variable name should be 'b'");
+  ct_assert_eq((int)decl->var_decl.identifiers.items[0].type.array_len, 4, "array_len should be 4");
   ct_assert_not_null(decl->var_decl.init, "init should not be NULL");
   ct_assert_eq(decl->var_decl.init->type, EXPRESSION_COMPOSITE_LITERAL,
                "init should be a composite literal");
@@ -819,8 +907,8 @@ ct_test(ast, array_single_element, "int[1] x = { 99 };")
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_not_null(decl, "declaration should not be NULL");
-  ct_assert_eq(decl->var_decl.ident.ident_name, "x", "variable name should be 'x'");
-  ct_assert_eq((int)decl->var_decl.ident.type.array_len, 1, "array_len should be 1");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].ident_name, "x", "variable name should be 'x'");
+  ct_assert_eq((int)decl->var_decl.identifiers.items[0].type.array_len, 1, "array_len should be 1");
   ct_assert_eq((int)decl->var_decl.init->composite_literal.count, 1,
                "literal should have 1 element");
   ct_assert_eq(decl->var_decl.init->composite_literal.values[0]->int_lit.value, 99,
@@ -835,9 +923,9 @@ ct_test(ast, array_u8_decl, "u8[3] arr = { 10, 20, 30 };")
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_not_null(decl, "declaration should not be NULL");
-  ct_assert_eq(decl->var_decl.ident.ident_name, "arr", "variable name should be 'arr'");
-  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_U8, "type should be TYPE_U8");
-  ct_assert_eq((int)decl->var_decl.ident.type.array_len, 3, "array_len should be 3");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].ident_name, "arr", "variable name should be 'arr'");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].type.kind, TYPE_U8, "type should be TYPE_U8");
+  ct_assert_eq((int)decl->var_decl.identifiers.items[0].type.array_len, 3, "array_len should be 3");
   ct_assert_eq((int)decl->var_decl.init->composite_literal.count, 3,
                "literal should have 3 elements");
   ct_assert_eq(decl->var_decl.init->composite_literal.values[0]->int_lit.value, 10,
@@ -856,7 +944,7 @@ ct_test(ast, array_non_typed_has_no_array_len, "var a = 5;")
   declaration_t* decl = parse_declaration(&parser);
 
   ct_assert_not_null(decl, "declaration should not be NULL");
-  ct_assert_eq((int)decl->var_decl.ident.type.array_len, 0,
+  ct_assert_eq((int)decl->var_decl.identifiers.items[0].type.array_len, 0,
                "non-array var should have array_len == 0");
 
   free_declaration(decl);
@@ -1095,9 +1183,9 @@ ct_test(ast, string_var_declaration, "string s = \"test\";")
 
   ct_assert_not_null(decl, "decl should not be NULL");
   ct_assert_eq(decl->type, DECLARATION_VAR, "Declaration type should be VAR");
-  ct_assert_eq(decl->var_decl.ident.type.name, "string", "var type should be string");
-  ct_assert_eq(decl->var_decl.ident.ident_name, "s", "Variable name should be 's'");
-  ct_assert_eq(decl->var_decl.ident.type.kind, TYPE_STRING, "Variable type should be TYPE_STRING");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].type.name, "string", "var type should be string");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].ident_name, "s", "Variable name should be 's'");
+  ct_assert_eq(decl->var_decl.identifiers.items[0].type.kind, TYPE_STRING, "Variable type should be TYPE_STRING");
   ct_assert_not_null(decl->var_decl.init, "Variable init expression should not be NULL");
   ct_assert_eq(decl->var_decl.init->type, EXPRESSION_STRING, "Init expression should be string literal");
   ct_assert_eq(decl->var_decl.init->string_lit.value, "test", "Init string value should be 'test'");

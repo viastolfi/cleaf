@@ -121,8 +121,63 @@ ct_test(semantic_analyze, fn_def_with_return_type, "test/semantic_case/fn_def_wi
 
   function_symbol_t* fs = (function_symbol_t*) hashmap_get(analyzer.function_symbols, "main");
   ct_assert_not_null(fs, "Function symbol should be in symbol table");
-  ct_assert_eq(fs->return_type.kind, TYPE_INT, "Return type should be TYPE_INT");
+  ct_assert_eq(fs->return_type[0].kind, TYPE_INT, "Return type should be TYPE_INT");
 
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, multiple_returns, "test/semantic_case/multiple_returns.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Multiple results should support returning, forwarding and discarding");
+  declaration_t* forward = analyzer.ast->items[1];
+  expression_t* call = forward->func.body->items[0]->ret.value[0];
+  semantic_values_t result =
+    semantic_check_expression_values(&analyzer, call, NULL);
+  ct_assert(result.valid, "Call should produce a valid semantic result");
+  ct_assert_eq((int)result.count, 2, "Call should produce two values");
+  ct_assert_eq(result.values.multiple[0].kind, TYPE_INT, "First result should be int");
+  ct_assert_eq(result.values.multiple[1].kind, TYPE_STRING, "Second result should be string");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, multiple_return_count_errors, "test/semantic_case/multiple_return_count_errors.clf") {
+  ct_assert_eq(analyzer.error_count, 3, "Too few, too many and forwarded results should check signature counts");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, multiple_return_type_error, "test/semantic_case/multiple_return_type_error.clf") {
+  ct_assert_eq(analyzer.error_count, 2, "Return types should preserve positions, including after an invalid value");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, multiple_return_scalar_error, "test/semantic_case/multiple_return_scalar_error.clf") {
+  ct_assert_eq(analyzer.error_count, 1, "Binary operands should reject calls producing multiple values");
+  ct_assert_eq(analyzer.semantic_errors.items[0].message,
+      "expected exactly one value from expression",
+      "Scalar context should report a result count error");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, multiple_var_decl, "test/semantic_case/multiple_var_decl.clf") {
+  ct_assert_eq(analyzer.error_count, 0, "Multiple bindings should infer types and remain usable");
+  declaration_t* main = analyzer.ast->items[1];
+  declaration_t* decl = main->func.body->items[0]->decl_stmt.decl;
+  ct_assert_eq(decl->var_decl.identifiers.items[0].type.kind, TYPE_INT, "First binding should infer int");
+  ct_assert_eq(decl->var_decl.identifiers.items[1].type.kind, TYPE_STRING, "Second binding should infer string");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, multiple_var_count_error, "test/semantic_case/multiple_var_count_error.clf") {
+  ct_assert_eq(analyzer.error_count, 2, "Initializer should provide exactly one value per binding");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, multiple_var_name_errors, "test/semantic_case/multiple_var_name_errors.clf") {
+  ct_assert_eq(analyzer.error_count, 3, "Multiple bindings should check duplicates and reserved names");
+  free_analyzer(&analyzer);
+}
+
+ct_test(semantic_analyze, multiple_var_type_error, "test/semantic_case/multiple_var_type_error.clf") {
+  ct_assert_eq(analyzer.error_count, 2, "Second binding should reject the incompatible returned type");
   free_analyzer(&analyzer);
 }
 
@@ -156,8 +211,8 @@ ct_test(semantic_analyze, struct_type_alias, "test/semantic_case/struct_type_ali
   declaration_t* fn = analyzer.ast->items[2];
   declaration_t* var =
     fn->func.body->items[0]->decl_stmt.decl;
-  ct_assert_eq(var->var_decl.ident.type.kind, TYPE_CUSTOM, "Alias should resolve to a struct type");
-  ct_assert_eq(var->var_decl.ident.type.name, "Point", "Alias should preserve canonical struct identity");
+  ct_assert_eq(var->var_decl.identifiers.items[0].type.kind, TYPE_CUSTOM, "Alias should resolve to a struct type");
+  ct_assert_eq(var->var_decl.identifiers.items[0].type.name, "Point", "Alias should preserve canonical struct identity");
   free_analyzer(&analyzer);
 }
 
@@ -320,7 +375,7 @@ ct_test(semantic_case, len_function_call, "test/semantic_case/len_function_call.
   ct_assert_eq((int)fs->params_count, 1, "len should have one parameter");
   ct_assert_eq(fs->params_type[0].type.kind, TYPE_STRING,
       "len parameter should have TYPE_STRING");
-  ct_assert_eq(fs->return_type.kind, TYPE_INT,
+  ct_assert_eq(fs->return_type[0].kind, TYPE_INT,
       "len return type should be TYPE_INT");
 
   free_analyzer(&analyzer);
@@ -455,9 +510,9 @@ ct_test(semantic_case, type_writeback_inferred_var, "test/semantic_case/var_decl
   statement_t* stmt = func_decl->func.body->items[0];
   declaration_t* var_decl = stmt->decl_stmt.decl;
 
-  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_INT,
+  ct_assert_eq(var_decl->var_decl.identifiers.items[0].type.kind, TYPE_INT,
       "Inferred var type should be TYPE_INT after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.element_size, 4,
+  ct_assert_eq((int)var_decl->var_decl.identifiers.items[0].type.element_size, 4,
       "Inferred int var size should be 4 bytes");
 
   free_analyzer(&analyzer);
@@ -470,9 +525,9 @@ ct_test(semantic_case, type_writeback_explicit_var, "test/semantic_case/var_decl
   statement_t* stmt = func_decl->func.body->items[0];
   declaration_t* var_decl = stmt->decl_stmt.decl;
 
-  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_INT,
+  ct_assert_eq(var_decl->var_decl.identifiers.items[0].type.kind, TYPE_INT,
       "Explicit int var type should be TYPE_INT after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.element_size, 4,
+  ct_assert_eq((int)var_decl->var_decl.identifiers.items[0].type.element_size, 4,
       "Explicit int var size should be 4 bytes");
 
   free_analyzer(&analyzer);
@@ -486,9 +541,9 @@ ct_test(semantic_case, struct_var_type_and_size, "test/semantic_case/struct_memb
   statement_t* stmt = func_decl->func.body->items[0];
   declaration_t* var_decl = stmt->decl_stmt.decl;
 
-  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_CUSTOM,
+  ct_assert_eq(var_decl->var_decl.identifiers.items[0].type.kind, TYPE_CUSTOM,
       "Struct var type should be TYPE_CUSTOM after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.element_size, 8,
+  ct_assert_eq((int)var_decl->var_decl.identifiers.items[0].type.element_size, 8,
       "Struct var size should be 8 bytes (2 ints x 8 bytes)");
 
   free_analyzer(&analyzer);
@@ -502,9 +557,9 @@ ct_test(semantic_case, for_init_type_writeback, "test/semantic_case/var_for_init
   declaration_t* init_decl = for_stmt->for_stmt.decl_init;
 
   ct_assert_not_null(init_decl, "For-init decl should not be null");
-  ct_assert_eq(init_decl->var_decl.ident.type.kind, TYPE_INT,
+  ct_assert_eq(init_decl->var_decl.identifiers.items[0].type.kind, TYPE_INT,
       "For-init inferred var type should be TYPE_INT after write-back");
-  ct_assert_eq((int)init_decl->var_decl.ident.type.element_size, 4,
+  ct_assert_eq((int)init_decl->var_decl.identifiers.items[0].type.element_size, 4,
       "For-init inferred int var size should be 4 bytes");
 
   free_analyzer(&analyzer);
@@ -516,7 +571,7 @@ ct_test(semantic_case, member_access_type_annotation, "test/semantic_case/struct
   // fn main body: items[0] = var decl, items[1] = return a.x
   declaration_t* func_decl = analyzer.ast->items[1];
   statement_t* ret_stmt = func_decl->func.body->items[1];
-  expression_t* expr = ret_stmt->ret.value;
+  expression_t* expr = ret_stmt->ret.value[0];
 
   ct_assert_not_null(expr, "Return expression should not be null");
   ct_assert_not_null(expr->var.member, "Member expression should not be null");
@@ -607,7 +662,7 @@ ct_test(semantic_case, fn_ret_type_u8, "test/semantic_case/fn_ret_type_u8.clf") 
 
   function_symbol_t* fs = (function_symbol_t*) hashmap_get(analyzer.function_symbols, "main");
   ct_assert_not_null(fs, "Function symbol should be in symbol table");
-  ct_assert_eq(fs->return_type.kind, TYPE_U8, "Return type should be TYPE_U8");
+  ct_assert_eq(fs->return_type[0].kind, TYPE_U8, "Return type should be TYPE_U8");
 
   free_analyzer(&analyzer);
 }
@@ -631,7 +686,7 @@ ct_test(semantic_case, fn_def_return_type_u16, "test/semantic_case/fn_def_with_r
 
   function_symbol_t* fs = (function_symbol_t*) hashmap_get(analyzer.function_symbols, "foo");
   ct_assert_not_null(fs, "Function symbol 'foo' should be in symbol table");
-  ct_assert_eq(fs->return_type.kind, TYPE_U16, "Return type of foo should be TYPE_U16");
+  ct_assert_eq(fs->return_type[0].kind, TYPE_U16, "Return type of foo should be TYPE_U16");
 
   free_analyzer(&analyzer);
 }
@@ -645,9 +700,9 @@ ct_test(semantic_case, type_writeback_u8_var, "test/semantic_case/var_decl_u8.cl
   statement_t* stmt = func_decl->func.body->items[0];
   declaration_t* var_decl = stmt->decl_stmt.decl;
 
-  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_U8,
+  ct_assert_eq(var_decl->var_decl.identifiers.items[0].type.kind, TYPE_U8,
       "Explicit u8 var type should be TYPE_U8 after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.element_size, 1,
+  ct_assert_eq((int)var_decl->var_decl.identifiers.items[0].type.element_size, 1,
       "Explicit u8 var size should be 1 byte");
 
   free_analyzer(&analyzer);
@@ -660,9 +715,9 @@ ct_test(semantic_case, type_writeback_u16_var, "test/semantic_case/var_decl_u16.
   statement_t* stmt = func_decl->func.body->items[0];
   declaration_t* var_decl = stmt->decl_stmt.decl;
 
-  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_U16,
+  ct_assert_eq(var_decl->var_decl.identifiers.items[0].type.kind, TYPE_U16,
       "Explicit u16 var type should be TYPE_U16 after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.element_size, 2,
+  ct_assert_eq((int)var_decl->var_decl.identifiers.items[0].type.element_size, 2,
       "Explicit u16 var size should be 2 bytes");
 
   free_analyzer(&analyzer);
@@ -675,9 +730,9 @@ ct_test(semantic_case, type_writeback_u64_var, "test/semantic_case/var_decl_u64.
   statement_t* stmt = func_decl->func.body->items[0];
   declaration_t* var_decl = stmt->decl_stmt.decl;
 
-  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_U64,
+  ct_assert_eq(var_decl->var_decl.identifiers.items[0].type.kind, TYPE_U64,
       "Explicit u64 var type should be TYPE_U64 after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.element_size, 8,
+  ct_assert_eq((int)var_decl->var_decl.identifiers.items[0].type.element_size, 8,
       "Explicit u64 var size should be 8 bytes");
 
   free_analyzer(&analyzer);
@@ -766,7 +821,7 @@ ct_test(semantic_case, const_var_is_constant_flag, "test/semantic_case/const_var
   statement_t* stmt = func_decl->func.body->items[0];
   declaration_t* var_decl = stmt->decl_stmt.decl;
 
-  ct_assert_eq((int)var_decl->var_decl.ident.is_constant, 1,
+  ct_assert_eq((int)var_decl->var_decl.identifiers.items[0].is_constant, 1,
       "Const variable should have is_constant set to true after semantic analysis");
 
   free_analyzer(&analyzer);
@@ -793,7 +848,7 @@ ct_test(semantic_case, free_call_result, "test/semantic_case/free_call_ok.clf") 
   ct_assert_eq((int)free_symbol->params_count, 2, "free should take two arguments");
   ct_assert_eq(free_symbol->params_type[0].type.kind, TYPE_PTR, "free address parameter should be a pointer");
   ct_assert_eq(free_symbol->params_type[1].type.kind, TYPE_INT, "free size parameter should be an int");
-  ct_assert_eq(free_symbol->return_type.kind, TYPE_INT, "free should return an int");
+  ct_assert_eq(free_symbol->return_type[0].kind, TYPE_INT, "free should return an int");
   free_analyzer(&analyzer);
 }
 
@@ -878,11 +933,11 @@ ct_test(semantic_case, array_decl_type_writeback_kind_and_len, "test/semantic_ca
   statement_t* stmt = func_decl->func.body->items[0];
   declaration_t* var_decl = stmt->decl_stmt.decl;
 
-  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_U8,
+  ct_assert_eq(var_decl->var_decl.identifiers.items[0].type.kind, TYPE_U8,
       "Array element type should be TYPE_U8 after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.array_len, 2,
+  ct_assert_eq((int)var_decl->var_decl.identifiers.items[0].type.array_len, 2,
       "array_len should be 2 after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.element_size, 1,
+  ct_assert_eq((int)var_decl->var_decl.identifiers.items[0].type.element_size, 1,
       "element_size should be 1 byte for u8 array");
 
   free_analyzer(&analyzer);
@@ -895,7 +950,7 @@ ct_test(semantic_case, array_decl_total_size_writeback, "test/semantic_case/arra
   statement_t* stmt = func_decl->func.body->items[0];
   declaration_t* var_decl = stmt->decl_stmt.decl;
 
-  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 2,
+  ct_assert_eq((int)var_decl->var_decl.identifiers.items[0].type.size, 2,
       "Total size of u8[2] should be 2 bytes (2 * 1)");
 
   free_analyzer(&analyzer);
@@ -908,13 +963,13 @@ ct_test(semantic_case, array_decl_int_type_writeback, "test/semantic_case/array_
   statement_t* stmt = func_decl->func.body->items[0];
   declaration_t* var_decl = stmt->decl_stmt.decl;
 
-  ct_assert_eq(var_decl->var_decl.ident.type.kind, TYPE_INT,
+  ct_assert_eq(var_decl->var_decl.identifiers.items[0].type.kind, TYPE_INT,
       "Array element type should be TYPE_INT after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.array_len, 3,
+  ct_assert_eq((int)var_decl->var_decl.identifiers.items[0].type.array_len, 3,
       "array_len should be 3 after write-back");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.element_size, 4,
+  ct_assert_eq((int)var_decl->var_decl.identifiers.items[0].type.element_size, 4,
       "element_size should be 4 bytes for int array");
-  ct_assert_eq((int)var_decl->var_decl.ident.type.size, 12,
+  ct_assert_eq((int)var_decl->var_decl.identifiers.items[0].type.size, 12,
       "Total size of int[3] should be 12 bytes (3 * 4)");
 
   free_analyzer(&analyzer);

@@ -55,6 +55,11 @@ int IR_lower_expression(
     HIR_parser_t* hir,
     expression_t* expr,
     IR_function_t* func);
+int IR_lower_expression_values(
+    HIR_parser_t* hir,
+    expression_t* expr,
+    IR_function_t* func,
+    IR_value_array* values);
 int IR_lower_expr_int_lit(
     HIR_parser_t* hir,
     expression_t* expr,
