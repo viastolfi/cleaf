@@ -28,6 +28,6 @@ typedef struct {
   hashmap_t*  index;
 } dep_graph_t;
 
-bool build_dep_graph(build_context_t* ctx);
+bool build_dep_graph(build_context_t* ctx, module_unit_t* root);
 
 #endif // DEP_GRAPH_H

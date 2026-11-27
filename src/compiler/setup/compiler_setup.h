@@ -7,5 +7,6 @@
 
 compiler_resources_t* single_file_setup(int argc, char** argv);
 compiler_resources_t* build_setup();
+bool add_std_lib(compiler_resources_t* res);
 
 #endif // COMPILER_SETUP_H

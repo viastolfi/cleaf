@@ -640,6 +640,18 @@ ct_test(ast, asm_with_call_arg, "asm(\"mov rdi,\", len(a));")
   da_free(&parser);
 }
 
+ct_test(ast, asm_instruction_after_nested_call, "asm(\"before\", len(a), \"after\");")
+{
+  statement_t* s = parse_statement(&parser);
+
+  ct_assert_not_null(s, "asm statement should not be NULL");
+  ct_assert_eq((int)s->asm_stmt.instr_count, 2, "asm statement should have 2 instructions");
+  ct_assert_eq((int)s->asm_stmt.arg_count, 1, "asm statement should have 1 arg");
+
+  free_statement(s);
+  da_free(&parser);
+}
+
 ct_test(ast, asm_only_args, "asm(a, 42);")
 {
   statement_t* s = parse_statement(&parser);

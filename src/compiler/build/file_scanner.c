@@ -46,10 +46,11 @@ bool read_files_in_dir(
       read_files_in_dir(
           files, 
           strcat(strcat(strcpy(new, path), "/"), entry->d_name));
+      free(new);
     }
   }
 
-  free(path);
+  // free(path);
   closedir(dir);
   return true;
 }
@@ -58,8 +59,7 @@ compiled_files_array find_source_files()
 {
   compiled_files_array files = {0};
 
-  char* path = calloc(2, sizeof(char));
-  path = strcpy(path, ".");
+  char path[] = ".";
   if(!read_files_in_dir(&files, path)) {
     return files; 
   }

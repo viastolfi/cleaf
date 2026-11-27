@@ -45,6 +45,9 @@ compiler_resources_t* single_file_setup(int argc, char** argv)
 
   res->output = output;
   da_append(&(res->files), strdup(filename));
+
+  add_std_lib(res);
+
   return res;
 }
 
@@ -58,6 +61,26 @@ compiler_resources_t* build_setup()
 
   res->files = find_source_files();  
 
+  add_std_lib(res);
+
   return res;
 }
 
+bool add_std_lib(compiler_resources_t* res)
+{
+  char* std_path = getenv("CLEAF_STD_PATH");
+
+  if (!std_path) {
+    error_report_general(
+      ERROR_SEVERITY_ERROR, "no std path found");
+    return false; 
+  }
+   
+  if (!read_files_in_dir(&res->files, std_path)) {
+    error_report_general(
+        ERROR_SEVERITY_ERROR, "error while reading std path");
+    return false;
+  }
+
+  return true;
+}

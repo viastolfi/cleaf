@@ -63,7 +63,7 @@ static void topo_visit(build_context_t* ctx, dep_node_t* node, bool* had_cycle)
   }
 }
 
-bool build_dep_graph(build_context_t* ctx)
+bool build_dep_graph(build_context_t* ctx, module_unit_t* root)
 {
   dep_graph_t graph = {0};
 
@@ -137,9 +137,44 @@ bool build_dep_graph(build_context_t* ctx)
   }
 
   bool had_cycle = false;
-  da_foreach(dep_node_t, it, &graph) {
-    if (strcmp(it->module_name, "main") == 0) 
-      topo_visit(ctx, it, &had_cycle);
+  if (!root) {
+    da_foreach(dep_node_t, it, &graph) {
+      if (strcmp(it->module_name, "main") == 0)
+        topo_visit(ctx, it, &had_cycle);
+    }
+  } else if (root->module_name) {
+    dep_node_t* root_node = hashmap_get(graph.index, root->module_name);
+    if (!root_node) {
+      dep_graph_free(&graph);
+      return false;
+    }
+    topo_visit(ctx, root_node, &had_cycle);
+  } else {
+    da_foreach(declaration_t*, it, &root->program) {
+      declaration_t* decl = *it;
+      if (decl->type != DECLARATION_IMPORT)
+        continue;
+
+      char* import_name = import_module_name(&decl->import.path);
+      if (!import_name) {
+        dep_graph_free(&graph);
+        return false;
+      }
+
+      dep_node_t* dep_node = hashmap_get(graph.index, import_name);
+      if (!dep_node) {
+        error_report_general(ERROR_SEVERITY_ERROR,
+            "unknown imported module '%s'", import_name);
+        free(import_name);
+        dep_graph_free(&graph);
+        return false;
+      }
+
+      topo_visit(ctx, dep_node, &had_cycle);
+      free(import_name);
+    }
+
+    da_append(ctx, root);
   }
 
   dep_graph_free(&graph);

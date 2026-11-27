@@ -1,0 +1,3 @@
+import math
+
+fn run(): int { return math::add(1, 2); }
