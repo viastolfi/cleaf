@@ -13,6 +13,7 @@
 #include "../src/thirdparty/error.h"
 #include "../src/compiler/definition/compiler_definition.h"
 #include "../src/compiler/build/registry.h"
+#include "../src/compiler/build/dep_graph.h"
 #include "../src/compiler/build/export_table.h"
 #include "../src/compiler/build/import_resolver.h"
 
@@ -59,6 +60,15 @@ static module_unit_t* load_module_unit(const char* path)
   return unit;
 }
 
+static bool unit_has_module_decl(module_unit_t* unit)
+{
+  da_foreach(declaration_t*, it, &unit->program) {
+    if ((*it)->type == DECLARATION_MODULE)
+      return true;
+  }
+  return false;
+}
+
 typedef struct {
   build_context_t     ctx;
   module_unit_t*       dep_unit;
@@ -77,7 +87,9 @@ before_each(build_test_ctx_t, tctx, char* dep_path, char* main_path)
   t.main_unit = load_module_unit(main_path);
 
   if (!populate_module_registry(&t.ctx, t.dep_unit)) abort();
-  if (!populate_module_registry(&t.ctx, t.main_unit)) abort();
+  if (!populate_module_registry(&t.ctx, t.main_unit) &&
+      unit_has_module_decl(t.main_unit))
+    abort();
 
   semantic_analyzer_t dep_analyzer = {0};
   dep_analyzer.error_ctx = &t.dep_unit->error_ctx;
@@ -186,5 +198,21 @@ ct_test(build_import, nested_module_requires_alias,
 {
   ct_assert((tctx.analyzer.error_count > 0),
       "nested module imports should declare an explicit alias");
+  free_build_test_ctx(&tctx);
+}
+
+ct_test(build_import, single_file_imports_are_topologically_ordered,
+    "test/build_case/math_ok.clf",
+    "test/build_case/single_file_import.clf")
+{
+  ct_assert(build_dep_graph(&tctx.ctx, tctx.main_unit),
+      "single-file imports should resolve against registered modules");
+  ct_assert_eq(tctx.ctx.count, 2,
+      "topological order should contain imported module and root file");
+  ct_assert((tctx.ctx.items[0] == tctx.dep_unit),
+      "imported module should precede the single-file root");
+  ct_assert((tctx.ctx.items[1] == tctx.main_unit),
+      "single-file root should follow its imported module");
+
   free_build_test_ctx(&tctx);
 }

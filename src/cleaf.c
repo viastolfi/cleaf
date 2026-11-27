@@ -57,6 +57,15 @@ static char* build_object_basename(module_unit_t* unit)
   return out;
 }
 
+static bool module_unit_has_module_decl(module_unit_t* unit)
+{
+  da_foreach(declaration_t*, it, &unit->program) {
+    if ((*it)->type == DECLARATION_MODULE)
+      return true;
+  }
+  return false;
+}
+
 int main(int argc, char** argv) 
 {
   compiler_resources_t* res = NULL;
@@ -74,10 +83,8 @@ int main(int argc, char** argv)
   log_phase("compiling", "%zu file(s)", res->files.count);
 
   build_context_t build_ctx = {0};
-  if (is_build_mode) {
-    build_ctx.registry = calloc(1, sizeof(hashmap_t));
-    CLEAF_ASSERT(build_ctx.registry != NULL, "out of memory");
-  }
+  build_ctx.registry = calloc(1, sizeof(hashmap_t));
+  CLEAF_ASSERT(build_ctx.registry != NULL, "out of memory");
 
   da_foreach(char*, it, &res->files) {
     char* filename = *it;
@@ -132,7 +139,7 @@ int main(int argc, char** argv)
       declaration_t* decl = parse_declaration(&unit->parser);
       if (!decl) {
         error_report_general(
-            ERROR_SEVERITY_ERROR, 
+            ERROR_SEVERITY_ERROR,
             "ast parse error in '%s'", filename);
         module_unit_free(unit);
         compiler_resources_free(res);
@@ -153,18 +160,24 @@ int main(int argc, char** argv)
     da_append(&res->units, unit);
   }
 
-  if (is_build_mode) {
-    da_foreach(module_unit_t*, it, &res->units) {
-      if (!populate_module_registry(&build_ctx, *it)) {
-        error_report_general(
-            ERROR_SEVERITY_ERROR, 
-            "error while building module registry");
-        compiler_resources_free(res);
-        build_context_free(&build_ctx);
-        return 1;
-      }
-    }
+  module_unit_t* single_file_root =
+    is_build_mode ? NULL : res->units.items[0];
+  da_foreach(module_unit_t*, it, &res->units) {
+    if (!populate_module_registry(&build_ctx, *it)) {
+      if (!is_build_mode && *it == single_file_root &&
+          !module_unit_has_module_decl(*it))
+        continue;
 
+      error_report_general(
+          ERROR_SEVERITY_ERROR,
+          "error while building module registry");
+      compiler_resources_free(res);
+      build_context_free(&build_ctx);
+      return 1;
+    }
+  }
+
+  if (is_build_mode) {
     module_unit_array* main_units =
       (module_unit_array*) hashmap_get(build_ctx.registry, "main");
 
@@ -177,21 +190,18 @@ int main(int argc, char** argv)
     }
   }
 
-  if (is_build_mode) {
-    if (!build_dep_graph(&build_ctx)) {
-      build_context_free(&build_ctx);
-      compiler_resources_free(res);
-      return 1;
-    }
-
-    log_phase("topo order", "%zu module(s)", build_ctx.count);
-    for (size_t i = 0; i < build_ctx.count; ++i)
-      log_phase("  -->", "%s", build_ctx.items[i]->module_name);
-  } else {
-    da_foreach(module_unit_t*, it, &res->units) {
-      da_append(&build_ctx, *it);
-    }
+  if (!build_dep_graph(&build_ctx, single_file_root)) {
+    build_context_free(&build_ctx);
+    compiler_resources_free(res);
+    return 1;
   }
+
+  log_phase("topo order", "%zu module(s)", build_ctx.count);
+  for (size_t i = 0; i < build_ctx.count; ++i)
+    log_phase("  -->", "%s",
+        build_ctx.items[i]->module_name
+          ? build_ctx.items[i]->module_name
+          : build_ctx.items[i]->file_path);
 
   res->hir_program = calloc(1, sizeof(IR_function_array));
   CLEAF_ASSERT(res->hir_program != NULL, "out of memory");
@@ -302,39 +312,39 @@ int main(int argc, char** argv)
 
         free(mangled);
       }
-
-      compiled_files_array externs_emitted = {0};
-      for (size_t i = hir_before; i < res->hir_program->count; ++i) {
-        IR_function_t* f = res->hir_program->items[i];
-        da_foreach(IR_instruction_t*, cit, f->code) {
-          if ((*cit)->kind != IR_CALL) continue;
-          const char* callee = (*cit)->func_name;
-
-          bool is_local = false;
-          for (size_t k = hir_before; k < res->hir_program->count; ++k) {
-            if (strcmp(res->hir_program->items[k]->name, callee) == 0) {
-              is_local = true;
-              break;
-            }
-          }
-          if (is_local) continue;
-
-          bool already_emitted = false;
-          da_foreach(char*, eit, &externs_emitted) {
-            if (strcmp(*eit, callee) == 0) {
-              already_emitted = true;
-              break;
-            }
-          }
-          if (already_emitted) continue;
-
-          target->emit_extern(&module_sb, callee);
-          da_append(&externs_emitted, strdup(callee));
-        }
-      }
-      da_foreach(char*, eit, &externs_emitted) free(*eit);
-      da_free(&externs_emitted);
     }
+
+    compiled_files_array externs_emitted = {0};
+    for (size_t i = hir_before; i < res->hir_program->count; ++i) {
+      IR_function_t* f = res->hir_program->items[i];
+      da_foreach(IR_instruction_t*, cit, f->code) {
+        if ((*cit)->kind != IR_CALL) continue;
+        const char* callee = (*cit)->func_name;
+
+        bool is_local = false;
+        for (size_t k = hir_before; k < res->hir_program->count; ++k) {
+          if (strcmp(res->hir_program->items[k]->name, callee) == 0) {
+            is_local = true;
+            break;
+          }
+        }
+        if (is_local) continue;
+
+        bool already_emitted = false;
+        da_foreach(char*, eit, &externs_emitted) {
+          if (strcmp(*eit, callee) == 0) {
+            already_emitted = true;
+            break;
+          }
+        }
+        if (already_emitted) continue;
+
+        target->emit_extern(&module_sb, callee);
+        da_append(&externs_emitted, strdup(callee));
+      }
+    }
+    da_foreach(char*, eit, &externs_emitted) free(*eit);
+    da_free(&externs_emitted);
 
     int codegen_error = 0;
     codegen_error = CODEGEN_write_data_section(

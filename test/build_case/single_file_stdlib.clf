@@ -1,0 +1,6 @@
+import std::io as io
+
+fn main(): int {
+  io::print("single-file stdlib");
+  return 0;
+}

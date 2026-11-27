@@ -137,7 +137,7 @@ $(CODEGEN_TEST_BIN): $(CODEGEN_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty
 	@mkdir -p $(BUILD)
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
 
-$(BUILD_TEST_BIN): $(BUILD_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c $(SRC)/frontend/semantic.c $(SRC)/middleend/hir.c $(SRC)/compiler/definition/compiler_definition.c $(SRC)/compiler/build/registry.c $(SRC)/compiler/build/export_table.c $(SRC)/compiler/build/import_resolver.c
+$(BUILD_TEST_BIN): $(BUILD_TEST_SRC) $(SRC)/frontend/ast.c $(SRC)/thirdparty/error.c $(SRC)/frontend/semantic.c $(SRC)/middleend/hir.c $(SRC)/compiler/definition/compiler_definition.c $(SRC)/compiler/build/registry.c $(SRC)/compiler/build/dep_graph.c $(SRC)/compiler/build/export_table.c $(SRC)/compiler/build/import_resolver.c
 	@mkdir -p $(BUILD)
 	@$(CC) $(CFLAGS) $^ -o $@ -lm
 

@@ -2023,19 +2023,53 @@ statement_t* ast_parse_asm_stmt(parser_t* p)
 
   expect(p, '(', "expect function body after `asm` keyword");
 
-  size_t counter = 0;
-  while (!check_next(p, ')', counter)) {
-    if (check_next(p, ',', counter)) {
-      counter++;
-      continue; 
+  size_t offset = 0;
+  size_t paren_depth = 0;
+  size_t bracket_depth = 0;
+  size_t brace_depth = 0;
+  bool segment_started = false;
+  bool segment_is_instr = false;
+
+  while ((size_t)p->pos + offset < p->count) {
+    long token_type = p->items[p->pos + offset].type;
+    bool at_top_level =
+      paren_depth == 0 && bracket_depth == 0 && brace_depth == 0;
+
+    if (at_top_level && (token_type == ',' || token_type == ')')) {
+      if (segment_started) {
+        if (segment_is_instr)
+          stmt->asm_stmt.instr_count++;
+        else
+          stmt->asm_stmt.arg_count++;
+        segment_started = false;
+      }
+
+      if (token_type == ')')
+        break;
+
+      offset++;
+      continue;
     }
 
-    if (check_next(p, LEXER_token_dqstring, counter)) 
-      stmt->asm_stmt.instr_count++;   
-    else 
-      stmt->asm_stmt.arg_count++;
+    if (!segment_started) {
+      segment_started = true;
+      segment_is_instr = token_type == LEXER_token_dqstring;
+    }
 
-    counter++;
+    if (token_type == '(')
+      paren_depth++;
+    else if (token_type == ')' && paren_depth > 0)
+      paren_depth--;
+    else if (token_type == '[')
+      bracket_depth++;
+    else if (token_type == ']' && bracket_depth > 0)
+      bracket_depth--;
+    else if (token_type == '{')
+      brace_depth++;
+    else if (token_type == '}' && brace_depth > 0)
+      brace_depth--;
+
+    offset++;
   }
 
   stmt->asm_stmt.instr = 
